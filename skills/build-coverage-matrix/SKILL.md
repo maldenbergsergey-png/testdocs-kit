@@ -16,6 +16,7 @@ Before analysis, read:
 - [`../../rules/coverage-rules.md`](../../rules/coverage-rules.md) when classifying existing coverage
 - [`../../rules/regression-model-rules.md`](../../rules/regression-model-rules.md) when the matrix will feed a regression model
 - [`../../rules/reusable-setup-rules.md`](../../rules/reusable-setup-rules.md) when scenarios consume shared administration or data preparation
+- [`../../rules/integration-rules.md`](../../rules/integration-rules.md) when requirements or existing cases are retrieved externally
 - [`../../rules/README.md`](../../rules/README.md) for placeholder handling
 
 ## Accept input
@@ -23,6 +24,8 @@ Before analysis, read:
 Accept requirements, analysis, product navigation, page or screen inventories, `sitemap.xml`, UI designs, an existing matrix, test-case exports, and coverage summaries. Record source authority and scope.
 
 Prefer requirements and analysis. For an existing product, use its actual navigation and page structure. Use designs as a structural source only when analysis is unavailable; do not infer unsupported behavior or expected results from appearance.
+
+Use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) first when the scope is anchored by an external issue, page, or TMS reference. Do not infer complete project coverage from a partial external search.
 
 ## Workflow
 

@@ -16,6 +16,7 @@ Before review, read:
 - [`../../rules/test-case-type-rules.md`](../../rules/test-case-type-rules.md)
 - [`../../rules/test-case-lifecycle-rules.md`](../../rules/test-case-lifecycle-rules.md)
 - [`../../rules/reusable-setup-rules.md`](../../rules/reusable-setup-rules.md) when a case uses shared preparation, administration content, or an execution dependency
+- [`../../rules/integration-rules.md`](../../rules/integration-rules.md) when cases or requirements are retrieved externally
 - [`../../rules/coverage-matrix-rules.md`](../../rules/coverage-matrix-rules.md) when a matrix or hierarchy is supplied
 - [`../../rules/coverage-rules.md`](../../rules/coverage-rules.md) only when coverage is explicitly in scope
 - [`../../rules/regression-model-rules.md`](../../rules/regression-model-rules.md) only when regression-model suitability or suite structure is explicitly in scope
@@ -26,6 +27,8 @@ Before review, read:
 Accept one or more complete or partial test cases plus any requirements needed to assess behavioral correctness. Input may be pasted in chat, supplied as documents, or retrieved through optional read tools.
 
 Do not require a specific TMS, MCP service, or integration. If content needed for a reliable review is unavailable, identify the gap rather than infer it.
+
+When an external issue, page, or case reference is supplied, use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) first. Review only the case version and requirement content actually retrieved.
 
 ## Workflow
 

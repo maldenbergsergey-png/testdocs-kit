@@ -14,6 +14,7 @@ Before proposing changes, read:
 - [`../../rules/update-rules.md`](../../rules/update-rules.md)
 - [`../../rules/test-case-standard.md`](../../rules/test-case-standard.md)
 - [`../../rules/reusable-setup-rules.md`](../../rules/reusable-setup-rules.md) when the case consumes or provides shared preparation
+- [`../../rules/integration-rules.md`](../../rules/integration-rules.md) when retrieving a source issue, knowledge page, case version, comment, or history
 - [`../../rules/test-case-type-rules.md`](../../rules/test-case-type-rules.md) when type or decomposition is affected
 - [`../../rules/test-case-lifecycle-rules.md`](../../rules/test-case-lifecycle-rules.md)
 - [`../../rules/coverage-matrix-rules.md`](../../rules/coverage-matrix-rules.md) when hierarchy or scenario mapping changes
@@ -28,6 +29,8 @@ Require both the current test-case content (and identifier or version when relev
 Accept either input manually or through available read tools. Do not require Jira, Confluence, Zephyr, a TMS, or MCP.
 
 If either input is absent, contradictory, or too ambiguous for a safe diff, return `INSUFFICIENT_CONTEXT` with exact missing information. Do not reconstruct unseen content.
+
+When an external issue or case reference is supplied, use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) first to retrieve the current source and case version. Do not treat a request to check or propose an update as permission to change the TMS.
 
 ## Workflow
 

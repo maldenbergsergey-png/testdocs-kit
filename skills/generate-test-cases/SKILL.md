@@ -18,6 +18,7 @@ Before drafting, read:
 - [`../../rules/regression-model-rules.md`](../../rules/regression-model-rules.md) when the cases are intended for a regression model
 - [`../../rules/test-case-lifecycle-rules.md`](../../rules/test-case-lifecycle-rules.md) when preparing TMS-ready output
 - [`../../rules/reusable-setup-rules.md`](../../rules/reusable-setup-rules.md) when data or content preparation is shared, performed through an administration interface, or consumed by dependent cases
+- [`../../rules/integration-rules.md`](../../rules/integration-rules.md) when Jira, Confluence, TMS, or another external source is referenced
 - [`../../rules/README.md`](../../rules/README.md) for placeholder handling
 
 Do not copy rules into this skill or replace unresolved placeholders with invented policy.
@@ -27,6 +28,8 @@ Do not copy rules into this skill or replace unresolved placeholders with invent
 Accept any useful combination of plain-language requirements, analysis, acceptance criteria, API examples, supporting documentation, or context retrieved through an available tool.
 
 Do not require an issue key, Jira, Confluence, Zephyr, a TMS, or MCP.
+
+When the user supplies an issue key, external page, or TMS reference, use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) first. With no external reference, work directly from the supplied context and do not search an arbitrary connected project.
 
 ## Workflow
 

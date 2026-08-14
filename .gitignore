@@ -1,5 +1,13 @@
 .DS_Store
+.agents/
 __pycache__/
 *.py[cod]
+node_modules/
+.env
+.env.local
+.env.*.local
+opencode.json
+mcp_stdout.txt
+mcp_stderr.txt
 /Инструкции/
 /Примеры ТК с реального проекта/

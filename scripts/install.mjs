@@ -1,0 +1,547 @@
+#!/usr/bin/env node
+
+import fs from "node:fs";
+import path from "node:path";
+import process from "node:process";
+import readline from "node:readline/promises";
+import { spawnSync } from "node:child_process";
+import {
+  getCodexConfigFile,
+  getConfigDir,
+  getConfigFile,
+  getInstallHome,
+  getOpenCodeConfigFile,
+  launcherFile,
+  repoRoot
+} from "./paths.mjs";
+
+const SUPPORTED_CLIENTS = new Set(["codex", "claude", "opencode", "generic"]);
+const MANAGED_BEGIN = "# BEGIN testdocs-kit (managed by npm run setup)";
+const MANAGED_END = "# END testdocs-kit";
+const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+
+function parseArgs(argv) {
+  const result = { clients: null, force: false, skipDependencies: false, noCli: false, answers: null };
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === "--clients") result.clients = argv[++index]?.split(",");
+    else if (arg === "--answers") result.answers = argv[++index];
+    else if (arg === "--force") result.force = true;
+    else if (arg === "--skip-dependencies") result.skipDependencies = true;
+    else if (arg === "--no-cli") result.noCli = true;
+    else if (arg === "--help" || arg === "-h") result.help = true;
+    else throw new Error(`Неизвестный аргумент: ${arg}`);
+  }
+  return result;
+}
+
+function showHelp() {
+  console.log(`Использование: npm run setup -- [параметры]
+
+Параметры:
+  --clients codex,claude,opencode,generic  Настроить указанные клиенты
+  --answers /path/to/answers.json          Взять ответы из JSON без вопросов
+  --skip-dependencies                     Не выполнять npm ci и сборку
+  --no-cli                                Не вызывать CLI клиентов
+  --force                                 Сделать резервную копию конфликтующих скиллов
+  --help                                  Показать справку`);
+}
+
+function normalizeClients(values) {
+  const clients = (values || []).map((value) => value.trim().toLowerCase()).filter(Boolean);
+  for (const client of clients) {
+    if (!SUPPORTED_CLIENTS.has(client)) throw new Error(`Неподдерживаемый клиент: ${client}`);
+  }
+  return [...new Set(clients)];
+}
+
+async function ask(question, fallback = "") {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const suffix = fallback ? ` [${fallback}]` : "";
+  const answer = (await rl.question(`${question}${suffix}: `)).trim();
+  rl.close();
+  return answer || fallback;
+}
+
+async function confirm(question, fallback = true) {
+  const hint = fallback ? "Y/n" : "y/N";
+  const answer = (await ask(`${question} (${hint})`)).toLowerCase();
+  if (!answer) return fallback;
+  return ["y", "yes", "д", "да"].includes(answer);
+}
+
+async function askSecret(question, previous = "") {
+  if (!process.stdin.isTTY || typeof process.stdin.setRawMode !== "function") {
+    return ask(question, previous);
+  }
+
+  const keepHint = previous ? " (Enter — оставить текущее значение)" : "";
+  process.stdout.write(`${question}${keepHint}: `);
+  process.stdin.setRawMode(true);
+  process.stdin.resume();
+  process.stdin.setEncoding("utf8");
+
+  return new Promise((resolve, reject) => {
+    let value = "";
+    const cleanup = () => {
+      process.stdin.off("data", onData);
+      process.stdin.setRawMode(false);
+      process.stdin.pause();
+    };
+    const onData = (chunk) => {
+      for (const char of chunk) {
+        if (char === "\u0003") {
+          cleanup();
+          process.stdout.write("\n");
+          reject(new Error("Установка отменена."));
+          return;
+        }
+        if (char === "\r" || char === "\n") {
+          cleanup();
+          process.stdout.write("\n");
+          resolve(value || previous);
+          return;
+        }
+        if (char === "\u007f" || char === "\b") {
+          if (value) {
+            value = value.slice(0, -1);
+            process.stdout.write("\b \b");
+          }
+          continue;
+        }
+        if (char >= " ") {
+          value += char;
+          process.stdout.write("*");
+        }
+      }
+    };
+    process.stdin.on("data", onData);
+  });
+}
+
+function readExistingConfig() {
+  const configFile = getConfigFile();
+  if (!fs.existsSync(configFile)) return {};
+  try {
+    return JSON.parse(fs.readFileSync(configFile, "utf8"));
+  } catch (error) {
+    throw new Error(`Не удалось прочитать существующий ${configFile}: ${error.message}`);
+  }
+}
+
+async function chooseClients(args) {
+  if (args.clients) return normalizeClients(args.clients);
+  const value = await ask(
+    "Клиенты: 1 — Codex, 2 — Claude Code, 3 — OpenCode, 4 — все, 5 — generic",
+    "4"
+  );
+  const mapping = {
+    "1": ["codex"],
+    "2": ["claude"],
+    "3": ["opencode"],
+    "4": ["codex", "claude", "opencode", "generic"],
+    "5": ["generic"]
+  };
+  return mapping[value] || normalizeClients(value.split(","));
+}
+
+async function collectJira(previous = {}) {
+  const enabled = await confirm("Подключить Jira", previous.enabled ?? true);
+  if (!enabled) return { ...previous, enabled: false };
+
+  const profile = await ask(
+    "Jira: 1 — Cloud, 2 — Server/DC с PAT, 3 — старая Jira с логином и паролем",
+    previous.profile || "3"
+  );
+  const presets = {
+    "1": { profile: "1", authMode: "basic", apiVersion: "3" },
+    "2": { profile: "2", authMode: "bearer", apiVersion: "2" },
+    "3": { profile: "3", authMode: "basic", apiVersion: "2" }
+  };
+  const preset = presets[profile] || presets["3"];
+  const url = (await ask("Адрес Jira без завершающего слеша", previous.url || "https://jira.example.com")).replace(/\/+$/, "");
+  const username = preset.authMode === "bearer"
+    ? ""
+    : await ask("Логин или email Jira", previous.username || "");
+  const secret = await askSecret(
+    preset.authMode === "bearer" ? "PAT Jira" : profile === "1" ? "API-токен Jira" : "Пароль Jira",
+    previous.secret || ""
+  );
+  if (!secret) throw new Error("Не заполнены учётные данные Jira.");
+
+  return {
+    enabled: true,
+    ...preset,
+    url,
+    username,
+    secret,
+    insecureTls: false
+  };
+}
+
+async function collectConfluence(previous = {}) {
+  const enabled = await confirm("Подключить Confluence", previous.enabled ?? true);
+  if (!enabled) return { ...previous, enabled: false };
+
+  const profile = await ask(
+    "Confluence: 1 — Cloud, 2 — Server/DC с PAT, 3 — старый с логином и паролем",
+    previous.profile || "3"
+  );
+  const authMode = profile === "2" ? "bearer" : "basic";
+  const baseUrl = (await ask(
+    "Адрес Confluence без завершающего слеша",
+    previous.baseUrl || "https://confluence.example.com"
+  )).replace(/\/+$/, "");
+  const username = authMode === "bearer"
+    ? ""
+    : await ask("Логин или email Confluence", previous.username || "");
+  const secret = await askSecret(
+    authMode === "bearer" ? "PAT Confluence" : profile === "1" ? "API-токен Confluence" : "Пароль Confluence",
+    previous.secret || ""
+  );
+  if (!secret) throw new Error("Не заполнены учётные данные Confluence.");
+
+  return {
+    enabled: true,
+    profile,
+    baseUrl,
+    username,
+    secret,
+    authMode,
+    insecureTls: false
+  };
+}
+
+function validateAnswers(config) {
+  if (!config || typeof config !== "object") throw new Error("Файл ответов должен содержать JSON-объект.");
+  for (const service of ["jira", "confluence"]) {
+    const value = config[service];
+    if (!value?.enabled) continue;
+    const url = service === "jira" ? value.url : value.baseUrl;
+    if (!url || !value.secret || !value.authMode) {
+      throw new Error(`В файле ответов не полностью настроен ${service}.`);
+    }
+  }
+  return config;
+}
+
+async function collectConfig(args, clients) {
+  if (args.answers) {
+    const answers = JSON.parse(fs.readFileSync(path.resolve(args.answers), "utf8"));
+    return validateAnswers({ ...answers, clients });
+  }
+
+  const previous = readExistingConfig();
+  console.log("\nСекреты вводятся скрыто и сохраняются вне репозитория.\n");
+  return {
+    version: 1,
+    clients,
+    enableWrites: false,
+    jira: await collectJira(previous.jira),
+    confluence: await collectConfluence(previous.confluence)
+  };
+}
+
+function savePrivateConfig(config) {
+  const configFile = getConfigFile();
+  fs.mkdirSync(path.dirname(configFile), { recursive: true, mode: 0o700 });
+  fs.writeFileSync(configFile, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+  try { fs.chmodSync(configFile, 0o600); } catch { /* Windows ACL управляется системой. */ }
+  console.log(`Настройки сохранены: ${configFile}`);
+}
+
+function run(command, commandArgs, options = {}) {
+  const result = spawnSync(command, commandArgs, { stdio: "inherit", ...options });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(`Команда завершилась с кодом ${result.status}: ${command}`);
+}
+
+function installDependencies(skip, config) {
+  if (skip) {
+    console.log("Установка зависимостей пропущена.");
+    return;
+  }
+  const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+  if (config.jira?.enabled) {
+    console.log("\nУстанавливаю зависимости Jira MCP...");
+    run(npm, ["ci"], { cwd: path.join(repoRoot, "mcp", "jira-mcp") });
+  }
+  if (config.confluence?.enabled) {
+    console.log("\nУстанавливаю и собираю Confluence MCP...");
+    run(npm, ["ci"], { cwd: path.join(repoRoot, "mcp", "confluence-mcp") });
+    run(npm, ["run", "build"], { cwd: path.join(repoRoot, "mcp", "confluence-mcp") });
+  }
+}
+
+function backupPath(target) {
+  const backup = `${target}.backup-${stamp}`;
+  fs.renameSync(target, backup);
+  console.warn(`Создана резервная копия: ${backup}`);
+}
+
+function pathEntryExists(target) {
+  try {
+    fs.lstatSync(target);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function installSkillSet(destinationRoot, force) {
+  fs.mkdirSync(destinationRoot, { recursive: true });
+  const sourceRoot = path.join(repoRoot, "skills");
+  const skills = fs.readdirSync(sourceRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory());
+
+  for (const skill of skills) {
+    const source = path.join(sourceRoot, skill.name);
+    const destination = path.join(destinationRoot, skill.name);
+    if (pathEntryExists(destination)) {
+      try {
+        if (fs.realpathSync(destination) === fs.realpathSync(source)) continue;
+      } catch { /* Это другой или повреждённый путь. */ }
+      if (!force) {
+        console.warn(`Пропущен существующий скилл: ${destination}. Используйте --force для резервной копии.`);
+        continue;
+      }
+      backupPath(destination);
+    }
+
+    try {
+      fs.symlinkSync(source, destination, process.platform === "win32" ? "junction" : "dir");
+    } catch {
+      fs.cpSync(source, destination, { recursive: true });
+      console.warn(`Ссылка недоступна, скилл скопирован: ${skill.name}`);
+    }
+  }
+  console.log(`Скиллы подключены: ${destinationRoot}`);
+}
+
+function installSkills(clients, force) {
+  const home = getInstallHome();
+  if (clients.some((client) => ["codex", "opencode", "generic"].includes(client))) {
+    installSkillSet(path.join(home, ".agents", "skills"), force);
+  }
+  if (clients.includes("claude")) {
+    installSkillSet(path.join(home, ".claude", "skills"), force);
+  }
+}
+
+function tomlString(value) {
+  return JSON.stringify(value);
+}
+
+function codexBlock(config) {
+  const sections = [MANAGED_BEGIN];
+  if (config.jira?.enabled) {
+    sections.push(`
+[mcp_servers.testdocs_jira]
+command = ${tomlString(process.execPath)}
+args = [${tomlString(launcherFile)}, "jira"]
+enabled = true
+required = false
+enabled_tools = [
+  "get_issue", "get_transitions", "search_issues",
+  "zephyr_get_projects", "zephyr_get_project", "zephyr_search_test_cases",
+  "zephyr_get_test_plans", "zephyr_get_test_plan", "zephyr_get_iterations",
+  "zephyr_get_test_case", "zephyr_get_all_test_cases"
+]
+default_tools_approval_mode = "approve"`);
+  }
+  if (config.confluence?.enabled) {
+    sections.push(`
+[mcp_servers.testdocs_confluence]
+command = ${tomlString(process.execPath)}
+args = [${tomlString(launcherFile)}, "confluence"]
+enabled = true
+required = false
+enabled_tools = ["search", "get_page", "get_page_as_markdown", "get_space_pages", "get_page_children"]
+default_tools_approval_mode = "approve"`);
+  }
+  sections.push(MANAGED_END);
+  return `${sections.join("\n")}\n`;
+}
+
+function writeManagedCodexConfig(config) {
+  const target = getCodexConfigFile();
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  const existing = fs.existsSync(target) ? fs.readFileSync(target, "utf8") : "";
+  const escapedBegin = MANAGED_BEGIN.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escapedEnd = MANAGED_END.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const managedPattern = new RegExp(`${escapedBegin}[\\s\\S]*?${escapedEnd}\\n?`, "g");
+  const withoutManaged = existing.replace(managedPattern, "").trimEnd();
+  const next = `${withoutManaged}${withoutManaged ? "\n\n" : ""}${codexBlock(config)}`;
+  if (existing && existing !== next) fs.copyFileSync(target, `${target}.backup-${stamp}`);
+  fs.writeFileSync(target, next, "utf8");
+  console.log(`Codex настроен: ${target}`);
+}
+
+function mcpServerConfig(service) {
+  return {
+    type: "local",
+    command: [process.execPath, launcherFile, service],
+    cwd: repoRoot,
+    disabled: false,
+    codemode: false
+  };
+}
+
+function openCodeSnippet(config) {
+  const servers = {};
+  if (config.jira?.enabled) servers.testdocs_jira = mcpServerConfig("jira");
+  if (config.confluence?.enabled) servers.testdocs_confluence = mcpServerConfig("confluence");
+  return {
+    $schema: "https://opencode.ai/config.json",
+    mcp: { servers },
+    permissions: [
+      { action: "testdocs_jira_add_comment", resource: "*", effect: "deny" },
+      { action: "testdocs_jira_transition_issue", resource: "*", effect: "deny" }
+    ]
+  };
+}
+
+function writeJsonWithBackup(target, value) {
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  if (fs.existsSync(target)) fs.copyFileSync(target, `${target}.backup-${stamp}`);
+  fs.writeFileSync(target, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+function mergeOpenCodeConfig(config) {
+  const target = getOpenCodeConfigFile();
+  let data = { $schema: "https://opencode.ai/config.json" };
+  if (fs.existsSync(target)) {
+    try {
+      data = JSON.parse(fs.readFileSync(target, "utf8"));
+    } catch {
+      const fallback = path.join(getConfigDir(), "client-snippets", "opencode-v2.json");
+      writeJsonWithBackup(fallback, openCodeSnippet(config));
+      console.warn(`OpenCode-конфиг содержит JSONC или нестандартный JSON. Готовый фрагмент: ${fallback}`);
+      return;
+    }
+  }
+
+  const hasLegacyServers = data.mcp && !data.mcp.servers && Object.values(data.mcp).some(
+    (value) => value && typeof value === "object" && value.type
+  );
+  if (hasLegacyServers) {
+    data.mcp ||= {};
+    if (config.jira?.enabled) {
+      data.mcp.testdocs_jira = { type: "local", command: [process.execPath, launcherFile, "jira"], enabled: true };
+    }
+    if (config.confluence?.enabled) {
+      data.mcp.testdocs_confluence = { type: "local", command: [process.execPath, launcherFile, "confluence"], enabled: true };
+    }
+    data.permission ||= {};
+    data.permission.testdocs_jira_add_comment = "deny";
+    data.permission.testdocs_jira_transition_issue = "deny";
+  } else {
+    data.mcp ||= {};
+    data.mcp.servers ||= {};
+    if (config.jira?.enabled) data.mcp.servers.testdocs_jira = mcpServerConfig("jira");
+    if (config.confluence?.enabled) data.mcp.servers.testdocs_confluence = mcpServerConfig("confluence");
+    data.permissions = Array.isArray(data.permissions) ? data.permissions : [];
+    const managedActions = new Set(["testdocs_jira_add_comment", "testdocs_jira_transition_issue"]);
+    data.permissions = data.permissions.filter((rule) => !managedActions.has(rule?.action));
+    data.permissions.push(
+      { action: "testdocs_jira_add_comment", resource: "*", effect: "deny" },
+      { action: "testdocs_jira_transition_issue", resource: "*", effect: "deny" }
+    );
+  }
+  writeJsonWithBackup(target, data);
+  console.log(`OpenCode настроен: ${target}`);
+}
+
+function claudeCommands(config) {
+  const commands = [];
+  if (config.jira?.enabled) {
+    commands.push(`claude mcp add --transport stdio --scope user testdocs_jira -- ${JSON.stringify(process.execPath)} ${JSON.stringify(launcherFile)} jira`);
+  }
+  if (config.confluence?.enabled) {
+    commands.push(`claude mcp add --transport stdio --scope user testdocs_confluence -- ${JSON.stringify(process.execPath)} ${JSON.stringify(launcherFile)} confluence`);
+  }
+  return commands;
+}
+
+function configureClaude(config, noCli) {
+  const commandsFile = path.join(getConfigDir(), "client-snippets", "claude-code.txt");
+  fs.mkdirSync(path.dirname(commandsFile), { recursive: true });
+  fs.writeFileSync(commandsFile, `${claudeCommands(config).join("\n")}\n`, "utf8");
+
+  if (noCli || spawnSync("claude", ["--version"], { stdio: "ignore" }).status !== 0) {
+    console.warn(`Claude Code CLI не найден или отключён. Команды сохранены: ${commandsFile}`);
+    return;
+  }
+
+  for (const [service, enabled] of [["jira", config.jira?.enabled], ["confluence", config.confluence?.enabled]]) {
+    if (!enabled) continue;
+    const name = `testdocs_${service}`;
+    const current = spawnSync("claude", ["mcp", "get", name], { stdio: "ignore" });
+    if (current.status === 0) {
+      console.log(`Claude Code уже содержит ${name}; регистрация пропущена.`);
+      continue;
+    }
+    const added = spawnSync("claude", [
+      "mcp", "add", "--transport", "stdio", "--scope", "user", name,
+      "--", process.execPath, launcherFile, service
+    ], { stdio: "inherit" });
+    if (added.status !== 0) console.warn(`Не удалось добавить ${name}. Команды сохранены: ${commandsFile}`);
+  }
+}
+
+function writeGenericSnippet(config) {
+  const mcpServers = {};
+  if (config.jira?.enabled) {
+    mcpServers.testdocs_jira = { command: process.execPath, args: [launcherFile, "jira"] };
+  }
+  if (config.confluence?.enabled) {
+    mcpServers.testdocs_confluence = { command: process.execPath, args: [launcherFile, "confluence"] };
+  }
+  const target = path.join(getConfigDir(), "client-snippets", "generic-mcp.json");
+  writeJsonWithBackup(target, { mcpServers });
+  console.log(`Универсальный MCP-фрагмент: ${target}`);
+}
+
+function configureClients(config, clients, args) {
+  writeGenericSnippet(config);
+  if (clients.includes("codex")) writeManagedCodexConfig(config);
+  if (clients.includes("opencode")) mergeOpenCodeConfig(config);
+  if (clients.includes("claude")) configureClaude(config, args.noCli);
+}
+
+function verifyInstallation() {
+  console.log("\nПроверяю локальный MCP-handshake...");
+  run(process.execPath, [path.join(repoRoot, "scripts", "check-install.mjs")]);
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  if (args.help) return showHelp();
+  const major = Number(process.versions.node.split(".")[0]);
+  if (major < 20) throw new Error(`Требуется Node.js 20 или новее. Найдена версия ${process.version}.`);
+
+  console.log(`Testdocs Kit\nРепозиторий: ${repoRoot}\n`);
+  const clients = await chooseClients(args);
+  if (!clients.length) throw new Error("Не выбран ни один клиент.");
+  const config = await collectConfig(args, clients);
+  config.version ||= 1;
+  config.clients = clients;
+  config.enableWrites = false;
+
+  savePrivateConfig(config);
+  installDependencies(args.skipDependencies, config);
+  installSkills(clients, args.force);
+  configureClients(config, clients, args);
+  verifyInstallation();
+
+  console.log(`\nУстановка завершена.
+1. Перезапустите выбранный AI-клиент.
+2. Проверьте MCP-командой клиента.
+3. Выполните пробный запрос из README.md.
+
+Внешние write-инструменты отключены.`);
+}
+
+main().catch((error) => {
+  console.error(`\nОшибка установки: ${error.message}`);
+  process.exit(1);
+});

@@ -2,6 +2,15 @@
 
 Integrations are context transport, not QA logic. This repository works fully without MCP, Jira, Confluence, Zephyr, or any other external system.
 
+## Start here
+
+- [`codex-mcp-setup.md`](codex-mcp-setup.md) — company-neutral tester onboarding for STDIO or Streamable HTTP MCP servers.
+- [`profiles/jira-confluence.md`](profiles/jira-confluence.md) — issue and knowledge capability expectations.
+- [`profiles/zephyr-scale.md`](profiles/zephyr-scale.md) — modern Zephyr Scale capability profile.
+- [`profiles/tm4j-legacy.md`](profiles/tm4j-legacy.md) — legacy Test Management for Jira, including version 6.9.0.
+- [`../rules/integration-rules.md`](../rules/integration-rules.md) — neutral context bundle and mandatory read/write boundaries.
+- [`../skills/collect-test-context/SKILL.md`](../skills/collect-test-context/SKILL.md) — read-only collection and routing workflow.
+
 ## Manual context is the baseline
 
 When no integration is available, ask the user to paste or attach the relevant requirement, analysis, API example, existing case, or coverage summary. Apply the same skill and rules to that content. Missing MCP must never be treated as a skill failure.
@@ -30,6 +39,12 @@ Result is shown in chat
 
 No particular product or sequence is required. An issue tracker may supply requirements, a knowledge base may supply analysis, and a TMS may supply existing cases, but QA decisions must not depend on those product names.
 
+### Issue-key routing
+
+When the user supplies an issue key or URL, use `collect-test-context` to retrieve the issue, relevant linked knowledge, and existing linked cases when those read capabilities are available. Then route the neutral context bundle to the requested QA skill.
+
+When no issue key or external link is supplied, do not search an arbitrary project. Use the context in chat or files and invoke the requested QA skill directly.
+
 ## Capability detection and fallback
 
 1. Check whether an appropriate read or write capability is actually available.
@@ -37,6 +52,8 @@ No particular product or sequence is required. An issue tracker may supply requi
 3. If a read capability is missing or fails, state what content is needed and request it manually.
 4. Continue the same workflow after the user supplies the content.
 5. Never invent retrieved data or imply that an unavailable system was checked.
+
+Treat Jira issue access, Confluence access, and TMS access as three independent capabilities even when one MCP server exposes all of them. A successful Jira read does not prove that vendor test objects can be read.
 
 ## Documentation corpus intake
 
@@ -71,3 +88,5 @@ Automatic destructive changes are prohibited. This pack does not support automat
 ## Future adapters
 
 Future client or system adapters should map external fields to the skill's neutral inputs and map reviewed outputs back to external fields. Keep credentials, endpoints, schemas, and tool instructions outside shared QA rules. Do not make an adapter a mandatory dependency of a skill.
+
+An adapter is compatible when it can fill the neutral context bundle and preserve stable identifiers and raw external values. It does not need to use the same tool names as another company or TMS.

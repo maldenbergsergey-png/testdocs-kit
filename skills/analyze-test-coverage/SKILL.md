@@ -17,6 +17,7 @@ Before analysis, read:
 - [`../../rules/regression-model-rules.md`](../../rules/regression-model-rules.md) when an existing regression model or suite relationship is in scope
 - [`../../rules/test-case-standard.md`](../../rules/test-case-standard.md) only when existing case structure affects the decision
 - [`../../rules/reusable-setup-rules.md`](../../rules/reusable-setup-rules.md) when a change affects shared data or administration preparation
+- [`../../rules/integration-rules.md`](../../rules/integration-rules.md) when issue, knowledge, or TMS context is retrieved externally
 - [`../../rules/README.md`](../../rules/README.md) for placeholder handling
 
 ## Accept input
@@ -24,6 +25,8 @@ Before analysis, read:
 Use supplied changed behavior, requirements, affected areas, risk information, and existing coverage evidence. Accept that context directly in chat, in accessible documents, or from optional read tools.
 
 Do not require a particular tracker, TMS, issue key, or MCP service. Do not interpret missing case data as proof of missing coverage.
+
+When the request supplies an issue key, external page, or TMS reference, use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) first. A Jira-only connection cannot establish existing TMS coverage unless cases are actually retrieved.
 
 ## Workflow
 

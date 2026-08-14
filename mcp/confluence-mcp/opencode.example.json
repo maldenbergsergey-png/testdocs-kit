@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "confluence": {
+      "type": "local",
+      "command": ["node", "C:\\path\\to\\testdocs-kit\\mcp\\confluence-mcp\\dist\\index.js"],
+      "environment": {
+        "CONFLUENCE_BASE_URL": "https://confluence.example.com",
+        "CONFLUENCE_USERNAME": "your-username-or-email",
+        "CONFLUENCE_API_TOKEN": "your-token-or-password",
+        "CONFLUENCE_AUTH_MODE": "basic",
+        "CONFLUENCE_INSECURE_TLS": "0"
+      },
+      "enabled": true
+    }
+  }
+}

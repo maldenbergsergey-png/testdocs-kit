@@ -1,0 +1,28 @@
+[mcp_servers.qa_jira]
+command = "node"
+args = ["C:/path/to/testdocs-kit/mcp/jira-mcp/mcp-stdio.js"]
+cwd = "C:/path/to/testdocs-kit/mcp/jira-mcp"
+enabled = true
+required = false
+enabled_tools = [
+  "get_issue",
+  "get_transitions",
+  "search_issues",
+  "zephyr_get_projects",
+  "zephyr_get_project",
+  "zephyr_search_test_cases",
+  "zephyr_get_test_plans",
+  "zephyr_get_test_plan",
+  "zephyr_get_iterations",
+  "zephyr_get_test_case",
+  "zephyr_get_all_test_cases"
+]
+default_tools_approval_mode = "approve"
+
+[mcp_servers.qa_jira.env]
+JIRA_URL = "https://jira.example.com"
+JIRA_EMAIL = "your-username-or-email"
+JIRA_TOKEN = "your-token-or-password"
+JIRA_AUTH_MODE = "basic"
+JIRA_API_VERSION = "2"
+JIRA_INSECURE_TLS = "0"

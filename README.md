@@ -1,126 +1,392 @@
-# QA Test Documentation Skill Pack
+# Testdocs Kit
 
-`qa-test-docs` is a repository-based set of shared rules, AI skills, and examples for creating and maintaining QA test documentation. It is intended for QA engineers and teams that want consistent agent behavior across AI clients and coding agents.
+Переносимый набор правил, AI-скиллов и MCP-серверов для создания и поддержки тестовой документации.
 
-This repository is a **skill pack, not an application**. It has no UI, backend, database, API server, container, model wrapper, or required external service.
+Инструмент помогает писать простые и понятные тест-кейсы, проверять покрытие, предлагать актуализацию существующих кейсов и формировать переиспользуемую регрессионную модель.
 
-> The core QA logic must remain independent of Codex, Claude Code, OpenCode, Jira, Zephyr, Confluence, and other specific tools.
+Поддерживаются:
 
-## Design principles
+- Codex в приложении ChatGPT, CLI и IDE;
+- Claude Code;
+- OpenCode V2 и старый формат OpenCode;
+- другие клиенты, которые поддерживают MCP и стандарт Agent Skills.
 
-- `rules/` is the single source of truth for QA documentation policy.
-- Skills contain workflows and reference the shared rules; they do not copy those rules.
-- Supplying context directly in chat is a first-class, fully supported workflow.
-- MCP and other integrations are optional ways to read or publish context.
-- Missing facts are reported, never invented.
-- Test cases use minimum sufficient detail so a tester unfamiliar with the project can execute them without oral guidance.
-- Repeated administration or data preparation is modeled as an explicit reusable setup dependency, not copied into every case.
-- Changes to existing data are proposals until a human reviews and approves them.
-- External write operations require an explicit user request or confirmation.
-- Automatic destructive changes, including deletion of external test cases, are out of scope.
+## Установка одной командой
 
-## Repository layout
+Понадобятся:
+
+- Git;
+- Node.js 20 или новее;
+- хотя бы один поддерживаемый AI-клиент;
+- адрес и учётные данные Jira и Confluence, если нужны интеграции.
+
+### 1. Скачать и запустить установщик
+
+Через SSH:
+
+```bash
+git clone git@github.com:maldenbergsergey-png/testdocs-kit.git
+cd testdocs-kit
+npm run setup
+```
+
+Через HTTPS:
+
+```bash
+git clone https://github.com/maldenbergsergey-png/testdocs-kit.git
+cd testdocs-kit
+npm run setup
+```
+
+Команда одинаковая для macOS, Linux и Windows PowerShell.
+
+### 2. Ответить на вопросы установщика
+
+Установщик попросит:
+
+1. Выбрать Codex, Claude Code, OpenCode или все клиенты.
+2. Указать, нужно ли подключать Jira.
+3. Выбрать тип Jira: Cloud, Server/Data Center с PAT или старая Jira с логином и паролем.
+4. Ввести адрес Jira, логин и токен или пароль.
+5. Аналогично настроить Confluence либо пропустить его.
+
+Пароли и токены вводятся скрыто. Они не записываются в репозиторий и не попадают в конфигурации AI-клиентов.
+
+### 3. Перезапустить AI-клиент
+
+После сообщения `Установка завершена` полностью перезапустите выбранный клиент.
+
+Проверьте подключение:
+
+| Клиент | Проверка MCP | Проверка скиллов |
+| --- | --- | --- |
+| Codex | `/mcp` или `codex mcp list` | `/skills` или ввод `$` |
+| Claude Code | `/mcp` или `claude mcp list` | ввести `/generate-test-cases` |
+| OpenCode | `/connect` или `opencode2 mcp list` | ввести `/generate-test-cases` |
+| Другой клиент | по инструкции клиента | проверить каталог Agent Skills |
+
+## Что делает установщик
+
+`npm run setup`:
+
+1. Устанавливает зависимости Jira MCP и Confluence MCP.
+2. Собирает TypeScript-сервер Confluence.
+3. Подключает все восемь QA-скиллов.
+4. Сохраняет Jira и Confluence настройки в отдельном пользовательском файле.
+5. Настраивает выбранные AI-клиенты.
+6. Запускает локальную проверку MCP-handshake без чтения реальных Jira и Confluence данных.
+7. Проверяет, что write-инструменты Jira выключены.
+
+Секреты хранятся здесь:
+
+- macOS и Linux: `~/.config/testdocs-kit/config.json`;
+- Windows: `%APPDATA%\testdocs-kit\config.json`.
+
+На macOS и Linux файлу назначаются права `600`.
+
+Клиент получает только команду запуска `scripts/launch-mcp.mjs`. Launcher читает закрытый пользовательский конфиг и передаёт значения MCP-процессу. Поэтому токены не дублируются в `config.toml`, `opencode.json` или конфигурации Claude Code.
+
+> После установки не удаляйте и не перемещайте каталог `testdocs-kit`: конфигурации MCP и ссылки на скиллы используют его абсолютный путь. Если каталог был перемещён, повторно выполните `npm run setup`.
+
+## Поддерживаемые способы авторизации
+
+### Jira
+
+| Установка | Режим | Что вводить |
+| --- | --- | --- |
+| Jira Cloud | Basic Auth | email и API-токен Atlassian |
+| Jira Server/Data Center с PAT | Bearer | персональный токен; логин не требуется |
+| Старая Jira без токенов | Basic Auth | обычный логин и пароль |
+
+Для старой Jira установщик передаёт:
 
 ```text
-qa-test-docs/
+JIRA_AUTH_MODE=basic
+JIRA_EMAIL=<логин>
+JIRA_TOKEN=<пароль>
+JIRA_API_VERSION=2
+```
+
+Название `JIRA_EMAIL` историческое: в старой Jira это поле используется как обычный логин. Название `JIRA_TOKEN` также историческое: в режиме Basic Auth там может находиться пароль.
+
+Если компания использует SSO и полностью запретила Basic Auth, универсально обойти это через MCP нельзя. Администратор должен предоставить PAT, OAuth, разрешённую техническую учётную запись или другой поддерживаемый способ доступа.
+
+### Confluence
+
+| Установка | Режим | Что вводить |
+| --- | --- | --- |
+| Confluence Cloud | Basic Auth | email и API-токен Atlassian |
+| Confluence Server/Data Center с PAT | Bearer | персональный токен |
+| Старый Confluence без токенов | Basic Auth | обычный логин и пароль |
+
+## Особенности установки по клиентам
+
+### Codex
+
+Скиллы подключаются через `~/.agents/skills`. MCP-серверы добавляются в управляемый блок файла `~/.codex/config.toml`.
+
+Перед изменением существующей конфигурации создаётся резервная копия. Повторный запуск установщика заменяет только блок Testdocs Kit и не дублирует его.
+
+Официальные справки: [Skills в Codex](https://developers.openai.com/codex/skills/) и [MCP в Codex](https://developers.openai.com/codex/mcp/).
+
+### Claude Code
+
+Скиллы подключаются через `~/.claude/skills`. MCP регистрируется в user scope с помощью `claude mcp add`, поэтому доступен во всех проектах пользователя.
+
+Если команда `claude` не найдена, установщик не меняет конфигурацию вручную. Готовые команды сохраняются в:
+
+```text
+~/.config/testdocs-kit/client-snippets/claude-code.txt
+```
+
+Их можно выполнить после установки Claude Code.
+
+Официальные справки: [Skills в Claude Code](https://code.claude.com/docs/en/slash-commands) и [MCP в Claude Code](https://code.claude.com/docs/en/mcp).
+
+### OpenCode
+
+Скиллы устанавливаются в совместимый каталог `~/.agents/skills`.
+
+Установщик изменяет глобальный `~/.config/opencode/opencode.json`:
+
+- для OpenCode V2 добавляет серверы в `mcp.servers`;
+- если обнаружена старая структура, сохраняет совместимый legacy-формат;
+- перед изменением создаёт резервную копию;
+- запрещает Jira write-инструменты через permissions.
+
+Если существующий файл содержит JSONC-комментарии или нестандартный JSON, установщик не перезаписывает его. Готовый безопасный фрагмент сохраняется в `client-snippets/opencode-v2.json`.
+
+Официальные справки: [Skills в OpenCode](https://opencode.ai/v2/docs/skills) и [MCP в OpenCode](https://opencode.ai/v2/docs/mcp-servers).
+
+### Другие MCP-клиенты
+
+Для клиента, который не поддерживается напрямую, выберите `generic`. Установщик создаст:
+
+```text
+~/.config/testdocs-kit/client-snippets/generic-mcp.json
+```
+
+В файле находятся две стандартные STDIO-конфигурации: `testdocs_jira` и `testdocs_confluence`. Скопируйте их в MCP-настройки своего клиента.
+
+Скиллы размещаются в `~/.agents/skills`. Если клиент использует другой каталог, укажите ему этот путь либо скопируйте каталоги из `testdocs-kit/skills` в поддерживаемое место.
+
+Поддержка MCP не означает автоматическую поддержку Agent Skills. Для неизвестного клиента формат и каталог скиллов нужно сверить с его документацией.
+
+## Проверка после установки
+
+Локальная проверка без обращения к Jira и Confluence:
+
+```bash
+npm run check
+```
+
+Ожидаемый результат:
+
+```text
+Jira MCP: 11 read-only инструментов
+Confluence MCP: 5 read-only инструментов
+Проверка установки: OK
+```
+
+Количество может измениться после добавления новых инструментов, но write-инструменты не должны появляться без отдельного разрешения.
+
+### Проверка Jira
+
+Возьмите известную задачу, которую вашей учётной записи разрешено читать:
+
+```text
+Прочитай Jira-задачу DEMO-123.
+Покажи ключ, название, описание и критерии приёмки.
+Ничего не изменяй и не добавляй комментарии.
+```
+
+### Проверка Confluence
+
+Возьмите ID известной страницы из её URL:
+
+```text
+Прочитай страницу Confluence с ID 123456.
+Верни название и содержимое в Markdown.
+Ничего не изменяй.
+```
+
+### Создание тест-кейсов по Jira-задаче
+
+Codex:
+
+```text
+Используй $collect-test-context для DEMO-123, затем $generate-test-cases.
+
+Сформируй минимальный достаточный набор регрессионных тест-кейсов.
+Кейсы должны быть понятны тестировщику, который не знаком с проектом.
+Покажи результат в чате. Ничего не публикуй.
+```
+
+Claude Code или OpenCode:
+
+```text
+Используй /collect-test-context для DEMO-123, затем /generate-test-cases.
+
+Сформируй минимальный достаточный набор регрессионных тест-кейсов.
+Покажи результат в чате. Ничего не публикуй.
+```
+
+Без Jira можно вставить требование прямо в чат:
+
+```text
+Используй скилл generate-test-cases.
+
+Требование:
+Авторизованный пользователь может изменить имя в профиле.
+Имя обязательно, допускает от 2 до 50 символов. Если поле пустое,
+отображается ошибка «Введите имя».
+
+Сформируй минимальный набор регрессионных тест-кейсов.
+```
+
+## Обновление
+
+Чтобы получить новую версию:
+
+```bash
+cd testdocs-kit
+git pull
+npm run setup
+```
+
+При повторной настройке можно нажать Enter на запросе токена или пароля, чтобы оставить сохранённое значение.
+
+Ссылки на скиллы обновятся автоматически. Зависимости MCP будут переустановлены по lock-файлам, а конфигурации клиентов — безопасно обновлены.
+
+## Дополнительные параметры установщика
+
+Настроить только Codex:
+
+```bash
+npm run setup -- --clients codex
+```
+
+Codex и OpenCode:
+
+```bash
+npm run setup -- --clients codex,opencode
+```
+
+Не переустанавливать зависимости:
+
+```bash
+npm run setup -- --skip-dependencies
+```
+
+Если в каталоге скиллов уже есть другой скилл с таким же именем, установщик не перезаписывает его. Чтобы сначала переименовать существующий каталог в резервную копию:
+
+```bash
+npm run setup -- --force
+```
+
+Показать все параметры:
+
+```bash
+npm run setup -- --help
+```
+
+## Доступные скиллы
+
+| Скилл | Назначение |
+| --- | --- |
+| [`collect-test-context`](skills/collect-test-context/SKILL.md) | Собрать контекст из Jira, Confluence, TMS, чата или файлов. |
+| [`generate-test-cases`](skills/generate-test-cases/SKILL.md) | Создать новые тест-кейсы. |
+| [`analyze-test-coverage`](skills/analyze-test-coverage/SKILL.md) | Определить пробелы и необходимость создания или обновления кейсов. |
+| [`update-test-cases`](skills/update-test-cases/SKILL.md) | Подготовить предложение по изменению существующего кейса. |
+| [`review-test-cases`](skills/review-test-cases/SKILL.md) | Проверить качество кейсов по общим правилам. |
+| [`build-coverage-matrix`](skills/build-coverage-matrix/SKILL.md) | Построить матрицу тестового покрытия. |
+| [`build-regression-model`](skills/build-regression-model/SKILL.md) | Собрать переиспользуемую регрессионную модель. |
+| [`derive-test-case-standard`](skills/derive-test-case-standard/SKILL.md) | Вывести общие правила из тестовой документации и инструкций. |
+
+## Безопасность
+
+- Секреты хранятся только в пользовательском `config.json` вне репозитория.
+- `.env`, локальные конфигурации, зависимости и логи исключены из Git.
+- Jira write-инструменты не регистрируются, пока `TESTDOCS_ENABLE_WRITES` явно не равен `1`.
+- Установщик всегда записывает `enableWrites: false`.
+- Создание, изменение, связывание и смена статуса тест-кейсов требуют отдельного явного подтверждения человека.
+- Автоматическое удаление внешних тест-кейсов запрещено.
+- Не включайте `JIRA_INSECURE_TLS=1` или `CONFLUENCE_INSECURE_TLS=1` как постоянное решение. Настройте корпоративный CA-сертификат.
+- Если токен попал в пример, лог, чат или историю Git, отзовите его и выпустите новый.
+
+## Ограничения текущего MCP
+
+- Zephyr сейчас использует API-префикс `/rest/tests/1.0`.
+- Некоторые установки Zephyr Scale Server/Data Center и старого Test Management for Jira используют `/rest/atm/1.0`; для них нужен отдельный legacy-адаптер.
+- Получение одного Zephyr-кейса выполняется через поиск в первых 1000 кейсах проекта.
+- Полный сценарий со всеми шагами может отсутствовать в ответе текущего Zephyr API.
+- Пока нет универсальной операции получения всех кейсов, связанных с конкретной Jira-задачей.
+- Пока нет инструментов создания и обновления тест-кейсов в Zephyr или TM4J.
+- Преобразование сложной Confluence-разметки в Markdown может быть неполным.
+
+Эти ограничения не мешают проверять генерацию по Jira и Confluence, но должны учитываться при анализе существующего покрытия.
+
+## Если что-то не работает
+
+### `npm run setup` не запускается
+
+Проверьте:
+
+```bash
+node --version
+npm --version
+```
+
+Требуется Node.js 20 или новее.
+
+### MCP не отображается
+
+1. Выполните `npm run check`.
+2. Полностью перезапустите AI-клиент.
+3. Проверьте MCP-командой из таблицы выше.
+4. Если репозиторий перемещался, повторите `npm run setup`.
+
+### Ошибка `401`
+
+Неправильный логин, пароль, токен или режим авторизации. Повторно выполните `npm run setup` и выберите правильный тип установки.
+
+### Ошибка `403`
+
+Подключение прошло, но у пользователя недостаточно прав на задачу, страницу, проект или тестовую библиотеку.
+
+### Jira работает, а Zephyr возвращает `404`
+
+Вероятно, установленная версия Zephyr или TM4J использует другой API-префикс. Уточните у администратора доступность `/rest/atm/1.0` и `/rest/tests/1.0`.
+
+### Ошибка сертификата
+
+Запросите у администратора корпоративный CA-сертификат. Отключение TLS-проверки допустимо только как кратковременная диагностика в изолированной среде.
+
+## Структура репозитория
+
+```text
+testdocs-kit/
 ├── README.md
 ├── AGENTS.md
-├── rules/
-├── skills/
-├── examples/
-└── integrations/
+├── package.json
+├── scripts/            # установка, launcher и проверка
+├── rules/              # источник правил тестовой документации
+├── skills/             # переносимые Agent Skills
+├── examples/           # короткие универсальные примеры
+├── integrations/       # контракты Jira, Confluence и TMS
+└── mcp/
+    ├── jira-mcp/
+    └── confluence-mcp/
 ```
 
-Each skill contains a portable `SKILL.md`. Optional `agents/openai.yaml` files improve discovery in Codex-compatible clients; they contain no QA logic and may be ignored or replaced by other clients.
+Папка `rules/` является источником истины. Скиллы используют общие правила и не должны создавать собственную противоречащую политику.
 
-## Rules
+## Основные принципы тест-кейсов
 
-The files in [`rules/`](rules/) define the intended standard:
-
-- [`test-case-standard.md`](rules/test-case-standard.md): structure and writing conventions for test cases.
-- [`test-case-type-rules.md`](rules/test-case-type-rules.md): case-level and platform classification.
-- [`test-case-lifecycle-rules.md`](rules/test-case-lifecycle-rules.md): status meanings and review readiness.
-- [`reusable-setup-rules.md`](rules/reusable-setup-rules.md): reusable preparation, administration content, dependency outputs, and cleanup.
-- [`coverage-rules.md`](rules/coverage-rules.md): criteria for `CREATE`, `UPDATE`, `NO_CHANGE`, and `INSUFFICIENT_CONTEXT` decisions.
-- [`coverage-matrix-rules.md`](rules/coverage-matrix-rules.md): decomposition of functionality into matrix scenarios and linked cases.
-- [`regression-model-rules.md`](rules/regression-model-rules.md): criteria for organizing persistent cases into a traceable regression coverage model.
-- [`update-rules.md`](rules/update-rules.md): constraints for changing existing test cases.
-- [`review-rules.md`](rules/review-rules.md): review criteria and finding format.
-- [`standard-derivation-rules.md`](rules/standard-derivation-rules.md): controlled derivation of reusable policy from instructions and test-documentation corpora.
-
-These files provide an organizational QA standard derived from the supplied instructions, with a project-independent core for reusable regression cases. Remaining ambiguities are explicit and require human review. Do not hide policy inside a skill.
-
-## Available skills
-
-| Skill | Responsibility |
-| --- | --- |
-| [`derive-test-case-standard`](skills/derive-test-case-standard/SKILL.md) | Extract evidence-backed universal rules and style patterns from supplied QA documentation. |
-| [`build-coverage-matrix`](skills/build-coverage-matrix/SKILL.md) | Decompose product scope and map matrix scenarios to existing or proposed cases. |
-| [`build-regression-model`](skills/build-regression-model/SKILL.md) | Organize persistent cases into a traceable model and identify evidence-backed gaps or overlaps. |
-| [`generate-test-cases`](skills/generate-test-cases/SKILL.md) | Produce new test cases from supplied context. |
-| [`analyze-test-coverage`](skills/analyze-test-coverage/SKILL.md) | Classify the effect of a change on permanent test coverage. |
-| [`update-test-cases`](skills/update-test-cases/SKILL.md) | Propose a reasoned diff and revised version of an existing test case. |
-| [`review-test-cases`](skills/review-test-cases/SKILL.md) | Review test cases against repository rules without silently rewriting them. |
-
-## Use without MCP
-
-No integration is required. Give the agent requirements, analysis, API examples, existing documentation, or test cases directly, then ask it to use the appropriate skill.
-
-```text
-User
-  ↓ supplies requirements / description / existing test case
-AI applies a skill
-  ↓ reads repository rules
-Result appears in chat
-```
-
-If required context is missing, the skill returns a precise list of missing facts and stops before inventing requirements.
-
-## Use with MCP
-
-When suitable MCP tools are actually available, an agent may use them to retrieve the same inputs from systems such as an issue tracker, knowledge base, or TMS. The QA reasoning and output format remain unchanged.
-
-External publication is a separate, optional step. The agent must first show the proposed content, wait for human review, and use a write tool only after the user explicitly requests or confirms that write. See [`integrations/README.md`](integrations/README.md).
-
-## Extend the rules
-
-1. Collect approved instructions and representative test documentation.
-2. Use `derive-test-case-standard` to separate universal rules from examples and project-specific conventions.
-3. Review the traceable proposal with QA stakeholders.
-4. Edit the relevant file under `rules/` after approval.
-5. Check whether skills and examples need updating.
-6. Keep skills linked to the rule file instead of copying the new policy into them.
-
-## Add a skill
-
-1. Create `skills/<verb-led-name>/SKILL.md` with `name` and `description` frontmatter.
-2. Give the skill one clear responsibility, inputs, workflow, and output contract.
-3. Link directly to every applicable file in `rules/`.
-4. Support manually supplied context and treat integrations as optional.
-5. Define missing-context behavior and human approval boundaries.
-6. Add portable examples and validate the skill structure.
-
-## Adapt to another AI client
-
-Keep `rules/`, examples, and the Markdown skill instructions unchanged where possible. Add only the thin discovery or invocation metadata required by the target client. Client-specific metadata must not contain QA policy, require a particular LLM, or change human-review safeguards.
-
-## Current maturity
-
-Ready now:
-
-- repository architecture and source-of-truth boundaries;
-- seven skill workflows and output contracts, including corpus-based standard derivation, coverage matrices, and regression modeling;
-- an instruction-backed standard for simple, self-explanatory, typed, repeatable, observable regression cases and coverage matrices;
-- reusable setup procedures for administration content and other shared data preparation;
-- manual-context and optional-MCP paths;
-- human-in-the-loop write safeguards;
-- minimal architecture examples.
-
-Remaining decisions to customize or confirm:
-
-- automation-candidate criteria and tooling metadata;
-- finding severity thresholds;
-- mapping of the observed `Draft` status to the instructed `Черновик` status;
-- mapping of the observed `Normal` priority to the instructed conceptual `Medium` priority;
-- integration placement in the coverage matrix because the supplied source section is incomplete;
-- mappings to particular issue trackers, knowledge bases, or TMS schemas.
+- Тестировщик, не знакомый с проектом, должен понимать, куда зайти и что сделать.
+- В каждом шаге должно быть понятно наблюдаемое ожидаемое состояние.
+- Кейс не перегружается внутренней технической реализацией.
+- Неизвестные требования, данные и поведение нельзя придумывать.
+- Повторяющаяся подготовка данных или контента выносится в переиспользуемую процедуру.
+- Изменения существующих кейсов сначала показываются человеку как предложение.
+- Регрессионный кейс должен оставаться понятным после завершения конкретной задачи разработки.

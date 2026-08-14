@@ -8,6 +8,7 @@ This directory is the source of truth for QA test-documentation policy. Skills d
 - [`test-case-type-rules.md`](test-case-type-rules.md) — E2E, overview, block, cross-page, integration, and platform classification.
 - [`test-case-lifecycle-rules.md`](test-case-lifecycle-rules.md) — lifecycle statuses, review readiness, and task linkage.
 - [`reusable-setup-rules.md`](reusable-setup-rules.md) — shared preparation procedures, administration content, dependency outputs, and cleanup.
+- [`integration-rules.md`](integration-rules.md) — optional issue, knowledge, and TMS capability contract plus read/write boundaries.
 - [`coverage-rules.md`](coverage-rules.md) — permanent coverage decision rules.
 - [`coverage-matrix-rules.md`](coverage-matrix-rules.md) — functionality decomposition and scenario-to-case mapping.
 - [`regression-model-rules.md`](regression-model-rules.md) — construction and maintenance of a traceable regression coverage model.

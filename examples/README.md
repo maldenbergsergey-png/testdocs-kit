@@ -15,6 +15,7 @@ These deliberately small, anonymized examples demonstrate the repository's archi
 - [`good/coverage-no-change.md`](good/coverage-no-change.md) — a `NO_CHANGE` decision.
 - [`good/insufficient-context.md`](good/insufficient-context.md) — safe handling of missing information.
 - [`good/standard-derivation.md`](good/standard-derivation.md) — evidence-backed extraction of a reusable writing rule.
+- [`good/integration-context-bundle.md`](good/integration-context-bundle.md) — a read-only Jira/knowledge context bundle that preserves unavailable TMS coverage as a gap.
 
 ## Bad examples
 

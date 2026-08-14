@@ -1,0 +1,4 @@
+interface:
+  display_name: "Collect Test Context"
+  short_description: "Gather Jira, Confluence, and TMS context"
+  default_prompt: "Use $collect-test-context to gather Jira, Confluence, and TMS context for the QA task I provide."
