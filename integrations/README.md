@@ -1,0 +1,73 @@
+# Optional integrations
+
+Integrations are context transport, not QA logic. This repository works fully without MCP, Jira, Confluence, Zephyr, or any other external system.
+
+## Manual context is the baseline
+
+When no integration is available, ask the user to paste or attach the relevant requirement, analysis, API example, existing case, or coverage summary. Apply the same skill and rules to that content. Missing MCP must never be treated as a skill failure.
+
+```text
+User supplies context
+  ↓
+Skill reads shared rules
+  ↓
+Result is shown in chat
+```
+
+## Optional MCP path
+
+If suitable MCP tools are actually available and their sources are in scope, they may supply equivalent context:
+
+```text
+User supplies a reference such as an issue key
+  ↓
+Available read tool retrieves the issue
+  ↓ optionally retrieve linked analysis or existing cases
+Skill applies the same shared rules
+  ↓
+Result is shown in chat
+```
+
+No particular product or sequence is required. An issue tracker may supply requirements, a knowledge base may supply analysis, and a TMS may supply existing cases, but QA decisions must not depend on those product names.
+
+## Capability detection and fallback
+
+1. Check whether an appropriate read or write capability is actually available.
+2. Use it only for data the user has placed in scope.
+3. If a read capability is missing or fails, state what content is needed and request it manually.
+4. Continue the same workflow after the user supplies the content.
+5. Never invent retrieved data or imply that an unavailable system was checked.
+
+## Documentation corpus intake
+
+When an integration supplies instructions or test cases for `derive-test-case-standard`, preserve the source name, location, version, scope, and approval state when available. Do not infer missing authority metadata from a folder name, workflow status, or publication date.
+
+Retrieve only the corpus placed in scope by the user. Treat source cases as read-only evidence: derivation may propose shared rules and anonymized examples, but it must not normalize or overwrite the originals. Redact secrets, personal data, and production identifiers from any reusable example.
+
+For Zephyr Scale XML exports, use the standard-library analyzer at [`../skills/derive-test-case-standard/scripts/summarize_zephyr_xml.py`](../skills/derive-test-case-standard/scripts/summarize_zephyr_xml.py). It reports per-project and unique case counts, duplicate-key conflicts, lifecycle values, field completeness, labels, step-level quality, and lexical simplicity-review signals without changing the export. Review signals for technical detail, vague outcomes, step-number references, or administration context require human inspection and are never automatic defects. Treat status and label values as raw metadata until their meanings are supplied by the user or an approved policy.
+
+## Human-in-the-loop writes
+
+Use this sequence for any change to existing external data:
+
+```text
+Context
+  ↓
+AI analysis
+  ↓
+Proposal shown in chat
+  ↓
+Human review
+  ↓
+Explicit approval or publication request
+  ↓
+Optional write through an available tool
+```
+
+Reading context does not authorize writing. A request to analyze, generate, update, or review does not by itself authorize publication to an external system. Before a write, identify the target and content, ensure the user has reviewed the proposal, and obtain an explicit request or confirmation.
+
+Automatic destructive changes are prohibited. This pack does not support automatic deletion of external test cases.
+
+## Future adapters
+
+Future client or system adapters should map external fields to the skill's neutral inputs and map reviewed outputs back to external fields. Keep credentials, endpoints, schemas, and tool instructions outside shared QA rules. Do not make an adapter a mandatory dependency of a skill.

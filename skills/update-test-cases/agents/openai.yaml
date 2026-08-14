@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update Test Cases"
+  short_description: "Propose reviewed changes to existing test cases"
+  default_prompt: "Use $update-test-cases to propose a reviewable update to the existing test case."

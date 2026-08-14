@@ -1,0 +1,4 @@
+interface:
+  display_name: "Generate Test Cases"
+  short_description: "Create test cases from supplied context"
+  default_prompt: "Use $generate-test-cases to create test cases from the context I provide."

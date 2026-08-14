@@ -1,0 +1,4 @@
+interface:
+  display_name: "Derive Test Case Standard"
+  short_description: "Extract reusable QA rules from test documentation"
+  default_prompt: "Use $derive-test-case-standard to derive reusable test-case rules from these instructions and examples."

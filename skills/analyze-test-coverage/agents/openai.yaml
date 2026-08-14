@@ -1,0 +1,4 @@
+interface:
+  display_name: "Analyze Test Coverage"
+  short_description: "Classify changes to permanent test coverage"
+  default_prompt: "Use $analyze-test-coverage to classify how this change affects permanent test coverage."

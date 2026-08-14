@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Coverage Matrix"
+  short_description: "Structure functionality and map test scenarios"
+  default_prompt: "Use $build-coverage-matrix to structure this product scope into a traceable test coverage matrix."

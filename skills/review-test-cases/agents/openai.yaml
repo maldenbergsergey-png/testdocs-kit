@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Test Cases"
+  short_description: "Review test cases against shared QA rules"
+  default_prompt: "Use $review-test-cases to review these test cases against the repository rules."

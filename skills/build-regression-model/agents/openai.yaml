@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Regression Model"
+  short_description: "Organize reusable cases into regression coverage"
+  default_prompt: "Use $build-regression-model to organize these test cases into a traceable regression coverage model."
