@@ -26,3 +26,5 @@ Treat create, update, new-version, issue-link, comment, status-change, folder-mo
 ## Compatibility
 
 Do not hard-code one Cloud, Server, or Data Center API schema into the QA skills. Record deployment and product version in the connection profile, then adapt the MCP tool output to `rules/integration-rules.md`.
+
+The bundled Jira MCP reads a complete Server/Data Center or compatible TM4J case through `/rest/atm/1.0/testcase/{key}` when available. It orders `testScript.steps` by `index`. When that endpoint is unavailable, it falls back to `/rest/tests/1.0/testcase/search` and returns `_testdocs.complete: false`; do not treat that metadata-only response as evidence that the steps were checked.

@@ -168,9 +168,12 @@ async function zephyrRequest(path, method = "GET", body) {
     const details =
       typeof data === "string" ? data.slice(0, 300) : JSON.stringify(data);
 
-    throw new Error(
+    const error = new Error(
       `Zephyr request failed (${res.status}) for ${url}. Body: ${details}`
     );
+    error.status = res.status;
+    error.url = url;
+    throw error;
   }
 
   if (!looksLikeJson) {
@@ -222,21 +225,57 @@ async function zephyrGetIterations({ projectId }) {
   return zephyrRequest(`/rest/tests/1.0/iteration?projectId=${projectId}`);
 }
 
+function normalizeZephyrTestCase(testCase) {
+  const steps = testCase?.testScript?.steps;
+  if (!Array.isArray(steps)) return testCase;
+
+  return {
+    ...testCase,
+    testScript: {
+      ...testCase.testScript,
+      steps: [...steps].sort((left, right) => {
+        const leftIndex = Number.isFinite(Number(left?.index)) ? Number(left.index) : 0;
+        const rightIndex = Number.isFinite(Number(right?.index)) ? Number(right.index) : 0;
+        return leftIndex - rightIndex;
+      })
+    }
+  };
+}
+
 async function zephyrGetTestCase({ projectId, testCaseKey }) {
-  // The direct GET /testcase/{key} endpoint returns 500
-  // So we search for all test cases and find the one with matching key
-  // Note: maxResults=1000 is the highest working value
+  const encodedKey = encodeURIComponent(testCaseKey);
+
+  // Zephyr Scale Server/DC and legacy TM4J expose the complete current case,
+  // including step-by-step scripts, through the ATM compatibility endpoint.
+  try {
+    const completeCase = await zephyrRequest(`/rest/atm/1.0/testcase/${encodedKey}`);
+    return normalizeZephyrTestCase(completeCase);
+  } catch (error) {
+    // Keep compatibility with installations that expose only the newer
+    // /rest/tests/1.0 search API. Authentication and permission errors must
+    // remain visible instead of being hidden by a metadata fallback.
+    if (![404, 405, 500].includes(error.status)) throw error;
+  }
+
+  // The direct /rest/tests/1.0/testcase/{key} endpoint returns 500 on some
+  // installations, so use search as a metadata-only fallback.
   const result = await zephyrSearchTestCases({
     projectId,
     maxResults: 1000,
-    fields: "id,key,name,objective,precondition,priority,status,createdOn,updatedOn,labels,priority,statusName"
+    fields: "id,key,name,objective,precondition,priority,status,createdOn,updatedOn,labels,statusName,scriptType,version"
   });
 
   const testCase = result.results?.find(tc => tc.key === testCaseKey);
   if (!testCase) {
     throw new Error(`Test case ${testCaseKey} not found in project ${projectId}`);
   }
-  return testCase;
+  return {
+    ...testCase,
+    _testdocs: {
+      complete: false,
+      warning: "The connected Zephyr API returned metadata only; test steps are unavailable on this installation."
+    }
+  };
 }
 
 async function zephyrGetAllTestCases({ projectId, fields }) {

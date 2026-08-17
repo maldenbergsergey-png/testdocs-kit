@@ -38,6 +38,8 @@ If the MCP server can read only Jira issues and Confluence pages, classify TMS r
 
 Map retrieved content to `rules/integration-rules.md`. Preserve all unsupported or differently named fields as explicit gaps. Do not send modern Zephyr Scale Cloud requests to a legacy installation unless the company-provided MCP adapter explicitly implements that compatibility.
 
+The bundled Jira MCP implements read compatibility for installations that expose `GET /rest/atm/1.0/testcase/{key}`. A successful response includes the current case and its `testScript.steps`; the adapter sorts those steps by `index`. This must still be verified with one approved demonstration case during onboarding because endpoint presence and field completeness vary by installation.
+
 ## Writes
 
 Keep legacy write tools approval-gated. Before publishing, confirm whether the product requires a new version, a direct edit, a Jira issue transition, a plugin status change, or a separate relation operation. Never infer that workflow from the modern profile.

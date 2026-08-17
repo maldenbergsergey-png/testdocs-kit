@@ -161,7 +161,7 @@ async function main() {
    server.registerTool(
      "zephyr_get_test_case",
      {
-       description: "Get a specific Zephyr Scale test case by key. Note: This internally fetches all test cases and finds the matching one due to API limitations.",
+       description: "Get a complete Zephyr Scale or legacy TM4J test case by key, including ordered testScript.steps when the connected installation exposes them. Falls back to explicitly marked metadata-only output when full-case retrieval is unavailable.",
        inputSchema: z.object({
          projectId: z.string().min(1),
          testCaseKey: z.string().min(1).describe("Test case key (e.g., 'APP-T123')")
