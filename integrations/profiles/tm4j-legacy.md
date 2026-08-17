@@ -42,4 +42,4 @@ The bundled Jira MCP implements read compatibility for installations that expose
 
 ## Writes
 
-Keep legacy write tools approval-gated. Before publishing, confirm whether the product requires a new version, a direct edit, a Jira issue transition, a plugin status change, or a separate relation operation. Never infer that workflow from the modern profile.
+The bundled adapter may create a new case through `POST /rest/atm/1.0/testcase` only after an explicit create/publication request and only when one approved demonstration proves that endpoint on the installation. Keep updates, versions, moves, status changes, relation changes, and deletions unavailable. Never infer those workflows from the modern profile.

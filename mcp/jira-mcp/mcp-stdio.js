@@ -17,6 +17,7 @@ function toTextResult(data) {
 
 async function main() {
   const writesEnabled = process.env.TESTDOCS_ENABLE_WRITES === "1";
+  const createsEnabled = process.env.TESTDOCS_ENABLE_TEST_CASE_CREATION !== "0";
   const server = new McpServer({
     name: "jira-mcp",
     version: "1.0.0"
@@ -181,6 +182,37 @@ async function main() {
      },
      async ({ projectId, fields }) => toTextResult(await tools.zephyr_get_all_test_cases({ projectId, fields }))
    );
+
+  if (createsEnabled) {
+    server.registerTool(
+      "zephyr_create_test_case",
+      {
+        description: "Create one new Zephyr Scale Server/DC or compatible TM4J test case. Call only when the user explicitly asks to create or publish it now. This tool does not update existing cases. The folder must already exist; use '/' only when the user explicitly chooses the project root. Test data belongs to each step.",
+        inputSchema: z.object({
+          confirmed: z.literal(true).describe("Set true only after an explicit user request to create/publish this new case."),
+          projectKey: z.string().min(1).describe("Target Jira project key, not numeric projectId."),
+          folder: z.string().min(1).regex(/^\//).describe("Existing Zephyr folder path beginning with '/', or explicit root '/'."),
+          name: z.string().min(1).max(255),
+          objective: z.string().min(1).optional(),
+          precondition: z.string().min(1).optional(),
+          status: z.string().min(1).optional().describe("Raw case-sensitive TMS value only when its mapping is confirmed; otherwise omit."),
+          priority: z.string().min(1).optional().describe("Raw case-sensitive TMS value only when confirmed; otherwise omit."),
+          labels: z.array(z.string().min(1)).optional(),
+          issueLinks: z.array(z.string().min(1)).optional(),
+          customFields: z.record(
+            z.string(),
+            z.union([z.string(), z.number(), z.boolean()])
+          ).optional().describe("Only confirmed custom-field names and values."),
+          steps: z.array(z.object({
+            description: z.string().min(1),
+            testData: z.string().min(1).optional(),
+            expectedResult: z.string().min(1)
+          })).min(1)
+        })
+      },
+      async (input) => toTextResult(await tools.zephyr_create_test_case(input))
+    );
+  }
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

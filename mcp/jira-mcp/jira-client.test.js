@@ -69,3 +69,88 @@ test("zephyr_get_test_case does not hide permission errors", async (t) => {
   );
   assert.equal(fetchMock.mock.callCount(), 1);
 });
+
+test("zephyr_create_test_case sends step-level test data to the public Server API", async (t) => {
+  let request;
+  t.mock.method(global, "fetch", async (url, options) => {
+    request = { url: String(url), options };
+    return response(201, { key: "DEMO-T10" });
+  });
+
+  const result = await tools.zephyr_create_test_case({
+    confirmed: true,
+    projectKey: "DEMO",
+    folder: "/Regression",
+    name: "Создание объекта",
+    objective: "Проверить создание объекта.",
+    precondition: "Пользователь авторизован.",
+    labels: ["block", "web"],
+    issueLinks: ["DEMO-10"],
+    steps: [
+      {
+        description: "Ввести название.",
+        testData: "Тестовый объект",
+        expectedResult: "Название отображается в поле."
+      },
+      {
+        description: "Нажать «Сохранить».",
+        expectedResult: "Объект отображается в списке."
+      }
+    ]
+  });
+
+  assert.equal(request.url, "https://jira.example.test/rest/atm/1.0/testcase");
+  assert.equal(request.options.method, "POST");
+  assert.deepEqual(JSON.parse(request.options.body), {
+    projectKey: "DEMO",
+    folder: "/Regression",
+    name: "Создание объекта",
+    objective: "Проверить создание объекта.",
+    precondition: "Пользователь авторизован.",
+    labels: ["block", "web"],
+    issueLinks: ["DEMO-10"],
+    testScript: {
+      type: "STEP_BY_STEP",
+      steps: [
+        {
+          description: "Ввести название.",
+          testData: "Тестовый объект",
+          expectedResult: "Название отображается в поле."
+        },
+        {
+          description: "Нажать «Сохранить».",
+          testData: "Не требуются",
+          expectedResult: "Объект отображается в списке."
+        }
+      ]
+    }
+  });
+  assert.equal(result.key, "DEMO-T10");
+});
+
+test("zephyr_create_test_case rejects a call without explicit confirmation", async () => {
+  await assert.rejects(
+    tools.zephyr_create_test_case({
+      projectKey: "DEMO",
+      folder: "/",
+      name: "Не создавать",
+      steps: [{ description: "Действие", expectedResult: "Результат" }]
+    }),
+    /Explicit user confirmation/
+  );
+});
+
+test("zephyr_create_test_case rejects incomplete steps before any request", async (t) => {
+  const fetchMock = t.mock.method(global, "fetch", async () => response(201, { key: "UNEXPECTED-T1" }));
+  await assert.rejects(
+    tools.zephyr_create_test_case({
+      confirmed: true,
+      projectKey: "DEMO",
+      folder: "/",
+      name: "Неполный кейс",
+      steps: [{ description: "Действие без результата" }]
+    }),
+    /Every test step requires/
+  );
+  assert.equal(fetchMock.mock.callCount(), 0);
+});

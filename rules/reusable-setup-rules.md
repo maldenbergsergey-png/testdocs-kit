@@ -24,7 +24,7 @@ Every reusable setup procedure must define:
 Назначение
 Требуемый доступ и начальная точка
 Входные данные
-Шаги подготовки в таблице «№ | Шаг | Ожидаемый результат»
+Шаги подготовки в таблице «№ | Шаг | Тестовые данные | Ожидаемый результат»
 Выход для зависимых кейсов
 Очистка
 Источник или требование, когда процедура утверждает поведение
@@ -34,7 +34,7 @@ Name it by the state it produces, for example `Prepare data: published content i
 
 ## Writing setup steps
 
-- Use the same Russian labels and the same three-column `№ | Шаг | Ожидаемый результат` table as a test case.
+- Use the same Russian labels and the same four-column `№ | Шаг | Тестовые данные | Ожидаемый результат` table as a test case.
 - Never combine an action and its result with an arrow or in one cell.
 - Identify the administration section and stable visible controls needed to find the target.
 - Include only actions required to create the promised output state.

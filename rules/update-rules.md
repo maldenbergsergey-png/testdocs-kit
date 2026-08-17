@@ -5,7 +5,7 @@
 All changes to an existing test case must follow this sequence:
 
 ```text
-Context → AI analysis → Proposal → Human review → Approval → Optional external write
+Context → AI analysis → Proposal → Human review
 ```
 
 The proposal must distinguish additions, modifications, removals, and unchanged content, and explain every proposed change. Show the complete proposed case after the diff.
@@ -19,14 +19,14 @@ Before proposing an update:
 3. Establish the requirement, design, defect, or approved correction that supports the change.
 4. For a significant change, create a new TMS version so history is preserved rather than editing the current version directly.
 
-After the reviewed update is applied in TMS:
+If the team later applies the reviewed update outside this tool:
 
 1. Save the changed steps, expected results, preconditions, test data, requirement links, designs, path, tags, priority, or cleanup as applicable.
 2. Leave a concise comment describing the reason and affected content.
 3. Move the case to `Готов к ревью`.
 4. Check whether related cases are affected by the same product change.
 
-Reading a comment or history does not authorize a write. External version creation, saving, commenting, and status changes require an explicit publication request from the user.
+Reading a comment or history does not authorize a write. External updates, version creation, saving, commenting, linking, moving, and status changes are currently disabled; provide a reviewed proposal only.
 
 ## Add content
 
@@ -80,4 +80,4 @@ The approved Russian Zephyr format in `test-case-standard.md` is the target form
 - Do not silently choose between conflicting requirements.
 - Do not infer unseen fields or reconstruct an unavailable baseline.
 - Label all output as a proposal until the user approves it.
-- Do not use an external write tool unless the user explicitly requests or confirms publication after reviewing the proposal.
+- Do not use an external write tool for an existing case; the current workflow ends with a reviewed proposal.

@@ -21,10 +21,12 @@ Preserve raw field and lifecycle values. Map them to the neutral context bundle 
 
 ## Write capability checklist
 
-Treat create, update, new-version, issue-link, comment, status-change, folder-move, and called-step changes as separate operations. Keep them disabled or approval-gated until a reviewed publication request identifies the exact target and content.
+Treat create, update, new-version, issue-link, comment, status-change, folder-move, and called-step changes as separate operations. The bundled adapter exposes only new-case creation and calls it only for an explicit create/publication request that identifies the exact target and content. Keep every update or destructive operation unavailable.
 
 ## Compatibility
 
 Do not hard-code one Cloud, Server, or Data Center API schema into the QA skills. Record deployment and product version in the connection profile, then adapt the MCP tool output to `rules/integration-rules.md`.
 
 The bundled Jira MCP reads a complete Server/Data Center or compatible TM4J case through `/rest/atm/1.0/testcase/{key}` when available. It orders `testScript.steps` by `index`. When that endpoint is unavailable, it falls back to `/rest/tests/1.0/testcase/search` and returns `_testdocs.complete: false`; do not treat that metadata-only response as evidence that the steps were checked.
+
+For creation, the bundled adapter uses the public Server/Data Center `POST /rest/atm/1.0/testcase` contract with a `STEP_BY_STEP` script. It maps each Markdown row to separate `description`, `testData`, and `expectedResult` fields. The target folder must already exist; the adapter does not create or move folders.

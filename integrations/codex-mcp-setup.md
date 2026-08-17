@@ -148,7 +148,13 @@ Publish only the reviewed cases listed below to <target project and TMS> and lin
 Show the exact planned operations before writing.
 ```
 
-Generation, analysis, and review do not imply publication. A separate explicit publication request is always required.
+Direct new-case creation:
+
+```text
+Generate and create the new cases in <target project>, existing folder <folder>. Do not modify existing cases.
+```
+
+Generation, analysis, and review do not imply publication. Explicit `create` or `publish` wording is always required, but it may be included in the original request. The bundled adapter keeps updates and destructive operations unavailable.
 
 ## Troubleshooting handoff
 

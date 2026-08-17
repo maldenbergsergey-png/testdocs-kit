@@ -19,8 +19,9 @@ Review against approved rules and supplied requirements. Do not treat personal p
 - **Reusability:** the case avoids hidden order, transient data, temporary environments, and incidental implementation details that prevent repeated regression execution.
 - **Data safety:** test data is explicit enough to reproduce the scenario and contains no invented secrets, production records, or personal data.
 - **General rule compliance:** the case follows all other applicable approved files under `rules/`.
-- **TMS completeness:** the case uses the exact Russian Zephyr fields and order from `test-case-standard.md`; test data and postconditions are explicit even when they are `Не требуются`.
-- **Step/result separation:** every numbered row has separate `Шаг` and `Ожидаемый результат` columns; an arrow or combined action/result sentence is a format defect.
+- **TMS completeness:** the case uses the exact Russian Zephyr fields and order from `test-case-standard.md`; step-level test data and postconditions are explicit even when they are `Не требуются`.
+- **Step/data/result separation:** every numbered row has separate `Шаг`, `Тестовые данные`, and `Ожидаемый результат` columns; a case-level test-data section, an arrow, or a combined action/result sentence is a format defect.
+- **Chat rendering:** a generated or fully proposed case is rendered as Markdown, not enclosed in a fenced code block that prevents the steps table from displaying normally.
 - **Matrix alignment:** the name and path preserve the supplied page, block, structure, and scenario hierarchy.
 - **Type fit:** `e2e`, `overview`, `block`, `cross`, or `integration` matches the case purpose and depth; step count outside the recommended range triggers a decomposition review, not automatic rejection.
 - **Classification:** at least one supported type tag and one supported platform tag are present.

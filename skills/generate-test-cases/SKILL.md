@@ -1,6 +1,6 @@
 ---
 name: generate-test-cases
-description: Generate new QA test cases from user-supplied requirements, analysis, API examples, documentation, or optionally retrieved context. Use when a user asks to draft, create, or derive test cases; do not use for updating an existing case or for coverage classification alone.
+description: Generate new QA test cases from user-supplied requirements, analysis, API examples, documentation, or optionally retrieved context, and create them in a connected TMS only when the user explicitly requests publication. Use when a user asks to draft, show, create, publish, or derive new test cases; do not use for updating an existing case or for coverage classification alone.
 ---
 
 # Generate test cases
@@ -47,7 +47,7 @@ When the user supplies an issue key, external page, or TMS reference, use [`../c
 12. Run the self-check below and simplify or split any case that fails it.
 13. Do not use assumptions to complete behavior. Put material gaps once in a short `Требуется уточнить` block after the cases.
 14. Recommend `Готов к ревью` only when every required field is complete and the case has passed the skill's self-check; otherwise keep `Черновик` and list the gaps. Do not map the observed external values `Draft` or `Normal` without approved TMS mappings.
-15. Return reusable setup when needed, then the test cases in the exact Russian Zephyr format from `test-case-standard.md`. Keep the default response limited to executable content.
+15. Return reusable setup when needed, then the test cases in the exact Russian Zephyr format from `test-case-standard.md`. Render the fields and tables directly as Markdown, never as a fenced text/code block. Keep the default response limited to executable content.
 
 ## Self-check
 
@@ -62,26 +62,22 @@ Before returning a case, answer `yes` to each applicable question:
 - Can another tester repeat the case without using production secrets or personal data?
 - Are all required TMS fields present under their approved names, with unresolved values shown explicitly rather than omitted?
 - Are all Zephyr field labels Russian and in the mandatory order?
-- Does every step use a separate `Шаг` cell and `Ожидаемый результат` cell without an arrow or mixed sentence?
+- Does every step use separate `Шаг`, `Тестовые данные`, and `Ожидаемый результат` cells without an arrow or mixed sentence?
+- Is there no separate case-level `Тестовые данные` section?
+- Is the case rendered directly as Markdown rather than inside a fenced code block?
 - Is the response free of analysis scaffolding and priority rationale that the user did not request?
 - Were administration-interface cases omitted unless administration behavior is explicitly in scope?
 
 ## Output
 
-For sufficient context, return only these sections by default:
+For sufficient context, return only `Переиспользуемая подготовка` when needed, `Тест-кейсы`, and `Требуется уточнить` only when a safe partial result contains material gaps.
 
-```text
-Переиспользуемая подготовка (only when needed)
-Тест-кейсы
-Требуется уточнить (only when a safe partial result contains material gaps)
-```
+Render every setup step and test step directly as a Markdown table with exactly four columns:
 
-Render every setup step and test step as a Markdown table with exactly three columns:
+| № | Шаг | Тестовые данные | Ожидаемый результат |
+| --- | --- | --- | --- |
 
-```markdown
-| № | Шаг | Ожидаемый результат |
-| --- | --- | --- |
-```
+Never wrap an actual case or its table in a fenced block. For several cases, separate them with Markdown headings such as `### Кейс 1`, while keeping every field and table directly rendered.
 
 Render every complete or partial test case using the exact field names and order defined under `Обязательный формат Zephyr` in `test-case-standard.md`. Never use `Name`, `Objective`, `Preconditions`, `Steps`, `Expected result`, `Type / Platform`, `Lifecycle status`, `Scope`, `Assumptions`, `Scenario inventory`, or `Coverage notes` as output labels.
 
@@ -102,4 +98,8 @@ Why it is needed: ...
 
 Use an available read tool only when it supplies relevant context and the user has placed that source in scope. If no suitable tool is available, request the content manually instead of failing.
 
-Show generated cases for human review before publication. Use an external write tool only when it is available and the user explicitly asks to publish the reviewed content. Do not perform destructive operations.
+When the user asks only to draft, generate, show, or prepare cases, return them in chat and do not write externally.
+
+When the user explicitly asks in the same request to create or publish the new cases in the TMS, that request authorizes creation without a second confirmation. Before calling a create tool, verify the exact target instance, TMS product, project key, existing folder path (or explicit root), and the complete case content. Do not guess raw TMS status, priority, custom-field values, or folder paths. Do not send the Russian presentation value `Черновик` as a raw API status unless that mapping is confirmed; omit unmapped optional values and let the TMS apply its configured default. After creation, return each created case key and target folder.
+
+Creation permission applies only to new cases. Do not update, version, move, link after creation, change status, comment on, or delete existing cases; keep those operations read-only/proposal-only until the user changes this policy explicitly.

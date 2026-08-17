@@ -74,9 +74,12 @@ async function main() {
   if (config.jira?.enabled) {
     const tools = await listTools("jira", Client, StdioClientTransport);
     assert(tools.includes("get_issue"), "Jira MCP не отдал get_issue.");
+    if (config.enableTestCaseCreation !== false) {
+      assert(tools.includes("zephyr_create_test_case"), "Jira MCP не отдал create-only инструмент Zephyr.");
+    }
     assert(!tools.includes("add_comment"), "Write-инструмент add_comment включён без разрешения.");
     assert(!tools.includes("transition_issue"), "Write-инструмент transition_issue включён без разрешения.");
-    results.push(`Jira MCP: ${tools.length} read-only инструментов`);
+    results.push(`Jira MCP: ${tools.length} инструментов (чтение + создание кейса по явному запросу)`);
   }
 
   if (config.confluence?.enabled) {

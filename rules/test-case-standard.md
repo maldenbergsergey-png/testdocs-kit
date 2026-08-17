@@ -8,7 +8,6 @@ Use this standard to create test cases that can be executed repeatedly and maint
 
 Каждый новый или полностью предлагаемый к актуализации тест-кейс выводи в одном порядке и с русскими названиями полей:
 
-```markdown
 **Название:** [краткое название пользовательского сценария]
 
 **Цель:** [что проверяется]
@@ -17,13 +16,11 @@ Use this standard to create test cases that can be executed repeatedly and maint
 
 - [необходимый доступ, состояние или подготовка]
 
-**Тестовые данные:** [данные либо «Не требуются»]
-
 **Путь:** [относительный web-путь или путь навигации в приложении]
 
-| № | Шаг | Ожидаемый результат |
-| --- | --- | --- |
-| 1 | [одно понятное действие] | [наблюдаемый результат этого действия] |
+| № | Шаг | Тестовые данные | Ожидаемый результат |
+| --- | --- | --- | --- |
+| 1 | [одно понятное действие] | [данные этого шага либо «Не требуются»] | [наблюдаемый результат этого действия] |
 
 **Постусловия:** [очистка/восстановление либо «Не требуются»]
 
@@ -32,11 +29,12 @@ Use this standard to create test cases that can be executed repeatedly and maint
 **Статус:** `Черновик`
 
 **Приоритет:** [подтверждённое значение либо `Не определён`]
-```
 
-Названия `Название`, `Цель`, `Предусловия`, `Тестовые данные`, `Путь`, `Шаг`, `Ожидаемый результат`, `Постусловия`, `Теги`, `Статус` и `Приоритет` обязательны и не переводятся на английский. Порядок разделов обязателен. Если данные или постусловия не нужны, явно пиши `Не требуются`, чтобы структура оставалась одинаковой.
+Названия `Название`, `Цель`, `Предусловия`, `Путь`, `Шаг`, `Тестовые данные`, `Ожидаемый результат`, `Постусловия`, `Теги`, `Статус` и `Приоритет` обязательны и не переводятся на английский. Порядок разделов обязателен. Отдельного раздела `Тестовые данные` в теле кейса нет: данные указываются только в одноимённой колонке нужного шага. Если данные или постусловия не нужны, явно пиши `Не требуются`, чтобы структура оставалась одинаковой.
 
-В таблице одна строка содержит ровно три отдельные колонки: номер, действие и ожидаемый результат. Не соединяй действие с результатом стрелкой, тире, точкой с запятой или общей фразой в одной колонке. Не выноси ожидаемые результаты в отдельный список после шагов.
+В таблице одна строка содержит ровно четыре отдельные колонки: номер, действие, тестовые данные и ожидаемый результат. Не соединяй действие с результатом стрелкой, тире, точкой с запятой или общей фразой в одной колонке. Не выноси ожидаемые результаты или тестовые данные в отдельный список после шагов.
+
+В чате выводи кейс как обычную разметку Markdown. Не заключай весь кейс, его поля или таблицу шагов в тройные обратные кавычки и не используй fenced code block: таблица должна отрисоваться и быть пригодной для копирования по ячейкам.
 
 По умолчанию пиши содержание кейса на русском языке. Видимые названия элементов интерфейса, продуктов и статусы сохраняй в исходном написании. Другой язык содержания используй только по прямому запросу пользователя, но названия полей Zephyr оставляй русскими.
 
@@ -98,13 +96,13 @@ State the required role or permission without embedding credentials. When the in
 
 ## Test data
 
-Identify data needed to reproduce the scenario. Use concrete values when the value itself exercises a boundary or rule. Use clear symbolic or parameterized values when any value with stated properties is sufficient.
+Identify data needed to reproduce the scenario in the `Тестовые данные` cell of the step where the tester uses it. Use concrete values when the value itself exercises a boundary or rule. Use clear symbolic or parameterized values when any value with stated properties is sufficient.
 
 - Never invent credentials, secrets, production records, or personally identifiable data.
 - State the relevant property of data, such as “registered user” or “value above the upper boundary.”
 - Keep generated identifiers and timestamps variable unless an exact value is behaviorally significant.
 - Separate data variants when they produce materially different behavior or expected outcomes.
-- Place data at case level when it applies throughout the scenario and beside a step when it is used only by that action.
+- Do not create a case-level test-data section. When one datum is reused, repeat a short reference in each step that consumes it or name it once in the first consuming step and use the same unambiguous name later.
 
 Use only approved non-production data and environment references. When the supplied materials do not define safe data sources or masking, record the gap instead of inventing credentials.
 
@@ -132,8 +130,9 @@ Do not split mechanically when several assertions describe the same observable o
 
 Write numbered actions in execution order.
 
-- Use the exact Markdown table header `| № | Шаг | Ожидаемый результат |` in chat and document output.
-- Keep the action and its expected result in separate table cells.
+- Use the exact Markdown table header `| № | Шаг | Тестовые данные | Ожидаемый результат |` in chat and document output.
+- Keep the action, data, and expected result in separate table cells.
+- Put only data actually consumed by the action in `Тестовые данные`; use `Не требуются` when the action needs no input data.
 - Begin each step with an unambiguous action.
 - Include the target and necessary input or selection.
 - Use the stable visible name of a section, field, or control when it is needed to find the target.

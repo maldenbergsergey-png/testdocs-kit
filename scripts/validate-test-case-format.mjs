@@ -16,9 +16,8 @@ const requiredFields = [
   '**Название:**',
   '**Цель:**',
   '**Предусловия:**',
-  '**Тестовые данные:**',
   '**Путь:**',
-  '| № | Шаг | Ожидаемый результат |',
+  '| № | Шаг | Тестовые данные | Ожидаемый результат |',
   '**Постусловия:**',
   '**Теги:**',
   '**Статус:**',
@@ -31,12 +30,14 @@ const forbiddenLabels = [
   '**Description:**',
   '**Preconditions:**',
   '**Test data:**',
+  '**Тестовые данные:**',
   '**Steps:**',
   '**Expected result:**',
   '**Proposed status:**',
   '**Lifecycle status:**',
   '| Step | Action | Expected result |',
   '| № | Действие | Ожидаемый результат |',
+  '| № | Шаг | Ожидаемый результат |',
 ];
 
 let caseCount = 0;
@@ -74,8 +75,13 @@ for (const file of targets) {
       previous = position;
     }
 
-    const tableStart = candidate.indexOf('| № | Шаг | Ожидаемый результат |');
+    const tableStart = candidate.indexOf('| № | Шаг | Тестовые данные | Ожидаемый результат |');
     if (tableStart === -1) return;
+
+    const fenceCountBeforeTable = (candidate.slice(0, tableStart).match(/```/g) || []).length;
+    if (fenceCountBeforeTable % 2 === 1) {
+      errors.push(`${file}: таблица шагов тест-кейса ${caseCount} находится внутри fenced code block`);
+    }
 
     const tableLines = candidate
       .slice(tableStart)
@@ -84,8 +90,8 @@ for (const file of targets) {
 
     for (const line of tableLines.slice(2)) {
       const cells = line.split('|').slice(1, -1).map((cell) => cell.trim());
-      if (cells.length !== 3 || cells.some((cell) => cell.length === 0)) {
-        errors.push(`${file}: строка шага должна содержать три заполненные колонки: ${line}`);
+      if (cells.length !== 4 || cells.some((cell) => cell.length === 0)) {
+        errors.push(`${file}: строка шага должна содержать четыре заполненные колонки: ${line}`);
         continue;
       }
       if (cells[1].includes('→')) {

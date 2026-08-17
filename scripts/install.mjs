@@ -284,6 +284,7 @@ async function collectConfig(args, clients) {
     version: 1,
     clients,
     enableWrites: false,
+    enableTestCaseCreation: true,
     jira: await collectJira(previous.jira),
     confluence: await collectConfluence(previous.confluence)
   };
@@ -706,6 +707,7 @@ async function main() {
   config.version ||= 1;
   config.clients = clients;
   config.enableWrites = false;
+  config.enableTestCaseCreation = true;
   applyCaFile(config, args.caFile);
 
   savePrivateConfig(config);
@@ -720,7 +722,8 @@ async function main() {
 2. Проверьте MCP-командой клиента.
 3. Выполните пробный запрос из README.md.
 
-Внешние write-инструменты отключены.`);
+Создание новых Zephyr/TM4J-кейсов доступно только по явному запросу.
+Обновление, перенос, смена статуса и удаление внешних кейсов отключены.`);
 }
 
 main().catch((error) => {

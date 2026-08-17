@@ -1,4 +1,4 @@
 interface:
   display_name: "Generate Test Cases"
-  short_description: "Create test cases from supplied context"
-  default_prompt: "Use $generate-test-cases to create test cases from the context I provide."
+  short_description: "Draft or explicitly publish new QA test cases"
+  default_prompt: "Use $generate-test-cases to draft test cases from the context I provide. Publish them only if I explicitly ask to create them in the TMS."

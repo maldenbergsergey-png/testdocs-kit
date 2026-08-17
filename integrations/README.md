@@ -81,7 +81,7 @@ Explicit approval or publication request
 Optional write through an available tool
 ```
 
-Reading context does not authorize writing. A request to analyze, generate, update, or review does not by itself authorize publication to an external system. Before a write, identify the target and content, ensure the user has reviewed the proposal, and obtain an explicit request or confirmation.
+Reading context does not authorize writing. A request only to analyze, draft, generate, update, or review does not authorize publication. An explicit request to create or publish new cases may authorize same-turn creation after the exact target and payload are validated. The bundled adapter does not update existing cases or expose destructive operations.
 
 Automatic destructive changes are prohibited. This pack does not support automatic deletion of external test cases.
 

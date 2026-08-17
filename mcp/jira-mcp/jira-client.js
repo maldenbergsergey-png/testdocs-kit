@@ -313,6 +313,54 @@ async function zephyrGetAllTestCases({ projectId, fields }) {
   return result.results || [];
 }
 
+async function zephyrCreateTestCase({
+  confirmed,
+  projectKey,
+  folder,
+  name,
+  objective,
+  precondition,
+  status,
+  priority,
+  labels,
+  issueLinks,
+  customFields,
+  steps
+}) {
+  if (confirmed !== true) {
+    throw new Error("Explicit user confirmation is required to create a test case.");
+  }
+  if (!projectKey || !folder || !folder.startsWith("/") || !name || !Array.isArray(steps) || !steps.length) {
+    throw new Error("projectKey, folder, name and at least one complete step are required.");
+  }
+  if (steps.some((step) => !step?.description || !step?.expectedResult)) {
+    throw new Error("Every test step requires description and expectedResult.");
+  }
+
+  const payload = {
+    projectKey,
+    folder,
+    name,
+    ...(objective ? { objective } : {}),
+    ...(precondition ? { precondition } : {}),
+    ...(status ? { status } : {}),
+    ...(priority ? { priority } : {}),
+    ...(labels?.length ? { labels } : {}),
+    ...(issueLinks?.length ? { issueLinks } : {}),
+    ...(customFields && Object.keys(customFields).length ? { customFields } : {}),
+    testScript: {
+      type: "STEP_BY_STEP",
+      steps: steps.map(({ description, testData, expectedResult }) => ({
+        description,
+        testData: testData || "Не требуются",
+        expectedResult
+      }))
+    }
+  };
+
+  return zephyrRequest("/rest/atm/1.0/testcase", "POST", payload);
+}
+
 module.exports = {
   jiraRequest,
   zephyrRequest,
@@ -330,6 +378,7 @@ module.exports = {
      zephyr_get_test_plan: zephyrGetTestPlan,
      zephyr_get_iterations: zephyrGetIterations,
      zephyr_get_test_case: zephyrGetTestCase,
-     zephyr_get_all_test_cases: zephyrGetAllTestCases
+     zephyr_get_all_test_cases: zephyrGetAllTestCases,
+     zephyr_create_test_case: zephyrCreateTestCase
   }
 };

@@ -60,7 +60,7 @@ For a request such as “check whether cases for ISSUE-123 need actualization”
 2. retrieve supplied or linked existing cases, current versions, lifecycle statuses, and the latest actualization reason or comment when available;
 3. send the evidence to `analyze-test-coverage` first;
 4. use `update-test-cases` only for cases classified `UPDATE` and only when the current case content is available;
-5. show proposals in chat; leave version creation, saving, commenting, linking, and status changes for a later explicit publication request.
+5. show proposals in chat; do not create versions, save updates, comment, link, move, or change statuses in TMS.
 
 ## Failure and fallback
 
@@ -95,4 +95,4 @@ External writes performed: none
 
 ## Write boundary
 
-Keep this skill read-only. A later publication request must identify the reviewed content, target instance, project, TMS product, and intended create/update/link/comment/status operations before any write tool is used.
+Keep this skill read-only. It may route an explicit new-case creation request to `generate-test-cases`, which must identify the target instance, project, TMS product, existing folder, and complete content before using the create-only tool. Context collection never authorizes updates, versions, moves, comments, status changes, or deletion.

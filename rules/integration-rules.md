@@ -73,9 +73,8 @@ Map any supported test-management product to the neutral test-case fields:
 Название
 Цель
 Предусловия
-Тестовые данные
 Путь
-Шаг и ожидаемый результат в отдельных полях каждой строки
+Шаг, тестовые данные и ожидаемый результат в отдельных полях каждой строки
 Постусловия
 Теги типа и платформы
 Статус
@@ -92,9 +91,9 @@ Do not assume modern Zephyr Scale endpoints, cloud field names, versioning, or c
 
 ## Read and write boundary
 
-Read-only retrieval is allowed when the user places the source in scope. Every workflow must show its result in chat before an external write.
+Read-only retrieval is allowed when the user places the source in scope. Every workflow shows its result in chat by default. A user request that explicitly says to create or publish new cases may authorize creation in the same turn after the payload and exact target pass validation; no second confirmation is required. A request only to draft, generate, show, analyze, review, or check does not authorize a write.
 
-Treat these as separate write operations requiring an explicit publication request or confirmation after review:
+Treat these as separate write operations. New-case creation requires either an explicit same-request create/publication instruction or a later confirmation of a reviewed draft. All other operations require a separate explicit request after review:
 
 - create a test case;
 - create a new version;
@@ -104,14 +103,16 @@ Treat these as separate write operations requiring an explicit publication reque
 - change lifecycle status;
 - move a case or change folder membership.
 
-Confirm the target Jira instance, project, TMS product, case identifiers, and exact operation before writing. Never delete external cases automatically. A request to generate, analyze, review, or check actualization does not authorize publication.
+Confirm the target Jira instance, project, TMS product, existing folder path (or explicit root), and exact operation before writing. For creation, validate the complete case payload before the call and report the returned stable case key afterward. Never delete external cases automatically. A request to generate, analyze, review, or check actualization does not authorize publication.
+
+The bundled integration exposes creation of new Zephyr/TM4J cases only. Keep updates, new versions, moves, post-creation links, comments, lifecycle changes, and deletions unavailable until the user explicitly changes this policy. Supplying issue links as part of the initial create payload is allowed only when those exact links are included in the explicit creation scope.
 
 ## Least privilege
 
 - Prefer read-only credentials or a read-only tool allowlist for onboarding and analysis.
 - Keep tokens, passwords, cookies, and private keys outside the repository, prompts, examples, and committed configuration.
 - Store browser-session cookies only in a service-specific private file, restrict them to the configured origin, and never return their values through MCP tools.
-- Enable write tools only for users who need publication and keep write approvals enabled.
+- Expose the create-only tool only for explicit publication requests and keep host-side write approvals enabled when the client supports them.
 - Scope project configuration to trusted projects and company-approved servers.
 
 ## Browser-session authentication

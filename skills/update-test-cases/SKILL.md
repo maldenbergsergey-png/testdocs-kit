@@ -1,6 +1,6 @@
 ---
 name: update-test-cases
-description: Propose reviewable changes to an existing QA test case using new requirements or context, including a reasoned diff and a complete proposed version. Use when a user asks to update, revise, or adapt existing cases; never silently write changes to an external system.
+description: Propose read-only, reviewable changes to an existing QA test case using new requirements or context, including a reasoned diff and a complete proposed version. Use when a user asks to update, revise, or adapt existing cases; do not write the changes to an external system.
 ---
 
 # Update test cases
@@ -41,32 +41,14 @@ When an external issue or case reference is supplied, use [`../collect-test-cont
 5. Recheck the proposed case for a focused scenario, repeatable setup, observable results, and independence from transient data or execution order.
 6. Recommend a split instead of expanding the baseline when the new behavior forms an independent regression scenario.
 7. Present the proposal/diff before the complete proposed version.
-8. Render the complete proposed version in the exact Russian Zephyr format from `test-case-standard.md`, with separate `Шаг` and `Ожидаемый результат` columns.
+8. Render the complete proposed version directly as Markdown in the exact Russian Zephyr format from `test-case-standard.md`, with separate `Шаг`, `Тестовые данные`, and `Ожидаемый результат` columns. Never wrap it in a fenced code block.
 9. Label the result `ПРЕДЛОЖЕНИЕ — НЕ ПРИМЕНЕНО` and request human review.
-10. After explicit approval, use an external write tool only if the user also requests publication and a suitable tool is available.
+10. Keep external update operations disabled. Even after approval, return the reviewed proposal in chat without editing, versioning, moving, linking, commenting on, or changing the status of the existing TMS case.
 
 ## Output
 
-```text
-Статус: ПРЕДЛОЖЕНИЕ — НЕ ПРИМЕНЕНО
-Исходный кейс: идентификатор/версия или описание предоставленного содержимого
-Основание изменения: ...
-Недостающая информация или противоречия: ...
+Start with `Статус: ПРЕДЛОЖЕНИЕ — НЕ ПРИМЕНЕНО`, the source case, reason, and missing information or conflicts. Then show `Предлагаемые изменения` as `ДОБАВИТЬ`, `ИЗМЕНИТЬ`, `УДАЛИТЬ`, and useful `ОСТАВИТЬ` items. Under `Полная предлагаемая версия`, render the actual case directly as Markdown. End with `Граница применения`, stating that no external changes were made and TMS update is unavailable.
 
-Предлагаемые изменения
-- ДОБАВИТЬ: содержимое, место, причина
-- ИЗМЕНИТЬ: было, стало, место, причина
-- УДАЛИТЬ: содержимое, место, причина
-- ОСТАВИТЬ: неизменяемые разделы и причина, когда полезно
-
-Полная предлагаемая версия
-...
-
-Граница применения
-- Внешние изменения не выполнялись.
-- Для публикации требуется явное подтверждение пользователя.
-```
-
-Keep analysis outside the complete proposed case. Never combine an action and expected result in one line or cell.
+Keep analysis outside the complete proposed case. Never combine an action, test data, and expected result in one line or cell.
 
 Do not propose a complete rewrite without the specific justification required by `update-rules.md`. Never automatically delete a case from an external system.

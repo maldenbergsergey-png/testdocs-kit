@@ -29,6 +29,7 @@ function buildEnvironment(service, config) {
   const common = {
     ...process.env,
     TESTDOCS_ENABLE_WRITES: config.enableWrites ? "1" : "0",
+    TESTDOCS_ENABLE_TEST_CASE_CREATION: config.enableTestCaseCreation === false ? "0" : "1",
     ...(config.caFile ? { NODE_EXTRA_CA_CERTS: config.caFile } : {})
   };
 

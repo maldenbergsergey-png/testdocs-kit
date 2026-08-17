@@ -7,6 +7,8 @@ const app = express();
 const { PORT = 3333 } = process.env;
 const writesEnabled = process.env.TESTDOCS_ENABLE_WRITES === "1";
 const writeTools = new Set(["add_comment", "transition_issue"]);
+const createsEnabled = process.env.TESTDOCS_ENABLE_TEST_CASE_CREATION !== "0";
+const createTools = new Set(["zephyr_create_test_case"]);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -30,6 +32,12 @@ app.post("/mcp", async (req, res) => {
     if (writeTools.has(tool) && !writesEnabled) {
       return res.status(403).json({
         error: "Write tools are disabled. Set TESTDOCS_ENABLE_WRITES=1 only after explicit approval."
+      });
+    }
+
+    if (createTools.has(tool) && !createsEnabled) {
+      return res.status(403).json({
+        error: "Test-case creation is disabled."
       });
     }
 
