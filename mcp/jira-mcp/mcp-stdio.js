@@ -112,17 +112,20 @@ async function main() {
    server.registerTool(
      "zephyr_search_test_cases",
      {
-       description: "Search test cases in Zephyr Scale by project. Note: Maximum maxResults is 1000. Pagination via offset has limitations on this API.",
+       description: "Search test cases in Zephyr Scale only when discovery is needed. Use zephyr_get_test_case directly when a case key is known. Supply projectKey when known to use the compatible Server/DC API without an exploratory endpoint call. Do not repeat a failed search with equivalent parameters. Maximum maxResults is 1000.",
        inputSchema: z.object({
-         projectId: z.string().min(1),
+         projectId: z.string().min(1).optional().describe("Numeric project ID. Required only when projectKey is unavailable."),
+         projectKey: z.string().min(1).optional().describe("Jira project key, preferred when known."),
          fields: z.string().optional().describe("Comma-separated list of fields: id,key,name,status,projectId,folderId,priority,labels,owner,createdBy,createdOn,estimatedTime,scriptType,version"),
-         query: z.string().optional().describe("TQL query string (e.g. 'name~\\\"%search term%\\\"')"),
+         query: z.string().optional().describe("Additional valid TQL condition without the projectKey clause. Omit for a project listing; do not guess operators."),
          maxResults: z.number().int().positive().max(1000).optional().default(50),
          offset: z.number().int().min(0).optional().default(0).describe("Note: offset parameter may not work reliably on this API")
+       }).refine((input) => Boolean(input.projectId || input.projectKey), {
+         message: "projectId or projectKey is required."
        })
      },
-     async ({ projectId, fields, query, maxResults, offset }) =>
-       toTextResult(await tools.zephyr_search_test_cases({ projectId, fields, query, maxResults, offset }))
+     async ({ projectId, projectKey, fields, query, maxResults, offset }) =>
+       toTextResult(await tools.zephyr_search_test_cases({ projectId, projectKey, fields, query, maxResults, offset }))
    );
 
   server.registerTool(
@@ -164,9 +167,9 @@ async function main() {
    server.registerTool(
      "zephyr_get_test_case",
      {
-       description: "Get a complete Zephyr Scale or legacy TM4J test case by key, including ordered testScript.steps when the connected installation exposes them. Falls back to explicitly marked metadata-only output when full-case retrieval is unavailable.",
+       description: "Get one complete Zephyr Scale or legacy TM4J test case directly by known key, including ordered testScript.steps and a full web URL when available. Do not search the library before calling this tool. Falls back internally to explicitly marked metadata-only output when full-case retrieval is unavailable.",
        inputSchema: z.object({
-         projectId: z.string().min(1),
+         projectId: z.string().min(1).optional().describe("Numeric project ID, needed only for metadata fallback on installations without direct full-case reads."),
          testCaseKey: z.string().min(1).describe("Test case key (e.g., 'APP-T123')")
        })
      },
@@ -176,20 +179,23 @@ async function main() {
    server.registerTool(
      "zephyr_get_all_test_cases",
      {
-       description: "Get all test cases from a Zephyr Scale project. Returns up to 1000 test cases. This is useful for bulk operations or getting project overview.",
+       description: "Get up to 1000 test cases for an explicitly requested project overview or bulk operation. Do not use this tool to find one known case key.",
        inputSchema: z.object({
-         projectId: z.string().min(1),
+         projectId: z.string().min(1).optional(),
+         projectKey: z.string().min(1).optional(),
          fields: z.string().optional().describe("Comma-separated list of fields to return. Default: id,key,name,objective,precondition,status,priority,createdOn,updatedOn")
+       }).refine((input) => Boolean(input.projectId || input.projectKey), {
+         message: "projectId or projectKey is required."
        })
      },
-     async ({ projectId, fields }) => toTextResult(await tools.zephyr_get_all_test_cases({ projectId, fields }))
+     async ({ projectId, projectKey, fields }) => toTextResult(await tools.zephyr_get_all_test_cases({ projectId, projectKey, fields }))
    );
 
   if (createsEnabled) {
     server.registerTool(
       "zephyr_create_test_case",
       {
-        description: "Create one new Zephyr Scale Server/DC or compatible TM4J test case. Call only when the user explicitly asks to create or publish it now. This tool does not update existing cases. The folder must already exist; use '/' only when the user explicitly chooses the project root. Test data belongs to each step. In any step field, send two or more independent items as one '•' item per newline instead of flattening them with commas or semicolons.",
+        description: "Create one new Zephyr Scale Server/DC or compatible TM4J test case. Call only when the user explicitly asks to create or publish it now. This tool does not update existing cases. The folder must already exist; use '/' only when the user explicitly chooses the project root. Put relevant requirement/design links with readable purposes and full URLs in objective. Test data belongs to each step; omit testData when the step consumes none. In any step field, send two or more independent items as one '•' item per newline instead of flattening them with commas or semicolons. The result includes _testdocs.webUrl when a case key is returned.",
         inputSchema: z.object({
           confirmed: z.literal(true).describe("Set true only after an explicit user request to create/publish this new case."),
           projectKey: z.string().min(1).describe("Target Jira project key, not numeric projectId."),
@@ -218,6 +224,7 @@ async function main() {
         return toTextResult({
           ...result,
           _testdocs: {
+            ...(result?._testdocs || {}),
             editableThisSession: Boolean(key),
             sessionScope: "current_mcp_process"
           }
@@ -228,7 +235,7 @@ async function main() {
     server.registerTool(
       "zephyr_update_session_test_case",
       {
-        description: "Correct a Zephyr/TM4J test case only if this MCP process created it during the current session and the user explicitly asks to apply the correction. Previously existing, discovered, or created-in-another-session cases are rejected. Omitted fields are preserved. If steps are supplied, pass the complete final ordered step list because it replaces the current script. In any step field, send two or more independent items as one '•' item per newline.",
+        description: "Correct a Zephyr/TM4J test case only if this MCP process created it during the current session and the user explicitly asks to apply the correction. Previously existing, discovered, or created-in-another-session cases are rejected. Omitted fields are preserved. If steps are supplied, pass the complete final ordered step list because it replaces the current script; omit testData where no data is consumed. In any step field, send two or more independent items as one '•' item per newline. The result includes _testdocs.webUrl.",
         inputSchema: z.object({
           confirmed: z.literal(true).describe("Set true only after the user explicitly asks to apply this correction now."),
           testCaseKey: z.string().min(1).describe("Key returned by zephyr_create_test_case during this MCP session."),

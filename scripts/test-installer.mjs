@@ -84,6 +84,10 @@ try {
   const savedPrivateConfig = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
   assert(savedPrivateConfig.caFile?.endsWith("globalsign-gcc-r3-dv-tls-ca-2020.pem"), "Не сохранён CA-файл.");
   assert(savedPrivateConfig.enableTestCaseCreation === true, "Не включены создание и защищённое исправление кейса Zephyr.");
+  assert(
+    savedPrivateConfig.jira.testCaseUrlTemplate === "https://jira.example.invalid/secure/Tests.jspa#/testCase/{key}",
+    "Не сохранён шаблон полной ссылки на кейс Zephyr."
+  );
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "generate-test-cases", "SKILL.md")), "Не установлены Agent Skills.");
   assert(fs.existsSync(path.join(testRoot, ".claude", "skills", "generate-test-cases", "SKILL.md")), "Не установлены Claude Skills.");
 

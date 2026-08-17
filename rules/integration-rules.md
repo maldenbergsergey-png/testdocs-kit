@@ -46,6 +46,7 @@ Input mode: ISSUE_ANCHORED | MANUAL_CONTEXT
 Scope anchor: issue key/link or supplied-context description
 Issue facts: summary, behavior, acceptance criteria, status, decisions
 Relevant linked requirements and knowledge: stable ID/link, title, version when available, relevant content
+Relevant source links: exact URL, readable purpose, source location, retrieval status, and whether it influenced the requested QA result
 Source field inventory: every explicitly defined field, control, tab, default, validation, visibility condition, role, state, and constraint; each marked retrieved, ambiguous, or unavailable
 Existing test coverage: stable case IDs, versions, lifecycle, links, and complete case content when needed
 Source conflicts: ...
@@ -63,6 +64,8 @@ Keep raw external values alongside any neutral interpretation. Do not silently t
 - Do not assume that a Jira description is newer than a linked specification or that the latest comment overrides approved acceptance criteria.
 - Report conflicting behavior or versions and request a decision when the conflict changes coverage or expected results.
 - Retrieve only fields and attachments relevant to the QA task. Avoid collecting credentials, personal data, or unrelated comments.
+- Inventory URLs in the primary issue and every scoped knowledge page. Follow only links that can materially define the requested behavior, especially linked requirements, designs/mockups, API contracts, attachments, and related decision documents. Record the exact URL, visible label or retrieved title, source location, and retrieval status. Do not recursively crawl unrelated navigation or an entire knowledge space.
+- A discovered link is not evidence that its target was read. Mark inaccessible targets as unavailable. Include such a link in a case only when its purpose is identifiable from authoritative source text; otherwise raise the missing context instead of inventing a label.
 - When the source describes a form, entity, table, API object, or configurable screen, enumerate every explicitly defined field and its supported properties before summarizing. Do not collapse unprocessed rows into “other fields” or silently omit a field because it looks secondary.
 - Do not imply that linked pages or cases were checked when a tool, permission, or relation was unavailable.
 
@@ -105,7 +108,7 @@ Treat these as separate write operations. New-case creation requires either an e
 - change lifecycle status;
 - move a case or change folder membership.
 
-Confirm the target Jira instance, project, TMS product, existing folder path (or explicit root), and exact operation before writing. For creation, validate the complete case payload before the call and report the returned stable case key afterward. Never delete external cases automatically. A request to generate, analyze, review, or check actualization does not authorize publication.
+Confirm the target Jira instance, project, TMS product, existing folder path (or explicit root), and exact operation before writing. For creation, validate the complete case payload before the call and report the returned stable case key and full case URL afterward. After any successful case creation or permitted current-session correction, return a clickable full URL supplied by the connector. If the connector cannot supply one, report that gap and do not invent a route. Never delete external cases automatically. A request to generate, analyze, review, or check actualization does not authorize publication.
 
 The bundled integration exposes creation of new Zephyr/TM4J cases and one narrow correction operation. The correction operation may update only a case whose key was returned by the same running MCP process after it created that case in the current session. It requires an explicit user instruction to apply the correction. The allowed-key registry is memory-only: restarting or reconnecting the MCP process clears it. Never accept a user-supplied claim that an older key was created in the current session as a substitute for this registry.
 
@@ -124,3 +127,11 @@ For a session-created case, omitted fields must remain unchanged. When correctin
 Treat `AUTH_REQUIRED` as a recoverable authentication state, not as missing capability. Ask the user to complete the exact `npm run auth -- jira|confluence` browser flow returned by the connector, then retry the original read once.
 
 Do not repeatedly open authentication while the stored session remains valid. Do not expose, request in chat, summarize, or log browser cookies or session-file contents. A normal `403` with an authenticated JSON response means insufficient permission and must not be treated as an expired session. Reauthenticate only for `401`, an authentication redirect, an explicit authentication-denied signal, a missing session, or a user-requested forced refresh.
+
+## Tool-call discipline and recovered errors
+
+- When a stable test-case key is known, call the direct case-read capability once; do not search the library first.
+- Use project-wide search only for genuine discovery. Do not call `get all` merely to locate one known key, do not scrape structured MCP output with shell commands, and do not repeat an identical failing call with equivalent parameters.
+- Prefer an adapter that performs product-version fallback inside one capability call. A failed internal endpoint that is recovered by a compatible endpoint is not a user-facing failure.
+- Do not include raw intermediate endpoint errors or successful tool-call narration in the final response. Report a concise error only when the requested read or write still failed after the supported fallback.
+- Never hide a final write failure or claim that a case was created or corrected unless the connector returned success.

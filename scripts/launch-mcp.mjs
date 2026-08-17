@@ -49,7 +49,9 @@ function buildEnvironment(service, config) {
       JIRA_AUTH_MODE: jira.authMode || "basic",
       JIRA_SESSION_FILE: getSessionFile("jira"),
       JIRA_API_VERSION: String(jira.apiVersion || "2"),
-      JIRA_INSECURE_TLS: jira.insecureTls ? "1" : "0"
+      JIRA_INSECURE_TLS: jira.insecureTls ? "1" : "0",
+      JIRA_TEST_CASE_URL_TEMPLATE:
+        jira.testCaseUrlTemplate || `${jira.url}/secure/Tests.jspa#/testCase/{key}`
     };
   }
 

@@ -186,6 +186,12 @@ async function collectJira(previous = {}) {
   };
   const preset = presets[profile] || presets["3"];
   const url = (await ask("Адрес Jira без завершающего слеша", previous.url || "https://jira.example.com")).replace(/\/+$/, "");
+  const previousDefaultTemplate = previous.url
+    ? `${String(previous.url).replace(/\/+$/, "")}/secure/Tests.jspa#/testCase/{key}`
+    : null;
+  const testCaseUrlTemplate = !previous.testCaseUrlTemplate || previous.testCaseUrlTemplate === previousDefaultTemplate
+    ? `${url}/secure/Tests.jspa#/testCase/{key}`
+    : previous.testCaseUrlTemplate;
   if (preset.authMode === "browser_session") {
     return {
       enabled: true,
@@ -193,6 +199,7 @@ async function collectJira(previous = {}) {
       url,
       username: "",
       secret: "",
+      testCaseUrlTemplate,
       insecureTls: false
     };
   }
@@ -211,6 +218,7 @@ async function collectJira(previous = {}) {
     url,
     username,
     secret,
+    testCaseUrlTemplate,
     insecureTls: false
   };
 }
@@ -267,6 +275,18 @@ function validateAnswers(config) {
     const url = service === "jira" ? value.url : value.baseUrl;
     if (!url || !value.authMode || (value.authMode !== "browser_session" && !value.secret)) {
       throw new Error(`В файле ответов не полностью настроен ${service}.`);
+    }
+  }
+  if (config.jira?.enabled && config.jira.testCaseUrlTemplate) {
+    const template = config.jira.testCaseUrlTemplate;
+    if (typeof template !== "string" || !template.includes("{key}")) {
+      throw new Error("jira.testCaseUrlTemplate должен содержать плейсхолдер {key}.");
+    }
+    try {
+      const parsed = new URL(template.replaceAll("{key}", "DEMO-T1").replaceAll("{projectKey}", "DEMO"));
+      if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("unsupported protocol");
+    } catch {
+      throw new Error("jira.testCaseUrlTemplate должен быть полным HTTP(S)-адресом.");
     }
   }
   return config;
@@ -427,7 +447,8 @@ enabled_tools = [
   "get_issue", "get_transitions", "search_issues",
   "zephyr_get_projects", "zephyr_get_project", "zephyr_search_test_cases",
   "zephyr_get_test_plans", "zephyr_get_test_plan", "zephyr_get_iterations",
-  "zephyr_get_test_case", "zephyr_get_all_test_cases"
+  "zephyr_get_test_case", "zephyr_get_all_test_cases",
+  "zephyr_create_test_case", "zephyr_update_session_test_case"
 ]
 default_tools_approval_mode = "approve"`);
   }
@@ -708,6 +729,9 @@ async function main() {
   config.clients = clients;
   config.enableWrites = false;
   config.enableTestCaseCreation = true;
+  if (config.jira?.enabled && !config.jira.testCaseUrlTemplate) {
+    config.jira.testCaseUrlTemplate = `${config.jira.url}/secure/Tests.jspa#/testCase/{key}`;
+  }
   applyCaFile(config, args.caFile);
 
   savePrivateConfig(config);
@@ -723,7 +747,7 @@ async function main() {
 3. Выполните пробный запрос из README.md.
 
 Создание новых Zephyr/TM4J-кейсов доступно только по явному запросу.
-Обновление, перенос, смена статуса и удаление внешних кейсов отключены.`);
+Исправление доступно только для кейса, созданного текущей MCP-сессией; прочие обновления, перенос, смена статуса и удаление отключены.`);
 }
 
 main().catch((error) => {

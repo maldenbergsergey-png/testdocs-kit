@@ -36,7 +36,7 @@ When the user supplies an issue key, external page, or TMS reference, use [`../c
 1. Identify the supplied scope and authoritative inputs internally; do not repeat this analysis before the cases unless the user requests it.
 2. Check for contradictions and for missing facts needed to produce executable, expected outcomes.
 3. If missing context prevents a supported action or observable expected result, return `INSUFFICIENT_CONTEXT`, list the exact gaps, and stop before inventing behavior. If only a required TMS value, environment entry point, stable visible label, or cleanup policy is missing but a safe partial draft remains useful, keep the field explicitly unresolved, propose `Черновик`, and list what must be supplied before execution or review.
-4. Build a lossless source-field inventory before the scenario inventory. Account internally for every field, control, default, validation, visibility condition, permission, state, and constraint as `COVERED`, `EXCLUDED_WITH_REASON`, or `AMBIGUOUS` according to `test-case-standard.md`.
+4. Build a lossless source-field and source-link inventory before the scenario inventory. Account internally for every field, control, default, validation, visibility condition, permission, state, constraint, and relevant requirement/design/supporting link as `COVERED`, `EXCLUDED_WITH_REASON`, or `AMBIGUOUS` according to `test-case-standard.md`.
 5. Build a scenario inventory from the supplied coverage matrix when available; otherwise map each supported initial state, action, and materially different outcome to its source. Group related source fields into coherent user scenarios instead of creating one case per field.
 6. Apply the coverage rules and exclude unsupported categories, duplicates, one-time checks, and scenarios without established persistent value. Explain exclusions only when the user requests coverage analysis or an omitted source item could otherwise be surprising.
 7. Identify preparation shared by multiple scenarios. Draft it once as a reusable setup procedure with a named output; keep it inline when it is short and unique to one case.
@@ -45,7 +45,7 @@ When the user supplies an issue key, external page, or TMS reference, use [`../c
 10. Apply the first-pass executability and minimum-sufficient-detail tests. Remove internal technical detail from UI cases unless it is an explicit, observable part of the required test layer.
 11. Apply approved project vocabulary and supplied curated examples for style only when they do not conflict with shared rules. Do not generalize a convention from one example during generation.
 12. Verify every action, datum, and expected result against the authoritative inputs.
-13. Reconcile the final cases against the source-field inventory. Do not return or publish while an item is unaccounted for. Put `AMBIGUOUS` items in `Требуется уточнить`; keep exclusions internal unless requested or surprising.
+13. Reconcile the final cases against the source-field and source-link inventories. Add relevant links with readable purposes to the `Материалы` part of `Цель`. Do not return or publish while an item is unaccounted for. Put `AMBIGUOUS` items in `Требуется уточнить`; keep exclusions internal unless requested or surprising.
 14. Run the self-check below and simplify or split any case that fails it.
 15. Do not use assumptions to complete behavior. Put material gaps once in a short `Требуется уточнить` block after the cases.
 16. Recommend `Готов к ревью` only when every required field is complete and the case has passed the skill's self-check; otherwise keep `Черновик` and list the gaps. Do not map the observed external values `Draft` or `Normal` without approved TMS mappings.
@@ -64,9 +64,11 @@ Before returning a case, answer `yes` to each applicable question:
 - Can another tester repeat the case without using production secrets or personal data?
 - Are all required TMS fields present under their approved names, with unresolved values shown explicitly rather than omitted?
 - Is every source-defined field, control, default, validation, visibility condition, permission, state, and constraint covered, explicitly excluded with a reason, or listed as ambiguous?
+- Does `Цель` include every relevant source and design link with a readable purpose, without unrelated or unexplained URLs?
 - Are all Zephyr field labels Russian and in the mandatory order?
 - Does every step use separate `Шаг`, `Тестовые данные`, and `Ожидаемый результат` cells without an arrow or mixed sentence?
 - Are multiple fields, values, or assertions inside one cell rendered as a vertical bullet list instead of a comma- or semicolon-joined paragraph?
+- Is `Тестовые данные` empty rather than filled with `Не требуются` when a step consumes no data?
 - Is there no separate case-level `Тестовые данные` section?
 - Is the case rendered directly as Markdown rather than inside a fenced code block?
 - Is the response free of analysis scaffolding and priority rationale that the user did not request?
@@ -106,6 +108,6 @@ Use an available read tool only when it supplies relevant context and the user h
 
 When the user asks only to draft, generate, show, or prepare cases, return them in chat and do not write externally.
 
-When the user explicitly asks in the same request to create or publish the new cases in the TMS, that request authorizes creation without a second confirmation. Before calling a create tool, verify the exact target instance, TMS product, project key, existing folder path (or explicit root), complete case content, and a fully reconciled source-field inventory. Do not publish from a truncated source or while an in-scope item is unaccounted for. Do not guess raw TMS status, priority, custom-field values, or folder paths. Do not send the Russian presentation value `Черновик` as a raw API status unless that mapping is confirmed; omit unmapped optional values and let the TMS apply its configured default. After creation, return each created case key and target folder.
+When the user explicitly asks in the same request to create or publish the new cases in the TMS, that request authorizes creation without a second confirmation. Before calling a create tool, verify the exact target instance, TMS product, project key, existing folder path (or explicit root), complete case content, and fully reconciled source-field and source-link inventories. Do not publish from a truncated source or while an in-scope item is unaccounted for. Do not guess raw TMS status, priority, custom-field values, or folder paths. Do not send the Russian presentation value `Черновик` as a raw API status unless that mapping is confirmed; omit unmapped optional values and let the TMS apply its configured default. After creation, return each created case as a clickable key using the full URL returned by the connector, plus the target folder. Do not invent a case URL when the connector did not return one.
 
 Creation permission applies only to new cases. A later explicit correction request for a case created by the same running MCP process must be routed to `update-test-cases`; do not update it inside this generation workflow. Previously existing, discovered, and prior-session cases remain read-only/proposal-only.

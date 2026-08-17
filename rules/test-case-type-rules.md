@@ -71,4 +71,6 @@ Every case must also identify its platform or application area with an approved 
 - `app` — mobile application;
 - `web_mobile` — adaptive mobile website.
 
+Add `админка` when the case verifies behavior of an administration interface itself: its fields, validation, permissions, actions, states, or results. This tag is additional to the required type and platform tags. Do not add `админка` merely because an administration interface is used as a reusable setup surface for a case that verifies another product surface.
+
 Do not invent a platform tag when the target surface is not supplied. Request the missing classification.

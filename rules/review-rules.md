@@ -20,13 +20,14 @@ Review against approved rules and supplied requirements. Do not treat personal p
 - **Reusability:** the case avoids hidden order, transient data, temporary environments, and incidental implementation details that prevent repeated regression execution.
 - **Data safety:** test data is explicit enough to reproduce the scenario and contains no invented secrets, production records, or personal data.
 - **General rule compliance:** the case follows all other applicable approved files under `rules/`.
-- **TMS completeness:** the case uses the exact Russian Zephyr fields and order from `test-case-standard.md`; step-level test data and postconditions are explicit even when they are `Не требуются`.
+- **TMS completeness:** the case uses the exact Russian Zephyr fields and order from `test-case-standard.md`; step-level test data is present only when consumed by the action, an unused test-data cell is empty, and postconditions are explicit even when they are `Не требуются`.
+- **Source-link traceability:** every relevant requirement, design/mockup, API contract, or supporting-document link found in the in-scope sources and used by the case is identified by purpose in the `Материалы` part of `Цель`; irrelevant or unverified links are not dumped into the case.
 - **Step/data/result separation:** every numbered row has separate `Шаг`, `Тестовые данные`, and `Ожидаемый результат` columns; a case-level test-data section, an arrow, or a combined action/result sentence is a format defect.
 - **List readability:** two or more independent fields, values, or expected assertions inside one cell are shown one per line as a marked list rather than flattened into a comma- or semicolon-separated paragraph.
 - **Chat rendering:** a generated or fully proposed case is rendered as Markdown, not enclosed in a fenced code block that prevents the steps table from displaying normally.
 - **Matrix alignment:** the name and path preserve the supplied page, block, structure, and scenario hierarchy.
 - **Type fit:** `e2e`, `overview`, `block`, `cross`, or `integration` matches the case purpose and depth; step count outside the recommended range triggers a decomposition review, not automatic rejection.
-- **Classification:** at least one supported type tag and one supported platform tag are present.
+- **Classification:** at least one supported type tag and one supported platform tag are present; `админка` is present when the administration interface itself is under test and absent when it is only a setup surface.
 - **Priority:** High, Medium, or Low is supported by business and user-impact evidence and is not inferred from type alone.
 - **Lifecycle:** the raw TMS status follows `test-case-lifecycle-rules.md`; restricted or unresolved statuses are reported without silent remapping.
 

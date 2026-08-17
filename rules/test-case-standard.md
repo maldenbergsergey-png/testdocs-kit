@@ -12,6 +12,10 @@ Use this standard to create test cases that can be executed repeatedly and maint
 
 **Цель:** [что проверяется]
 
+Материалы:
+
+- [назначение ссылки] — [полный URL]
+
 **Предусловия:**
 
 - [необходимый доступ, состояние или подготовка]
@@ -20,7 +24,7 @@ Use this standard to create test cases that can be executed repeatedly and maint
 
 | № | Шаг | Тестовые данные | Ожидаемый результат |
 | --- | --- | --- | --- |
-| 1 | [одно понятное действие] | [данные этого шага либо «Не требуются»] | [наблюдаемый результат этого действия] |
+| 1 | [одно понятное действие] | [данные этого шага; оставить пустым, если они не нужны] | [наблюдаемый результат этого действия] |
 
 **Постусловия:** [очистка/восстановление либо «Не требуются»]
 
@@ -30,7 +34,9 @@ Use this standard to create test cases that can be executed repeatedly and maint
 
 **Приоритет:** [подтверждённое значение либо `Не определён`]
 
-Названия `Название`, `Цель`, `Предусловия`, `Путь`, `Шаг`, `Тестовые данные`, `Ожидаемый результат`, `Постусловия`, `Теги`, `Статус` и `Приоритет` обязательны и не переводятся на английский. Порядок разделов обязателен. Отдельного раздела `Тестовые данные` в теле кейса нет: данные указываются только в одноимённой колонке нужного шага. Если данные или постусловия не нужны, явно пиши `Не требуются`, чтобы структура оставалась одинаковой.
+Названия `Название`, `Цель`, `Предусловия`, `Путь`, `Шаг`, `Тестовые данные`, `Ожидаемый результат`, `Постусловия`, `Теги`, `Статус` и `Приоритет` обязательны и не переводятся на английский. Порядок разделов обязателен. Отдельного раздела `Тестовые данные` в теле кейса нет: данные указываются только в одноимённой колонке нужного шага. Если данные шага не нужны, оставляй его ячейку `Тестовые данные` пустой — не заполняй её фразами `Не требуются`, `Нет` или `—`. Для ненужных постусловий по-прежнему используй `Не требуются`.
+
+Блок `Материалы` является частью поля `Цель`, а не отдельным полем Zephyr. Добавляй его только при наличии релевантных ссылок; если таких ссылок нет, не выводи пустой заголовок или заглушку.
 
 В таблице одна строка содержит ровно четыре отдельные колонки: номер, действие, тестовые данные и ожидаемый результат. Не соединяй действие с результатом стрелкой, тире, точкой с запятой или общей фразой в одной колонке. Не выноси ожидаемые результаты или тестовые данные в отдельный список после шагов.
 
@@ -46,7 +52,7 @@ Use this standard to create test cases that can be executed repeatedly and maint
 
 По умолчанию пиши содержание кейса на русском языке. Видимые названия элементов интерфейса, продуктов и статусы сохраняй в исходном написании. Другой язык содержания используй только по прямому запросу пользователя, но названия полей Zephyr оставляй русскими.
 
-Не добавляй в тело кейса служебные разделы `Scope`, `Assumptions`, `Scenario inventory`, `Coverage notes`, `Priority rationale`, `Lifecycle status` или аналогичные аналитические комментарии. Источники, матрицу покрытия и регрессионные связи сохраняй в поддерживаемых полях TMS или показывай отдельно только по прямому запросу.
+Не добавляй в тело кейса служебные разделы `Scope`, `Assumptions`, `Scenario inventory`, `Coverage notes`, `Priority rationale`, `Lifecycle status` или аналогичные аналитические комментарии. Матрицу покрытия и регрессионные связи сохраняй в поддерживаемых полях TMS или показывай отдельно только по прямому запросу. Релевантные ссылки на требования и макеты являются исключением: их добавляй в `Цель` по правилам ниже.
 
 ## Core qualities
 
@@ -104,7 +110,9 @@ The title must align with the coverage-matrix hierarchy and preserve its parent 
 
 ## Objective and traceability
 
-State what is being verified and the case's boundary. Keep requirement and design links in the target TMS traceability fields when they are available. Include a compact source identifier in the objective only when no dedicated relation exists and it is needed for traceability. Do not invent a reference and do not repeat every step in the objective.
+State what is being verified and the case's boundary. When the supplied Jira issue, Confluence page, or another in-scope requirement contains relevant source or design links, append a compact `Материалы:` list inside `Цель`. Include the primary requirement link and every relevant linked requirement, design/mockup, API contract, or supporting document used to derive the case. Each item must identify its purpose, for example `• Требования: Правила отображения FAQ — https://...` or `• Макет: состояние блока FAQ — https://...`. Preserve the full URL. In chat, the label may be a Markdown link; in a TMS payload, send a readable label followed by the full URL on the same line.
+
+Do not paste every URL found in the source. Exclude navigation, unrelated tasks, login pages, and links that did not influence the case. Do not invent a title or claim that a target was checked when it was unavailable. If the exact target cannot be identified from the source label or retrieved content, list it under `Требуется уточнить` instead of adding an unexplained URL. Dedicated TMS traceability relations may be populated as well, but they do not replace this human-readable materials list when relevant links are available.
 
 If behavioral requirements are unavailable, label correctness as unverified rather than inferring intended behavior from an existing case alone.
 
@@ -128,7 +136,7 @@ Use only approved non-production data and environment references. When the suppl
 
 ## Tags
 
-Assign at least one type tag and one platform tag according to `test-case-type-rules.md`. Multiple type tags are allowed only when each classification is supported. Do not infer tags from title wording alone.
+Assign at least one type tag and one platform tag according to `test-case-type-rules.md`. Add the application-area tag `админка` when the behavior under test is an administration interface. Multiple type tags are allowed only when each classification is supported. Do not infer tags from title wording alone.
 
 ## Path
 
@@ -152,7 +160,7 @@ Write numbered actions in execution order.
 
 - Use the exact Markdown table header `| № | Шаг | Тестовые данные | Ожидаемый результат |` in chat and document output.
 - Keep the action, data, and expected result in separate table cells.
-- Put only data actually consumed by the action in `Тестовые данные`; use `Не требуются` when the action needs no input data.
+- Put only data actually consumed by the action in `Тестовые данные`; leave the cell empty when the action needs no input data.
 - Format two or more independent items in one cell as a vertical bullet list. Preserve one item per line when sending the case to a TMS; do not flatten it into a comma- or semicolon-separated sentence.
 - Begin each step with an unambiguous action.
 - Include the target and necessary input or selection.

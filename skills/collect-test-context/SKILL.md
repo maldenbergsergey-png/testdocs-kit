@@ -39,19 +39,20 @@ When more than one Jira or company connection could satisfy the same key, stop b
 1. Record the request intent, supplied references, and requested scope.
 2. If an issue key or link is supplied, retrieve that issue as the primary anchor. Do not broaden to a project-wide search by default.
 3. Retrieve only relevant parent, child, linked issue, decision comment, attachment, and knowledge-page content needed to understand the requested behavior.
-4. Before summarizing a structured source, inventory every explicitly named field, control, tab, default, validation, visibility condition, permission, state, and constraint in scope. Preserve the source wording and mark each item retrieved, ambiguous, or unavailable. Do not collapse unprocessed items into “other fields.”
-5. When existing coverage matters, use TMS read capabilities to retrieve linked cases and their complete current versions. Preserve raw product fields and stable identifiers.
-6. If no key or link is supplied, use only the supplied chat, files, and explicitly scoped sources. Do not search an arbitrary external project.
-7. Separate facts, source conflicts, missing permissions, missing capabilities, and missing behavioral information. Use `PARTIAL_CONTEXT` when a page, attachment, table, or field list was truncated or only partly retrieved.
-8. Normalize the evidence into the context bundle from `integration-rules.md`.
-9. Route sufficient context to the requested downstream skill:
+4. Inventory every URL in the primary issue and scoped knowledge pages. Classify relevant targets such as requirements, designs/mockups, API contracts, attachments, related decisions, and supporting documents; follow them only when they can materially affect the requested QA result. Preserve the exact URL, readable purpose, source location, and retrieval status. Do not claim an inaccessible target was read and do not crawl unrelated navigation.
+5. Before summarizing a structured source, inventory every explicitly named field, control, tab, default, validation, visibility condition, permission, state, and constraint in scope. Preserve the source wording and mark each item retrieved, ambiguous, or unavailable. Do not collapse unprocessed items into “other fields.”
+6. When existing coverage matters, use TMS read capabilities to retrieve linked cases and their complete current versions. Preserve raw product fields and stable identifiers. If a case key is known, read it directly instead of searching or listing the project first.
+7. If no key or link is supplied, use only the supplied chat, files, and explicitly scoped sources. Do not search an arbitrary external project.
+8. Separate facts, source conflicts, missing permissions, missing capabilities, and missing behavioral information. Use `PARTIAL_CONTEXT` when a page, attachment, table, field list, or relevant linked target was truncated or only partly retrieved.
+9. Normalize the evidence into the context bundle from `integration-rules.md`.
+10. Route sufficient context to the requested downstream skill:
    - generation → `generate-test-cases`;
    - coverage or actualization need → `analyze-test-coverage`;
    - approved update proposal → `update-test-cases`;
    - case quality review → `review-test-cases`;
    - coverage structure → `build-coverage-matrix`;
    - regression organization → `build-regression-model`.
-10. Return the bundle and downstream result in chat. Do not call an external write tool.
+11. Return the bundle and downstream result in chat. Do not call an external write tool.
 
 ## Actualization path
 
@@ -84,6 +85,7 @@ Scope anchor: ...
 
 Issue facts: ...
 Relevant linked requirements and knowledge: ...
+Relevant source links: ...
 Source field inventory: ...
 Existing test coverage: ...
 Source conflicts: ...

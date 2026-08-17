@@ -40,7 +40,7 @@ When an external issue or case reference is supplied, use [`../collect-test-cont
 4. Give a source-backed reason for every proposed change. Flag conflicts and unresolved placeholders.
 5. Recheck the proposed case for a focused scenario, repeatable setup, observable results, and independence from transient data or execution order.
 6. Recommend a split instead of expanding the baseline when the new behavior forms an independent regression scenario.
-7. Reconcile the proposed version against every in-scope source item; do not silently drop fields or constraints introduced by the correction context.
+7. Reconcile the proposed version against every in-scope source item and relevant source/design link; do not silently drop fields, constraints, or materials introduced by the correction context.
 8. Present the proposal/diff before the complete proposed version.
 9. Render the complete proposed version directly as Markdown in the exact Russian Zephyr format from `test-case-standard.md`, with separate `Шаг`, `Тестовые данные`, and `Ожидаемый результат` columns. Never wrap it in a fenced code block.
 10. For every previously existing, discovered, or prior-session case, label the result `ПРЕДЛОЖЕНИЕ — НЕ ПРИМЕНЕНО` and request human review. Do not call an update tool.
@@ -54,7 +54,7 @@ Apply the correction without a second confirmation only when all conditions hold
 3. The MCP tool itself confirms that the key belongs to the current running process; conversational memory is not sufficient.
 4. The current case content and requested correction support a complete, safe final version.
 
-Show the focused diff and final version, then call `zephyr_update_session_test_case`. When changing steps, pass the complete final ordered step list; the operation replaces the current step-by-step script. Pass only requested non-step fields so omitted fields remain unchanged. Report the returned key and changed fields.
+Show the focused diff and final version, then call `zephyr_update_session_test_case`. When changing steps, pass the complete final ordered step list; the operation replaces the current step-by-step script. Pass only requested non-step fields so omitted fields remain unchanged. Report the changed fields and return the key as a clickable link using the full URL returned by the connector. Do not invent a case URL when the connector did not return one.
 
 Preserve readable lists during correction: use `<br>•` inside Markdown table cells and send one `•` item per newline to the TMS. Do not flatten multiple fields, values, or expected assertions into one comma- or semicolon-separated paragraph.
 

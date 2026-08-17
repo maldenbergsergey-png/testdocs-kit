@@ -90,9 +90,12 @@ for (const file of targets) {
 
     for (const line of tableLines.slice(2)) {
       const cells = line.split('|').slice(1, -1).map((cell) => cell.trim());
-      if (cells.length !== 4 || cells.some((cell) => cell.length === 0)) {
-        errors.push(`${file}: строка шага должна содержать четыре заполненные колонки: ${line}`);
+      if (cells.length !== 4 || [cells[0], cells[1], cells[3]].some((cell) => !cell?.length)) {
+        errors.push(`${file}: строка шага должна содержать номер, шаг и ожидаемый результат; тестовые данные могут быть пустыми: ${line}`);
         continue;
+      }
+      if (["Не требуются", "Нет", "—", "-"].includes(cells[2])) {
+        errors.push(`${file}: ненужные тестовые данные нужно оставить пустыми: ${line}`);
       }
       if (cells[1].includes('→')) {
         errors.push(`${file}: действие и результат нельзя соединять стрелкой: ${line}`);

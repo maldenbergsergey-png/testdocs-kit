@@ -13,7 +13,8 @@ const {
   JIRA_AUTH_MODE = "basic",
   JIRA_API_VERSION = "3",
   JIRA_INSECURE_TLS = "0",
-  JIRA_SESSION_FILE
+  JIRA_SESSION_FILE,
+  JIRA_TEST_CASE_URL_TEMPLATE
 } = process.env;
 
 if (JIRA_INSECURE_TLS === "1") {
@@ -225,12 +226,90 @@ async function zephyrGetProject({ projectId }) {
   return zephyrRequest(`/rest/tests/1.0/project/${projectId}`);
 }
 
-async function zephyrSearchTestCases({ projectId, fields, query, maxResults = 50, offset = 0 }) {
+function testCaseProjectKey(testCaseKey) {
+  const match = String(testCaseKey || "").match(/^(.+)-T\d+$/i);
+  return match?.[1] || null;
+}
+
+function buildTestCaseWebUrl(testCaseKey) {
+  if (!testCaseKey || !JIRA_URL) return null;
+  const template = JIRA_TEST_CASE_URL_TEMPLATE || `${JIRA_URL}/secure/Tests.jspa#/testCase/{key}`;
+  if (!template.includes("{key}")) return null;
+  const projectKey = testCaseProjectKey(testCaseKey) || "";
+  return template
+    .replaceAll("{key}", encodeURIComponent(testCaseKey))
+    .replaceAll("{projectKey}", encodeURIComponent(projectKey));
+}
+
+function withTestCaseWebUrl(testCase, fallbackKey) {
+  if (!testCase || typeof testCase !== "object") return testCase;
+  const key = testCase.key || testCase.testCaseKey || fallbackKey;
+  const webUrl = buildTestCaseWebUrl(key);
+  if (!webUrl) return testCase;
+  return {
+    ...testCase,
+    _testdocs: {
+      ...(testCase._testdocs || {}),
+      webUrl
+    }
+  };
+}
+
+function normalizeZephyrSearchResult(data) {
+  if (Array.isArray(data)) {
+    return { results: data.map((item) => withTestCaseWebUrl(item)), total: data.length };
+  }
+  const rawResults = Array.isArray(data?.results)
+    ? data.results
+    : Array.isArray(data?.values)
+      ? data.values
+      : [];
+  return {
+    ...(data || {}),
+    results: rawResults.map((item) => withTestCaseWebUrl(item))
+  };
+}
+
+function escapeTqlValue(value) {
+  return String(value).replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+}
+
+async function zephyrAtmSearchTestCases({ projectKey, fields, query, maxResults, offset }) {
+  const params = new URLSearchParams();
+  if (fields) params.set("fields", fields);
+  const projectClause = `projectKey = "${escapeTqlValue(projectKey)}"`;
+  params.set("query", query ? `${projectClause} AND (${query})` : projectClause);
+  params.set("maxResults", String(maxResults));
+  params.set("startAt", String(offset));
+  return normalizeZephyrSearchResult(
+    await zephyrRequest(`/rest/atm/1.0/testcase/search?${params.toString()}`)
+  );
+}
+
+async function resolveProjectKey(projectId) {
+  if (!projectId) return null;
+  const project = await zephyrGetProject({ projectId });
+  return project?.key || project?.projectKey || project?.project?.key || null;
+}
+
+async function zephyrSearchTestCases({ projectId, projectKey, fields, query, maxResults = 50, offset = 0 }) {
   // Note: Zephyr Scale API has a maximum effective maxResults of 1000
   // Beyond that, it returns empty results. Pagination via offset doesn't work reliably.
   // Also, 'fields' parameter is required by the API
   const effectiveMaxResults = Math.min(Math.max(maxResults, 1), 1000);
   const defaultFields = "id,key,name,objective,precondition,status,priority,createdOn,updatedOn";
+
+  if (projectKey) {
+    return zephyrAtmSearchTestCases({
+      projectKey,
+      fields: fields || defaultFields,
+      query,
+      maxResults: effectiveMaxResults,
+      offset
+    });
+  }
+
+  if (!projectId) throw new Error("projectId or projectKey is required.");
 
   const params = new URLSearchParams();
   params.set("projectId", projectId);
@@ -238,7 +317,27 @@ async function zephyrSearchTestCases({ projectId, fields, query, maxResults = 50
   if (query) params.set("query", query);
   params.set("maxResults", String(effectiveMaxResults));
   params.set("offset", String(offset));
-  return zephyrRequest(`/rest/tests/1.0/testcase/search?${params.toString()}`);
+  try {
+    return normalizeZephyrSearchResult(
+      await zephyrRequest(`/rest/tests/1.0/testcase/search?${params.toString()}`)
+    );
+  } catch (error) {
+    if (![400, 404, 405, 500].includes(error.status)) throw error;
+    let resolvedProjectKey;
+    try {
+      resolvedProjectKey = await resolveProjectKey(projectId);
+    } catch {
+      throw error;
+    }
+    if (!resolvedProjectKey) throw error;
+    return zephyrAtmSearchTestCases({
+      projectKey: resolvedProjectKey,
+      fields: fields || defaultFields,
+      query,
+      maxResults: effectiveMaxResults,
+      offset
+    });
+  }
 }
 
 async function zephyrGetTestPlans({ projectId, maxResults = 50, offset = 0 }) {
@@ -281,7 +380,7 @@ async function zephyrGetTestCase({ projectId, testCaseKey }) {
   // including step-by-step scripts, through the ATM compatibility endpoint.
   try {
     const completeCase = await zephyrRequest(`/rest/atm/1.0/testcase/${encodedKey}`);
-    return normalizeZephyrTestCase(completeCase);
+    return withTestCaseWebUrl(normalizeZephyrTestCase(completeCase), testCaseKey);
   } catch (error) {
     // Keep compatibility with installations that expose only the newer
     // /rest/tests/1.0 search API. Authentication and permission errors must
@@ -293,6 +392,7 @@ async function zephyrGetTestCase({ projectId, testCaseKey }) {
   // installations, so use search as a metadata-only fallback.
   const result = await zephyrSearchTestCases({
     projectId,
+    projectKey: !projectId ? testCaseProjectKey(testCaseKey) : undefined,
     maxResults: 1000,
     fields: "id,key,name,objective,precondition,priority,status,createdOn,updatedOn,labels,statusName,scriptType,version"
   });
@@ -301,24 +401,34 @@ async function zephyrGetTestCase({ projectId, testCaseKey }) {
   if (!testCase) {
     throw new Error(`Test case ${testCaseKey} not found in project ${projectId}`);
   }
-  return {
+  return withTestCaseWebUrl({
     ...testCase,
     _testdocs: {
+      ...(testCase._testdocs || {}),
       complete: false,
       warning: "The connected Zephyr API returned metadata only; test steps are unavailable on this installation."
     }
-  };
+  }, testCaseKey);
 }
 
-async function zephyrGetAllTestCases({ projectId, fields }) {
+async function zephyrGetAllTestCases({ projectId, projectKey, fields }) {
   // Get ALL test cases from a project (up to 1000 max from API)
   // Returns only the first 1000, but that covers most projects
   const result = await zephyrSearchTestCases({
     projectId,
+    projectKey,
     maxResults: 1000,
     fields: fields || "id,key,name,objective,precondition,status,priority,createdOn,updatedOn"
   });
   return result.results || [];
+}
+
+function normalizeTestStep({ description, testData, expectedResult }) {
+  const normalized = { description, expectedResult };
+  if (typeof testData === "string" && testData.trim()) {
+    normalized.testData = testData;
+  }
+  return normalized;
 }
 
 async function zephyrCreateTestCase({
@@ -358,15 +468,12 @@ async function zephyrCreateTestCase({
     ...(customFields && Object.keys(customFields).length ? { customFields } : {}),
     testScript: {
       type: "STEP_BY_STEP",
-      steps: steps.map(({ description, testData, expectedResult }) => ({
-        description,
-        testData: testData || "Не требуются",
-        expectedResult
-      }))
+      steps: steps.map(normalizeTestStep)
     }
   };
 
-  return zephyrRequest("/rest/atm/1.0/testcase", "POST", payload);
+  const result = await zephyrRequest("/rest/atm/1.0/testcase", "POST", payload);
+  return withTestCaseWebUrl(result);
 }
 
 function hasOwn(input, field) {
@@ -435,11 +542,7 @@ async function zephyrUpdateSessionTestCase(input) {
     ...(hasOwn(input, "steps") ? {
       testScript: {
         type: "STEP_BY_STEP",
-        steps: steps.map(({ description, testData, expectedResult }) => ({
-          description,
-          testData: testData || "Не требуются",
-          expectedResult
-        }))
+        steps: steps.map(normalizeTestStep)
       }
     } : {})
   };
@@ -449,10 +552,10 @@ async function zephyrUpdateSessionTestCase(input) {
     "PUT",
     payload
   );
-  return {
+  return withTestCaseWebUrl({
     ...result,
     key: result?.key || testCaseKey
-  };
+  }, testCaseKey);
 }
 
 module.exports = {

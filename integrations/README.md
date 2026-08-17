@@ -81,7 +81,7 @@ Explicit approval or publication request
 Optional write through an available tool
 ```
 
-Reading context does not authorize writing. A request only to analyze, draft, generate, update, or review does not authorize publication. An explicit request to create or publish new cases may authorize same-turn creation after the exact target and payload are validated. The bundled adapter does not update existing cases or expose destructive operations.
+Reading context does not authorize writing. A request only to analyze, draft, generate, update, or review does not authorize publication. An explicit request to create or publish new cases may authorize same-turn creation after the exact target and payload are validated. The bundled adapter can correct only a case created by the same running MCP process after an explicit user request. Previously existing, discovered, and prior-session cases remain read-only, and destructive operations are not exposed.
 
 Automatic destructive changes are prohibited. This pack does not support automatic deletion of external test cases.
 

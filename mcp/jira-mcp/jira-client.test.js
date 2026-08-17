@@ -41,6 +41,7 @@ test("zephyr_get_test_case returns the complete ATM case with ordered steps", as
   assert.equal(calls[0], "https://jira.example.test/rest/atm/1.0/testcase/DEMO-T7");
   assert.deepEqual(result.testScript.steps.map((step) => step.index), [0, 1, 2]);
   assert.equal(result.testScript.steps[0].expectedResult, "Результат 1");
+  assert.equal(result._testdocs.webUrl, "https://jira.example.test/secure/Tests.jspa#/testCase/DEMO-T7");
 });
 
 test("zephyr_get_test_case marks a metadata-only fallback explicitly", async (t) => {
@@ -58,6 +59,7 @@ test("zephyr_get_test_case marks a metadata-only fallback explicitly", async (t)
   assert.equal(result.key, "DEMO-T8");
   assert.equal(result._testdocs.complete, false);
   assert.match(result._testdocs.warning, /test steps are unavailable/);
+  assert.equal(result._testdocs.webUrl, "https://jira.example.test/secure/Tests.jspa#/testCase/DEMO-T8");
 });
 
 test("zephyr_get_test_case does not hide permission errors", async (t) => {
@@ -119,13 +121,13 @@ test("zephyr_create_test_case sends step-level test data to the public Server AP
         },
         {
           description: "Нажать «Сохранить».",
-          testData: "Не требуются",
           expectedResult: "Объект отображается в списке."
         }
       ]
     }
   });
   assert.equal(result.key, "DEMO-T10");
+  assert.equal(result._testdocs.webUrl, "https://jira.example.test/secure/Tests.jspa#/testCase/DEMO-T10");
 });
 
 test("zephyr_create_test_case rejects a call without explicit confirmation", async () => {
@@ -190,7 +192,6 @@ test("zephyr_update_session_test_case sends only requested fields and a complete
       steps: [
         {
           description: "Открыть форму.",
-          testData: "Не требуются",
           expectedResult: "Форма открывается."
         },
         {
@@ -202,6 +203,7 @@ test("zephyr_update_session_test_case sends only requested fields and a complete
     }
   });
   assert.equal(result.key, "DEMO-T10");
+  assert.equal(result._testdocs.webUrl, "https://jira.example.test/secure/Tests.jspa#/testCase/DEMO-T10");
 });
 
 test("zephyr_update_session_test_case rejects empty or unconfirmed updates", async (t) => {
@@ -250,4 +252,38 @@ test("zephyr_update_session_test_case accepts the official empty success respons
   });
 
   assert.equal(result.key, "DEMO-T10");
+  assert.equal(result._testdocs.webUrl, "https://jira.example.test/secure/Tests.jspa#/testCase/DEMO-T10");
+});
+
+test("zephyr_search_test_cases uses the ATM endpoint directly when projectKey is known", async (t) => {
+  const calls = [];
+  t.mock.method(global, "fetch", async (url) => {
+    calls.push(String(url));
+    return response(200, [{ key: "DEMO-T11", name: "FAQ" }]);
+  });
+
+  const result = await tools.zephyr_search_test_cases({ projectKey: "DEMO", maxResults: 3 });
+
+  assert.equal(calls.length, 1);
+  assert.match(calls[0], /^https:\/\/jira\.example\.test\/rest\/atm\/1\.0\/testcase\/search\?/);
+  assert.match(calls[0], /query=projectKey\+%3D\+%22DEMO%22/);
+  assert.equal(result.results[0]._testdocs.webUrl, "https://jira.example.test/secure/Tests.jspa#/testCase/DEMO-T11");
+});
+
+test("zephyr_search_test_cases recovers a compatible endpoint inside one tool call", async (t) => {
+  const calls = [];
+  t.mock.method(global, "fetch", async (url) => {
+    calls.push(String(url));
+    if (calls.length === 1) return response(400, { message: "Unsupported endpoint" });
+    if (calls.length === 2) return response(200, { key: "DEMO" });
+    return response(200, [{ key: "DEMO-T12", name: "Recovered" }]);
+  });
+
+  const result = await tools.zephyr_search_test_cases({ projectId: "10000", maxResults: 3 });
+
+  assert.equal(calls.length, 3);
+  assert.match(calls[0], /\/rest\/tests\/1\.0\/testcase\/search\?/);
+  assert.equal(calls[1], "https://jira.example.test/rest/tests/1.0/project/10000");
+  assert.match(calls[2], /\/rest\/atm\/1\.0\/testcase\/search\?/);
+  assert.equal(result.results[0].key, "DEMO-T12");
 });
