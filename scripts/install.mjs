@@ -27,13 +27,15 @@ function parseArgs(argv) {
     skipDependencies: false,
     noCli: false,
     answers: null,
-    openCodeFormat: null
+    openCodeFormat: null,
+    caFile: null
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--clients") result.clients = argv[++index]?.split(",");
     else if (arg === "--answers") result.answers = argv[++index];
     else if (arg === "--opencode-format") result.openCodeFormat = argv[++index];
+    else if (arg === "--ca-file") result.caFile = argv[++index];
     else if (arg === "--force") result.force = true;
     else if (arg === "--skip-dependencies") result.skipDependencies = true;
     else if (arg === "--no-cli") result.noCli = true;
@@ -50,6 +52,7 @@ function showHelp() {
   --clients codex,claude,opencode,generic  Настроить указанные клиенты
   --answers /path/to/answers.json          Взять ответы из JSON без вопросов
   --opencode-format stable|v2              Явно выбрать формат OpenCode
+  --ca-file /path/to/ca-bundle.pem         Дополнительные доверенные CA в формате PEM
   --skip-dependencies                     Не выполнять npm ci и сборку
   --no-cli                                Не вызывать CLI клиентов
   --force                                 Сделать резервную копию конфликтующих скиллов
@@ -258,6 +261,23 @@ async function collectConfig(args, clients) {
     jira: await collectJira(previous.jira),
     confluence: await collectConfluence(previous.confluence)
   };
+}
+
+function applyCaFile(config, value) {
+  const supplied = value || config.caFile;
+  if (!supplied) {
+    delete config.caFile;
+    return;
+  }
+  const caFile = path.resolve(supplied);
+  if (!fs.existsSync(caFile) || !fs.statSync(caFile).isFile()) {
+    throw new Error(`Не найден CA-файл: ${caFile}`);
+  }
+  const contents = fs.readFileSync(caFile, "utf8");
+  if (!contents.includes("-----BEGIN CERTIFICATE-----")) {
+    throw new Error(`CA-файл должен содержать сертификат в формате PEM: ${caFile}`);
+  }
+  config.caFile = caFile;
 }
 
 function savePrivateConfig(config) {
@@ -623,6 +643,7 @@ async function main() {
   config.version ||= 1;
   config.clients = clients;
   config.enableWrites = false;
+  applyCaFile(config, args.caFile);
 
   savePrivateConfig(config);
   installDependencies(args.skipDependencies, config);

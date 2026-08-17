@@ -15,6 +15,9 @@ function validatePrivateConfig() {
   assert(fs.existsSync(configFile), `Не найден ${configFile}. Выполните npm run setup.`);
   const config = JSON.parse(fs.readFileSync(configFile, "utf8"));
   assert(config.version === 1, "Неподдерживаемая версия файла настроек.");
+  if (config.caFile) {
+    assert(fs.existsSync(config.caFile), `Не найден дополнительный CA-файл: ${config.caFile}`);
+  }
 
   if (config.jira?.enabled) {
     assert(config.jira.url && config.jira.secret && config.jira.authMode, "Неполные настройки Jira.");

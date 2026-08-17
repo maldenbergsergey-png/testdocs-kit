@@ -23,9 +23,13 @@ function readConfig() {
 }
 
 function buildEnvironment(service, config) {
+  if (config.caFile && !fs.existsSync(config.caFile)) {
+    fail(`не найден дополнительный CA-файл ${config.caFile}. Повторите npm run setup.`);
+  }
   const common = {
     ...process.env,
-    TESTDOCS_ENABLE_WRITES: config.enableWrites ? "1" : "0"
+    TESTDOCS_ENABLE_WRITES: config.enableWrites ? "1" : "0",
+    ...(config.caFile ? { NODE_EXTRA_CA_CERTS: config.caFile } : {})
   };
 
   if (service === "jira") {

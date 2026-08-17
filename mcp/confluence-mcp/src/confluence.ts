@@ -66,12 +66,19 @@ export class ConfluenceClient {
       }
     }
 
-    const res = await fetch(url.toString(), {
-      headers: {
-        Authorization: this.authHeader,
-        Accept: "application/json",
-      },
-    });
+    let res: Response;
+    try {
+      res = await fetch(url.toString(), {
+        headers: {
+          Authorization: this.authHeader,
+          Accept: "application/json",
+        },
+      });
+    } catch (error) {
+      const cause = (error as { cause?: { code?: string; message?: string }; message?: string });
+      const details = cause.cause?.code ?? cause.cause?.message ?? cause.message ?? "unknown network error";
+      throw new Error(`Confluence network request failed for ${url.origin}${url.pathname}: ${details}`);
+    }
 
     if (!res.ok) {
       const body = await res.text();

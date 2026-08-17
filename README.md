@@ -76,6 +76,7 @@ npm run setup
 5. Настраивает выбранные AI-клиенты.
 6. Запускает локальную проверку MCP-handshake без чтения реальных Jira и Confluence данных.
 7. Проверяет, что write-инструменты Jira выключены.
+8. При необходимости подключает дополнительный доверенный CA-бандл, не отключая TLS-проверку.
 
 Секреты хранятся здесь:
 
@@ -282,6 +283,14 @@ npm run setup -- --clients opencode --opencode-format stable
 npm run setup -- --clients opencode --opencode-format v2
 ```
 
+Подключить дополнительный CA-бандл для Jira и Confluence:
+
+```bash
+npm run setup -- --ca-file /absolute/path/to/ca-bundle.pem
+```
+
+Файл должен содержать один или несколько PEM-сертификатов. В закрытом пользовательском конфиге сохраняется только его абсолютный путь.
+
 Не переустанавливать зависимости:
 
 ```bash
@@ -321,7 +330,7 @@ npm run setup -- --help
 - Установщик всегда записывает `enableWrites: false`.
 - Создание, изменение, связывание и смена статуса тест-кейсов требуют отдельного явного подтверждения человека.
 - Автоматическое удаление внешних тест-кейсов запрещено.
-- Не включайте `JIRA_INSECURE_TLS=1` или `CONFLUENCE_INSECURE_TLS=1` как постоянное решение. Настройте корпоративный CA-сертификат.
+- Не включайте `JIRA_INSECURE_TLS=1` или `CONFLUENCE_INSECURE_TLS=1`. Передайте доверенный PEM-бандл через `--ca-file` или исправьте цепочку сертификатов на сервере.
 - Если токен попал в пример, лог, чат или историю Git, отзовите его и выпустите новый.
 
 ## Ограничения текущего MCP
@@ -381,7 +390,21 @@ npm run setup -- --clients opencode
 
 ### Ошибка сертификата
 
-Запросите у администратора корпоративный CA-сертификат. Отключение TLS-проверки допустимо только как кратковременная диагностика в изолированной среде.
+Ошибки `UNABLE_TO_VERIFY_LEAF_SIGNATURE`, `SELF_SIGNED_CERT_IN_CHAIN` и `UNABLE_TO_GET_ISSUER_CERT` означают, что Node.js не может построить доверенную TLS-цепочку.
+
+Предпочтительное решение — настроить сервер так, чтобы он отдавал полную цепочку сертификатов. Для корпоративного или отсутствующего промежуточного CA можно безопасно передать PEM-бандл:
+
+```bash
+npm run setup -- --answers "$HOME/.config/testdocs-kit/config.json" --skip-dependencies --ca-file /absolute/path/to/ca-bundle.pem
+```
+
+В каталоге [`certificates/`](certificates/) находится проверенный публичный промежуточный сертификат GlobalSign, который нужен серверам с сертификатом `GlobalSign GCC R3 DV TLS CA 2020`, но не отправляющим intermediate:
+
+```bash
+npm run setup -- --answers "$HOME/.config/testdocs-kit/config.json" --skip-dependencies --ca-file "$PWD/certificates/globalsign-gcc-r3-dv-tls-ca-2020.pem"
+```
+
+TLS-проверка при этом остаётся включённой.
 
 ## Структура репозитория
 
@@ -390,6 +413,7 @@ testdocs-kit/
 ├── README.md
 ├── AGENTS.md
 ├── package.json
+├── certificates/       # дополнительные публичные CA-сертификаты
 ├── scripts/            # установка, launcher и проверка
 ├── rules/              # источник правил тестовой документации
 ├── skills/             # переносимые Agent Skills

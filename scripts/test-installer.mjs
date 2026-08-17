@@ -56,6 +56,7 @@ try {
     path.join(scriptsDir, "install.mjs"),
     "--clients", "codex,claude,opencode,generic",
     "--answers", answersFile,
+    "--ca-file", path.join(repoRoot, "certificates", "globalsign-gcc-r3-dv-tls-ca-2020.pem"),
     "--skip-dependencies",
     "--no-cli"
   ];
@@ -76,6 +77,8 @@ try {
   for (const file of [privateConfig, codexConfig, openCodeConfig, genericConfig]) {
     assert(fs.existsSync(file), `Не создан ${file}`);
   }
+  const savedPrivateConfig = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
+  assert(savedPrivateConfig.caFile?.endsWith("globalsign-gcc-r3-dv-tls-ca-2020.pem"), "Не сохранён CA-файл.");
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "generate-test-cases", "SKILL.md")), "Не установлены Agent Skills.");
   assert(fs.existsSync(path.join(testRoot, ".claude", "skills", "generate-test-cases", "SKILL.md")), "Не установлены Claude Skills.");
 

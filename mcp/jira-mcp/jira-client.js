@@ -29,13 +29,22 @@ function buildAuthHeader() {
   return `Basic ${Buffer.from(`${JIRA_EMAIL}:${JIRA_TOKEN}`).toString("base64")}`;
 }
 
+async function fetchWithNetworkDetails(url, options, system) {
+  try {
+    return await fetch(url, options);
+  } catch (error) {
+    const cause = error.cause?.code || error.cause?.message || error.message;
+    throw new Error(`${system} network request failed for ${url}: ${cause}`);
+  }
+}
+
 async function jiraRequest(path, method = "GET", body) {
   if (!JIRA_URL) {
     throw new Error("JIRA_URL is required");
   }
 
   const url = `${JIRA_URL}${path}`;
-  const res = await fetch(url, {
+  const res = await fetchWithNetworkDetails(url, {
     method,
     headers: {
       Authorization: buildAuthHeader(),
@@ -43,7 +52,7 @@ async function jiraRequest(path, method = "GET", body) {
       "Content-Type": "application/json"
     },
     body: body ? JSON.stringify(body) : undefined
-  });
+  }, "Jira");
 
   const contentType = res.headers.get("content-type") || "";
   const rawText = await res.text();
@@ -126,7 +135,7 @@ async function zephyrRequest(path, method = "GET", body) {
   }
 
   const url = `${JIRA_URL}${path}`;
-  const res = await fetch(url, {
+  const res = await fetchWithNetworkDetails(url, {
     method,
     headers: {
       Authorization: buildAuthHeader(),
@@ -134,7 +143,7 @@ async function zephyrRequest(path, method = "GET", body) {
       "Content-Type": "application/json"
     },
     body: body ? JSON.stringify(body) : undefined
-  });
+  }, "Zephyr");
 
   const contentType = res.headers.get("content-type") || "";
   const rawText = await res.text();
