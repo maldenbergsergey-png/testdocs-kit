@@ -20,13 +20,16 @@ function validatePrivateConfig() {
   }
 
   if (config.jira?.enabled) {
-    assert(config.jira.url && config.jira.secret && config.jira.authMode, "Неполные настройки Jira.");
+    assert(config.jira.url && config.jira.authMode, "Неполные настройки Jira.");
+    if (config.jira.authMode !== "browser_session") {
+      assert(config.jira.secret, "Не заполнены учётные данные Jira.");
+    }
   }
   if (config.confluence?.enabled) {
-    assert(
-      config.confluence.baseUrl && config.confluence.secret && config.confluence.authMode,
-      "Неполные настройки Confluence."
-    );
+    assert(config.confluence.baseUrl && config.confluence.authMode, "Неполные настройки Confluence.");
+    if (config.confluence.authMode !== "browser_session") {
+      assert(config.confluence.secret, "Не заполнены учётные данные Confluence.");
+    }
   }
   return config;
 }

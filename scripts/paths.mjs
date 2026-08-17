@@ -35,6 +35,10 @@ export function getConfigFile() {
     : path.join(getConfigDir(), "config.json");
 }
 
+export function getSessionFile(service) {
+  return path.join(getConfigDir(), "sessions", `${service}.json`);
+}
+
 export function getCodexConfigFile() {
   return process.env.TESTDOCS_CODEX_CONFIG
     ? path.resolve(process.env.TESTDOCS_CODEX_CONFIG)
@@ -48,6 +52,7 @@ export function getOpenCodeConfigFile() {
 }
 
 export const launcherFile = path.join(repoRoot, "scripts", "launch-mcp.mjs");
+export const browserAuthFile = path.join(repoRoot, "scripts", "browser-auth.mjs");
 
 export const serviceEntries = {
   jira: path.join(repoRoot, "mcp", "jira-mcp", "mcp-stdio.js"),

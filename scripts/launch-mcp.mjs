@@ -2,7 +2,7 @@
 
 import fs from "node:fs";
 import { spawn } from "node:child_process";
-import { getConfigFile, serviceEntries } from "./paths.mjs";
+import { getConfigFile, getSessionFile, serviceEntries } from "./paths.mjs";
 
 function fail(message) {
   process.stderr.write(`Testdocs Kit: ${message}\n`);
@@ -35,14 +35,18 @@ function buildEnvironment(service, config) {
   if (service === "jira") {
     const jira = config.jira;
     if (!jira?.enabled) fail("подключение Jira выключено в настройках.");
-    if (!jira.url || !jira.secret) fail("для Jira не заполнены адрес или учётные данные.");
+    if (!jira.url || !jira.authMode) fail("для Jira не заполнены адрес или режим авторизации.");
+    if (jira.authMode !== "browser_session" && !jira.secret) {
+      fail("для Jira не заполнены учётные данные.");
+    }
 
     return {
       ...common,
       JIRA_URL: jira.url,
       JIRA_EMAIL: jira.username || "",
-      JIRA_TOKEN: jira.secret,
+      JIRA_TOKEN: jira.secret || "",
       JIRA_AUTH_MODE: jira.authMode || "basic",
+      JIRA_SESSION_FILE: getSessionFile("jira"),
       JIRA_API_VERSION: String(jira.apiVersion || "2"),
       JIRA_INSECURE_TLS: jira.insecureTls ? "1" : "0"
     };
@@ -50,16 +54,20 @@ function buildEnvironment(service, config) {
 
   const confluence = config.confluence;
   if (!confluence?.enabled) fail("подключение Confluence выключено в настройках.");
-  if (!confluence.baseUrl || !confluence.secret) {
-    fail("для Confluence не заполнены адрес или учётные данные.");
+  if (!confluence.baseUrl || !confluence.authMode) {
+    fail("для Confluence не заполнены адрес или режим авторизации.");
+  }
+  if (confluence.authMode !== "browser_session" && !confluence.secret) {
+    fail("для Confluence не заполнены учётные данные.");
   }
 
   return {
     ...common,
     CONFLUENCE_BASE_URL: confluence.baseUrl,
     CONFLUENCE_USERNAME: confluence.username || "",
-    CONFLUENCE_API_TOKEN: confluence.secret,
+    CONFLUENCE_API_TOKEN: confluence.secret || "",
     CONFLUENCE_AUTH_MODE: confluence.authMode || "basic",
+    CONFLUENCE_SESSION_FILE: getSessionFile("confluence"),
     CONFLUENCE_INSECURE_TLS: confluence.insecureTls ? "1" : "0"
   };
 }

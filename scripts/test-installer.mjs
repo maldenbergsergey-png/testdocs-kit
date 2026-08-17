@@ -161,10 +161,53 @@ try {
   assert(v2OpenCode.mcp?.servers?.testdocs_jira, "Не добавлен OpenCode V2 Jira MCP.");
   assert(!v2OpenCode.permissions, "В OpenCode V2 без необходимости добавлено поле permissions.");
 
+  // Browser-session mode must not require a password and must not open a browser in test mode.
+  fs.writeFileSync(answersFile, JSON.stringify({
+    version: 1,
+    enableWrites: false,
+    jira: {
+      enabled: true,
+      profile: "4",
+      url: "https://jira.example.invalid",
+      username: "",
+      secret: "",
+      authMode: "browser_session",
+      apiVersion: "2",
+      insecureTls: false
+    },
+    confluence: {
+      enabled: true,
+      profile: "4",
+      baseUrl: "https://confluence.example.invalid",
+      username: "",
+      secret: "",
+      authMode: "browser_session",
+      insecureTls: false
+    }
+  }), "utf8");
+  const browserSessionResult = spawnSync(process.execPath, [
+    path.join(scriptsDir, "install.mjs"),
+    "--clients", "opencode",
+    "--answers", answersFile,
+    "--skip-dependencies",
+    "--no-cli",
+    "--skip-browser-auth",
+    "--opencode-format", "v2"
+  ], { cwd: repoRoot, env, encoding: "utf8" });
+  if (browserSessionResult.status !== 0) {
+    process.stdout.write(browserSessionResult.stdout || "");
+    process.stderr.write(browserSessionResult.stderr || "");
+    throw new Error("Не установлен режим браузерной сессии без пароля.");
+  }
+  const browserPrivateConfig = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
+  assert(browserPrivateConfig.jira.authMode === "browser_session", "Не сохранён browser_session для Jira.");
+  assert(browserPrivateConfig.confluence.authMode === "browser_session", "Не сохранён browser_session для Confluence.");
+
   console.log("Изолированная установка Codex/Claude Code/OpenCode/generic: OK");
   console.log("Повторная установка без дублирования: OK");
   console.log("OpenCode stable, миграция ошибочного конфига и V2: OK");
   console.log("Секреты отсутствуют в клиентских MCP-конфигах: OK");
+  console.log("Режим browser-session без пароля: OK");
 } finally {
   fs.rmSync(testRoot, { recursive: true, force: true });
 }

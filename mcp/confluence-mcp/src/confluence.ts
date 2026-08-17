@@ -37,21 +37,34 @@ export interface SpacePage {
   url: string;
 }
 
-export type AuthMode = "basic" | "bearer";
+const {
+  createAuthRequiredError,
+  getCookieHeader,
+  isAuthenticationFailure,
+} = require("../../session-auth.cjs") as {
+  createAuthRequiredError: (service: string, reason: string) => Error;
+  getCookieHeader: (sessionFile: string | undefined, requestUrl: string, service: string) => string;
+  isAuthenticationFailure: (response: Response, body?: string) => boolean;
+};
+
+export type AuthMode = "basic" | "bearer" | "browser_session";
 
 export class ConfluenceClient {
   private baseUrl: string;
-  private authHeader: string;
+  private authHeader?: string;
 
   constructor(
     baseUrl: string,
     username: string,
     apiToken: string,
-    authMode: AuthMode = "basic"
+    authMode: AuthMode = "basic",
+    private sessionFile?: string,
   ) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
 
-    if (authMode === "bearer") {
+    if (authMode === "browser_session") {
+      this.authHeader = undefined;
+    } else if (authMode === "bearer") {
       this.authHeader = `Bearer ${apiToken}`;
     } else {
       this.authHeader = `Basic ${Buffer.from(`${username}:${apiToken}`).toString("base64")}`;
@@ -68,9 +81,13 @@ export class ConfluenceClient {
 
     let res: Response;
     try {
+      const authentication: Record<string, string> = this.authHeader
+        ? { Authorization: this.authHeader }
+        : { Cookie: getCookieHeader(this.sessionFile, url.toString(), "confluence") };
       res = await fetch(url.toString(), {
+        redirect: "manual",
         headers: {
-          Authorization: this.authHeader,
+          ...authentication,
           Accept: "application/json",
         },
       });
@@ -80,14 +97,28 @@ export class ConfluenceClient {
       throw new Error(`Confluence network request failed for ${url.origin}${url.pathname}: ${details}`);
     }
 
+    const body = await res.text();
+    if (!this.authHeader && isAuthenticationFailure(res, body)) {
+      throw createAuthRequiredError(
+        "confluence",
+        "Сессия Confluence отсутствует или истекла."
+      );
+    }
+
     if (!res.ok) {
-      const body = await res.text();
       throw new Error(
         `Confluence API error ${res.status}: ${res.statusText}\n${body}`
       );
     }
 
-    return res.json() as Promise<Record<string, unknown>>;
+    try {
+      return JSON.parse(body) as Record<string, unknown>;
+    } catch (error) {
+      const details = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `Confluence returned invalid JSON (${res.status}) for ${url.origin}${url.pathname}: ${details}`
+      );
+    }
   }
 
   async search(query: string, limit?: number): Promise<SearchResults> {

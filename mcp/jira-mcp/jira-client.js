@@ -1,12 +1,19 @@
 require("dotenv").config({ quiet: true });
 
 const {
+  createAuthRequiredError,
+  getCookieHeader,
+  isAuthenticationFailure
+} = require("../session-auth.cjs");
+
+const {
   JIRA_URL,
   JIRA_EMAIL,
   JIRA_TOKEN,
   JIRA_AUTH_MODE = "basic",
   JIRA_API_VERSION = "3",
-  JIRA_INSECURE_TLS = "0"
+  JIRA_INSECURE_TLS = "0",
+  JIRA_SESSION_FILE
 } = process.env;
 
 if (JIRA_INSECURE_TLS === "1") {
@@ -14,6 +21,8 @@ if (JIRA_INSECURE_TLS === "1") {
 }
 
 function buildAuthHeader() {
+  if (JIRA_AUTH_MODE === "browser_session") return null;
+
   if (!JIRA_TOKEN) {
     throw new Error("JIRA_TOKEN is required");
   }
@@ -27,6 +36,13 @@ function buildAuthHeader() {
   }
 
   return `Basic ${Buffer.from(`${JIRA_EMAIL}:${JIRA_TOKEN}`).toString("base64")}`;
+}
+
+function buildAuthHeaders(url) {
+  if (JIRA_AUTH_MODE === "browser_session") {
+    return { Cookie: getCookieHeader(JIRA_SESSION_FILE, url, "jira") };
+  }
+  return { Authorization: buildAuthHeader() };
 }
 
 async function fetchWithNetworkDetails(url, options, system) {
@@ -46,8 +62,9 @@ async function jiraRequest(path, method = "GET", body) {
   const url = `${JIRA_URL}${path}`;
   const res = await fetchWithNetworkDetails(url, {
     method,
+    redirect: "manual",
     headers: {
-      Authorization: buildAuthHeader(),
+      ...buildAuthHeaders(url),
       Accept: "application/json",
       "Content-Type": "application/json"
     },
@@ -56,6 +73,9 @@ async function jiraRequest(path, method = "GET", body) {
 
   const contentType = res.headers.get("content-type") || "";
   const rawText = await res.text();
+  if (JIRA_AUTH_MODE === "browser_session" && isAuthenticationFailure(res, rawText)) {
+    throw createAuthRequiredError("jira", "Сессия Jira отсутствует или истекла.");
+  }
   const trimmedText = rawText.trim();
   const looksLikeJson =
     contentType.includes("application/json") ||
@@ -137,8 +157,9 @@ async function zephyrRequest(path, method = "GET", body) {
   const url = `${JIRA_URL}${path}`;
   const res = await fetchWithNetworkDetails(url, {
     method,
+    redirect: "manual",
     headers: {
-      Authorization: buildAuthHeader(),
+      ...buildAuthHeaders(url),
       Accept: "application/json",
       "Content-Type": "application/json"
     },
@@ -147,6 +168,9 @@ async function zephyrRequest(path, method = "GET", body) {
 
   const contentType = res.headers.get("content-type") || "";
   const rawText = await res.text();
+  if (JIRA_AUTH_MODE === "browser_session" && isAuthenticationFailure(res, rawText)) {
+    throw createAuthRequiredError("jira", "Сессия Jira/Zephyr отсутствует или истекла.");
+  }
   const trimmedText = rawText.trim();
   const looksLikeJson =
     contentType.includes("application/json") ||

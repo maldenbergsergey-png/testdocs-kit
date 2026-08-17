@@ -11,6 +11,7 @@ import {
   getConfigFile,
   getInstallHome,
   getOpenCodeConfigFile,
+  browserAuthFile,
   launcherFile,
   repoRoot
 } from "./paths.mjs";
@@ -26,6 +27,7 @@ function parseArgs(argv) {
     force: false,
     skipDependencies: false,
     noCli: false,
+    skipBrowserAuth: false,
     answers: null,
     openCodeFormat: null,
     caFile: null
@@ -39,6 +41,7 @@ function parseArgs(argv) {
     else if (arg === "--force") result.force = true;
     else if (arg === "--skip-dependencies") result.skipDependencies = true;
     else if (arg === "--no-cli") result.noCli = true;
+    else if (arg === "--skip-browser-auth") result.skipBrowserAuth = true;
     else if (arg === "--help" || arg === "-h") result.help = true;
     else throw new Error(`Неизвестный аргумент: ${arg}`);
   }
@@ -55,6 +58,7 @@ function showHelp() {
   --ca-file /path/to/ca-bundle.pem         Дополнительные доверенные CA в формате PEM
   --skip-dependencies                     Не выполнять npm ci и сборку
   --no-cli                                Не вызывать CLI клиентов
+  --skip-browser-auth                     Не открывать браузер для session-входа
   --force                                 Сделать резервную копию конфликтующих скиллов
   --help                                  Показать справку`);
 }
@@ -171,16 +175,27 @@ async function collectJira(previous = {}) {
   if (!enabled) return { ...previous, enabled: false };
 
   const profile = await ask(
-    "Jira: 1 — Cloud, 2 — Server/DC с PAT, 3 — старая Jira с логином и паролем",
+    "Jira: 1 — Cloud, 2 — Server/DC с PAT, 3 — логин и пароль, 4 — вход через браузер/SSO/2FA",
     previous.profile || "3"
   );
   const presets = {
     "1": { profile: "1", authMode: "basic", apiVersion: "3" },
     "2": { profile: "2", authMode: "bearer", apiVersion: "2" },
-    "3": { profile: "3", authMode: "basic", apiVersion: "2" }
+    "3": { profile: "3", authMode: "basic", apiVersion: "2" },
+    "4": { profile: "4", authMode: "browser_session", apiVersion: "2" }
   };
   const preset = presets[profile] || presets["3"];
   const url = (await ask("Адрес Jira без завершающего слеша", previous.url || "https://jira.example.com")).replace(/\/+$/, "");
+  if (preset.authMode === "browser_session") {
+    return {
+      enabled: true,
+      ...preset,
+      url,
+      username: "",
+      secret: "",
+      insecureTls: false
+    };
+  }
   const username = preset.authMode === "bearer"
     ? ""
     : await ask("Логин или email Jira", previous.username || "");
@@ -205,14 +220,25 @@ async function collectConfluence(previous = {}) {
   if (!enabled) return { ...previous, enabled: false };
 
   const profile = await ask(
-    "Confluence: 1 — Cloud, 2 — Server/DC с PAT, 3 — старый с логином и паролем",
+    "Confluence: 1 — Cloud, 2 — Server/DC с PAT, 3 — логин и пароль, 4 — вход через браузер/SSO/2FA",
     previous.profile || "3"
   );
-  const authMode = profile === "2" ? "bearer" : "basic";
+  const authMode = profile === "2" ? "bearer" : profile === "4" ? "browser_session" : "basic";
   const baseUrl = (await ask(
     "Адрес Confluence без завершающего слеша",
     previous.baseUrl || "https://confluence.example.com"
   )).replace(/\/+$/, "");
+  if (authMode === "browser_session") {
+    return {
+      enabled: true,
+      profile: "4",
+      baseUrl,
+      username: "",
+      secret: "",
+      authMode,
+      insecureTls: false
+    };
+  }
   const username = authMode === "bearer"
     ? ""
     : await ask("Логин или email Confluence", previous.username || "");
@@ -239,7 +265,7 @@ function validateAnswers(config) {
     const value = config[service];
     if (!value?.enabled) continue;
     const url = service === "jira" ? value.url : value.baseUrl;
-    if (!url || !value.secret || !value.authMode) {
+    if (!url || !value.authMode || (value.authMode !== "browser_session" && !value.secret)) {
       throw new Error(`В файле ответов не полностью настроен ${service}.`);
     }
   }
@@ -630,6 +656,25 @@ function verifyInstallation() {
   run(process.execPath, [path.join(repoRoot, "scripts", "check-install.mjs")]);
 }
 
+function authenticateBrowserSessions(config, args) {
+  if (args.noCli || args.skipBrowserAuth) return;
+  const services = ["jira", "confluence"].filter(
+    (service) => config[service]?.enabled && config[service]?.authMode === "browser_session"
+  );
+  for (const service of services) {
+    console.log(`\nПроверяю браузерную сессию ${service}...`);
+    const result = spawnSync(process.execPath, [browserAuthFile, service], {
+      cwd: repoRoot,
+      stdio: "inherit"
+    });
+    if (result.status !== 0) {
+      console.warn(
+        `Браузерная авторизация ${service} не завершена. Позже выполните: npm run auth -- ${service}`
+      );
+    }
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) return showHelp();
@@ -650,6 +695,7 @@ async function main() {
   installSkills(clients, args.force);
   configureClients(config, clients, args);
   verifyInstallation();
+  authenticateBrowserSessions(config, args);
 
   console.log(`\nУстановка завершена.
 1. Перезапустите выбранный AI-клиент.

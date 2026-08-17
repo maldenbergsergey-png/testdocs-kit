@@ -110,5 +110,12 @@ Confirm the target Jira instance, project, TMS product, case identifiers, and ex
 
 - Prefer read-only credentials or a read-only tool allowlist for onboarding and analysis.
 - Keep tokens, passwords, cookies, and private keys outside the repository, prompts, examples, and committed configuration.
+- Store browser-session cookies only in a service-specific private file, restrict them to the configured origin, and never return their values through MCP tools.
 - Enable write tools only for users who need publication and keep write approvals enabled.
 - Scope project configuration to trusted projects and company-approved servers.
+
+## Browser-session authentication
+
+Treat `AUTH_REQUIRED` as a recoverable authentication state, not as missing capability. Ask the user to complete the exact `npm run auth -- jira|confluence` browser flow returned by the connector, then retry the original read once.
+
+Do not repeatedly open authentication while the stored session remains valid. Do not expose, request in chat, summarize, or log browser cookies or session-file contents. A normal `403` with an authenticated JSON response means insufficient permission and must not be treated as an expired session. Reauthenticate only for `401`, an authentication redirect, an explicit authentication-denied signal, a missing session, or a user-requested forced refresh.

@@ -64,6 +64,7 @@ For a request such as “check whether cases for ISSUE-123 need actualization”
 
 ## Failure and fallback
 
+- `AUTH_REQUIRED`: ask the user to complete the exact browser-auth command returned by the connector, then retry the original read once. Never request or display cookies.
 - `NOT_FOUND`: report the exact reference and instance checked.
 - `PERMISSION_DENIED`: report the missing access without claiming absence.
 - `CAPABILITY_UNAVAILABLE`: name the missing capability and request manual content or an export.
