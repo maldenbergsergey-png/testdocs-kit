@@ -8,7 +8,7 @@
 
 - Codex в приложении ChatGPT, CLI и IDE;
 - Claude Code;
-- OpenCode V2 и старый формат OpenCode;
+- стабильный OpenCode и экспериментальный OpenCode V2;
 - другие клиенты, которые поддерживают MCP и стандарт Agent Skills.
 
 ## Установка одной командой
@@ -62,7 +62,7 @@ npm run setup
 | --- | --- | --- |
 | Codex | `/mcp` или `codex mcp list` | `/skills` или ввод `$` |
 | Claude Code | `/mcp` или `claude mcp list` | ввести `/generate-test-cases` |
-| OpenCode | `/connect` или `opencode2 mcp list` | ввести `/generate-test-cases` |
+| OpenCode | `opencode mcp list` или `opencode2 mcp list` | ввести `/generate-test-cases` |
 | Другой клиент | по инструкции клиента | проверить каталог Agent Skills |
 
 ## Что делает установщик
@@ -149,14 +149,17 @@ JIRA_API_VERSION=2
 
 Установщик изменяет глобальный `~/.config/opencode/opencode.json`:
 
-- для OpenCode V2 добавляет серверы в `mcp.servers`;
-- если обнаружена старая структура, сохраняет совместимый legacy-формат;
+- для стабильного `opencode` добавляет серверы непосредственно в `mcp`;
+- для экспериментального `opencode2` добавляет серверы в `mcp.servers`;
+- автоматически определяет установленный клиент и исправляет конфиг, созданный версией Testdocs Kit 0.2.0;
 - перед изменением создаёт резервную копию;
-- запрещает Jira write-инструменты через permissions.
+- проверяет итоговый конфиг командой клиента.
 
-Если существующий файл содержит JSONC-комментарии или нестандартный JSON, установщик не перезаписывает его. Готовый безопасный фрагмент сохраняется в `client-snippets/opencode-v2.json`.
+Write-инструменты не требуют отдельного запрета в OpenCode: они не регистрируются самим Jira MCP, пока в закрытом конфиге Testdocs Kit явно не разрешена запись. Установщик всегда оставляет её выключенной.
 
-Официальные справки: [Skills в OpenCode](https://opencode.ai/v2/docs/skills) и [MCP в OpenCode](https://opencode.ai/v2/docs/mcp-servers).
+Если существующий файл содержит JSONC-комментарии или нестандартный JSON, установщик не перезаписывает его. Готовый безопасный фрагмент сохраняется в `client-snippets/opencode-stable.json` или `client-snippets/opencode-v2.json`.
+
+Официальные справки: [Skills](https://opencode.ai/docs/skills/) и [MCP](https://opencode.ai/docs/mcp-servers/) стабильного OpenCode, а также [Skills](https://opencode.ai/v2/docs/skills) и [MCP](https://opencode.ai/v2/docs/mcp-servers) OpenCode V2.
 
 ### Другие MCP-клиенты
 
@@ -272,6 +275,13 @@ Codex и OpenCode:
 npm run setup -- --clients codex,opencode
 ```
 
+Обычно формат OpenCode определяется автоматически. Для явного выбора:
+
+```bash
+npm run setup -- --clients opencode --opencode-format stable
+npm run setup -- --clients opencode --opencode-format v2
+```
+
 Не переустанавливать зависимости:
 
 ```bash
@@ -338,6 +348,17 @@ npm --version
 ```
 
 Требуется Node.js 20 или новее.
+
+### OpenCode сообщает `Unrecognized key: permissions`
+
+Эту ошибку создавала версия Testdocs Kit 0.2.0 при установке в стабильный OpenCode. Обновите репозиторий и повторите настройку:
+
+```bash
+git pull
+npm run setup -- --clients opencode
+```
+
+Установщик удалит только добавленное им несовместимое поле, перенесёт свои MCP-серверы в правильный раздел и проверит конфиг через `opencode debug config`.
 
 ### MCP не отображается
 

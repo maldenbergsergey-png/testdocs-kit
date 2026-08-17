@@ -21,11 +21,19 @@ const MANAGED_END = "# END testdocs-kit";
 const stamp = new Date().toISOString().replace(/[:.]/g, "-");
 
 function parseArgs(argv) {
-  const result = { clients: null, force: false, skipDependencies: false, noCli: false, answers: null };
+  const result = {
+    clients: null,
+    force: false,
+    skipDependencies: false,
+    noCli: false,
+    answers: null,
+    openCodeFormat: null
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--clients") result.clients = argv[++index]?.split(",");
     else if (arg === "--answers") result.answers = argv[++index];
+    else if (arg === "--opencode-format") result.openCodeFormat = argv[++index];
     else if (arg === "--force") result.force = true;
     else if (arg === "--skip-dependencies") result.skipDependencies = true;
     else if (arg === "--no-cli") result.noCli = true;
@@ -41,6 +49,7 @@ function showHelp() {
 Параметры:
   --clients codex,claude,opencode,generic  Настроить указанные клиенты
   --answers /path/to/answers.json          Взять ответы из JSON без вопросов
+  --opencode-format stable|v2              Явно выбрать формат OpenCode
   --skip-dependencies                     Не выполнять npm ci и сборку
   --no-cli                                Не вызывать CLI клиентов
   --force                                 Сделать резервную копию конфликтующих скиллов
@@ -53,6 +62,15 @@ function normalizeClients(values) {
     if (!SUPPORTED_CLIENTS.has(client)) throw new Error(`Неподдерживаемый клиент: ${client}`);
   }
   return [...new Set(clients)];
+}
+
+function normalizeOpenCodeFormat(value) {
+  if (!value) return null;
+  const format = value.trim().toLowerCase();
+  if (!["stable", "v2"].includes(format)) {
+    throw new Error(`Неподдерживаемый формат OpenCode: ${value}. Используйте stable или v2.`);
+  }
+  return format;
 }
 
 async function ask(question, fallback = "") {
@@ -376,7 +394,16 @@ function writeManagedCodexConfig(config) {
   console.log(`Codex настроен: ${target}`);
 }
 
-function mcpServerConfig(service) {
+function stableMcpServerConfig(service) {
+  return {
+    type: "local",
+    command: [process.execPath, launcherFile, service],
+    cwd: repoRoot,
+    enabled: true
+  };
+}
+
+function v2McpServerConfig(service) {
   return {
     type: "local",
     command: [process.execPath, launcherFile, service],
@@ -386,17 +413,14 @@ function mcpServerConfig(service) {
   };
 }
 
-function openCodeSnippet(config) {
+function openCodeSnippet(config, format) {
   const servers = {};
-  if (config.jira?.enabled) servers.testdocs_jira = mcpServerConfig("jira");
-  if (config.confluence?.enabled) servers.testdocs_confluence = mcpServerConfig("confluence");
+  const buildServer = format === "v2" ? v2McpServerConfig : stableMcpServerConfig;
+  if (config.jira?.enabled) servers.testdocs_jira = buildServer("jira");
+  if (config.confluence?.enabled) servers.testdocs_confluence = buildServer("confluence");
   return {
     $schema: "https://opencode.ai/config.json",
-    mcp: { servers },
-    permissions: [
-      { action: "testdocs_jira_add_comment", resource: "*", effect: "deny" },
-      { action: "testdocs_jira_transition_issue", resource: "*", effect: "deny" }
-    ]
+    mcp: format === "v2" ? { servers } : servers
   };
 }
 
@@ -406,49 +430,122 @@ function writeJsonWithBackup(target, value) {
   fs.writeFileSync(target, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
-function mergeOpenCodeConfig(config) {
+function commandAvailable(command) {
+  return spawnSync(command, ["--version"], { stdio: "ignore" }).status === 0;
+}
+
+function detectOpenCodeFormat(data, requestedFormat) {
+  const explicit = normalizeOpenCodeFormat(
+    requestedFormat || process.env.TESTDOCS_OPENCODE_FORMAT
+  );
+  if (explicit) return explicit;
+  if (commandAvailable("opencode2")) return "v2";
+  if (commandAvailable("opencode")) return "stable";
+  if (data.mcp?.servers) return "v2";
+  return "stable";
+}
+
+function removeManagedOpenCodePermissions(data) {
+  const managedActions = new Set([
+    "testdocs_jira_add_comment",
+    "testdocs_jira_transition_issue"
+  ]);
+
+  if (Array.isArray(data.permissions)) {
+    data.permissions = data.permissions.filter((rule) => !managedActions.has(rule?.action));
+    if (!data.permissions.length) delete data.permissions;
+  }
+
+  if (data.permission && typeof data.permission === "object" && !Array.isArray(data.permission)) {
+    for (const action of managedActions) delete data.permission[action];
+    if (!Object.keys(data.permission).length) delete data.permission;
+  }
+}
+
+function ensureSafeFormatMigration(data, format) {
+  const managedNames = new Set(["testdocs_jira", "testdocs_confluence"]);
+  if (format === "stable" && data.mcp?.servers) {
+    const foreignServers = Object.keys(data.mcp.servers).filter((name) => !managedNames.has(name));
+    if (foreignServers.length) {
+      throw new Error(
+        `OpenCode-конфиг содержит V2 MCP-серверы (${foreignServers.join(", ")}). ` +
+        "Запустите установщик с --opencode-format v2 или перенесите их вручную."
+      );
+    }
+  }
+
+  if (format === "v2" && data.mcp && !data.mcp.servers) {
+    const foreignServers = Object.entries(data.mcp)
+      .filter(([name, value]) => !managedNames.has(name) && value && typeof value === "object" && value.type)
+      .map(([name]) => name);
+    if (foreignServers.length) {
+      throw new Error(
+        `OpenCode-конфиг содержит stable MCP-серверы (${foreignServers.join(", ")}). ` +
+        "Запустите установщик с --opencode-format stable или перенесите их вручную."
+      );
+    }
+  }
+}
+
+function validateOpenCodeConfig(format, noCli) {
+  if (noCli) return;
+  const command = format === "v2" ? "opencode2" : "opencode";
+  if (!commandAvailable(command)) return;
+  const result = spawnSync(command, ["debug", "config"], {
+    cwd: repoRoot,
+    stdio: "ignore"
+  });
+  if (result.status !== 0) {
+    throw new Error(
+      `Клиент ${command} отклонил созданный конфиг. Проверьте резервную копию рядом с opencode.json.`
+    );
+  }
+  console.log(`Конфигурация OpenCode проверена командой ${command} debug config.`);
+}
+
+function mergeOpenCodeConfig(config, args) {
+  const requestedFormat = args.openCodeFormat;
   const target = getOpenCodeConfigFile();
   let data = { $schema: "https://opencode.ai/config.json" };
   if (fs.existsSync(target)) {
     try {
       data = JSON.parse(fs.readFileSync(target, "utf8"));
     } catch {
-      const fallback = path.join(getConfigDir(), "client-snippets", "opencode-v2.json");
-      writeJsonWithBackup(fallback, openCodeSnippet(config));
+      const format = detectOpenCodeFormat({}, requestedFormat);
+      const fallback = path.join(getConfigDir(), "client-snippets", `opencode-${format}.json`);
+      writeJsonWithBackup(fallback, openCodeSnippet(config, format));
       console.warn(`OpenCode-конфиг содержит JSONC или нестандартный JSON. Готовый фрагмент: ${fallback}`);
       return;
     }
   }
 
-  const hasLegacyServers = data.mcp && !data.mcp.servers && Object.values(data.mcp).some(
-    (value) => value && typeof value === "object" && value.type
-  );
-  if (hasLegacyServers) {
-    data.mcp ||= {};
-    if (config.jira?.enabled) {
-      data.mcp.testdocs_jira = { type: "local", command: [process.execPath, launcherFile, "jira"], enabled: true };
-    }
+  const format = detectOpenCodeFormat(data, requestedFormat);
+  ensureSafeFormatMigration(data, format);
+  removeManagedOpenCodePermissions(data);
+  data.mcp ||= {};
+
+  if (format === "stable") {
+    if (data.mcp.servers) delete data.mcp.servers;
+    delete data.mcp.testdocs_jira;
+    delete data.mcp.testdocs_confluence;
+    if (config.jira?.enabled) data.mcp.testdocs_jira = stableMcpServerConfig("jira");
     if (config.confluence?.enabled) {
-      data.mcp.testdocs_confluence = { type: "local", command: [process.execPath, launcherFile, "confluence"], enabled: true };
+      data.mcp.testdocs_confluence = stableMcpServerConfig("confluence");
     }
-    data.permission ||= {};
-    data.permission.testdocs_jira_add_comment = "deny";
-    data.permission.testdocs_jira_transition_issue = "deny";
   } else {
-    data.mcp ||= {};
     data.mcp.servers ||= {};
-    if (config.jira?.enabled) data.mcp.servers.testdocs_jira = mcpServerConfig("jira");
-    if (config.confluence?.enabled) data.mcp.servers.testdocs_confluence = mcpServerConfig("confluence");
-    data.permissions = Array.isArray(data.permissions) ? data.permissions : [];
-    const managedActions = new Set(["testdocs_jira_add_comment", "testdocs_jira_transition_issue"]);
-    data.permissions = data.permissions.filter((rule) => !managedActions.has(rule?.action));
-    data.permissions.push(
-      { action: "testdocs_jira_add_comment", resource: "*", effect: "deny" },
-      { action: "testdocs_jira_transition_issue", resource: "*", effect: "deny" }
-    );
+    delete data.mcp.testdocs_jira;
+    delete data.mcp.testdocs_confluence;
+    delete data.mcp.servers.testdocs_jira;
+    delete data.mcp.servers.testdocs_confluence;
+    if (config.jira?.enabled) data.mcp.servers.testdocs_jira = v2McpServerConfig("jira");
+    if (config.confluence?.enabled) {
+      data.mcp.servers.testdocs_confluence = v2McpServerConfig("confluence");
+    }
   }
   writeJsonWithBackup(target, data);
-  console.log(`OpenCode настроен: ${target}`);
+  console.log(`OpenCode настроен (${format}): ${target}`);
+  validateOpenCodeConfig(format, args.noCli);
 }
 
 function claudeCommands(config) {
@@ -504,7 +601,7 @@ function writeGenericSnippet(config) {
 function configureClients(config, clients, args) {
   writeGenericSnippet(config);
   if (clients.includes("codex")) writeManagedCodexConfig(config);
-  if (clients.includes("opencode")) mergeOpenCodeConfig(config);
+  if (clients.includes("opencode")) mergeOpenCodeConfig(config, args);
   if (clients.includes("claude")) configureClaude(config, args.noCli);
 }
 
