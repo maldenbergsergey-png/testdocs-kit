@@ -96,6 +96,7 @@ test("zephyr_create_test_case sends step-level test data to the public Server AP
       },
       {
         description: "Нажать «Сохранить».",
+        testData: "Не требуются",
         expectedResult: "Объект отображается в списке."
       }
     ]
@@ -115,9 +116,9 @@ test("zephyr_create_test_case sends step-level test data to the public Server AP
       type: "STEP_BY_STEP",
       steps: [
         {
-          description: "Заполнить поля:\n• «Название»\n• «Сортировка»",
-          testData: "• Название: Тестовый объект\n• Сортировка: 501",
-          expectedResult: "• Значения отображаются в соответствующих полях\n• Флаг «Активность» установлен"
+          description: "Заполнить поля:<br>• «Название»<br>• «Сортировка»",
+          testData: "• Название: Тестовый объект<br>• Сортировка: 501",
+          expectedResult: "• Значения отображаются в соответствующих полях<br>• Флаг «Активность» установлен"
         },
         {
           description: "Нажать «Сохранить».",
@@ -172,6 +173,7 @@ test("zephyr_update_session_test_case sends only requested fields and a complete
     steps: [
       {
         description: "Открыть форму.",
+        testData: "Не требуется",
         expectedResult: "Форма открывается."
       },
       {

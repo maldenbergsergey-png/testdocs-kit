@@ -195,7 +195,7 @@ async function main() {
     server.registerTool(
       "zephyr_create_test_case",
       {
-        description: "Create one new Zephyr Scale Server/DC or compatible TM4J test case. Call only when the user explicitly asks to create or publish it now. This tool does not update existing cases. The folder must already exist; use '/' only when the user explicitly chooses the project root. Put relevant requirement/design links with readable purposes and full URLs in objective. Test data belongs to each step; omit testData when the step consumes none. In any step field, send two or more independent items as one '•' item per newline instead of flattening them with commas or semicolons. The result includes _testdocs.webUrl when a case key is returned.",
+        description: "Create one new Zephyr Scale Server/DC or compatible TM4J test case. Call only when the user explicitly asks to create or publish it now. This tool does not update existing cases. The folder must already exist; use '/' only when the user explicitly chooses the project root. Put relevant requirement/design links with readable purposes and full URLs in objective. Test data belongs to each step; omit testData when the step consumes none and never send 'Не требуется' or 'Не требуются'. Send two or more independent items as one '•' item per newline; the adapter converts those newlines to Zephyr-visible line breaks. The result includes _testdocs.webUrl when a case key is returned.",
         inputSchema: z.object({
           confirmed: z.literal(true).describe("Set true only after an explicit user request to create/publish this new case."),
           projectKey: z.string().min(1).describe("Target Jira project key, not numeric projectId."),
@@ -235,7 +235,7 @@ async function main() {
     server.registerTool(
       "zephyr_update_session_test_case",
       {
-        description: "Correct a Zephyr/TM4J test case only if this MCP process created it during the current session and the user explicitly asks to apply the correction. Previously existing, discovered, or created-in-another-session cases are rejected. Omitted fields are preserved. If steps are supplied, pass the complete final ordered step list because it replaces the current script; omit testData where no data is consumed. In any step field, send two or more independent items as one '•' item per newline. The result includes _testdocs.webUrl.",
+        description: "Correct a Zephyr/TM4J test case only if this MCP process created it during the current session and the user explicitly asks to apply the correction. Previously existing, discovered, or created-in-another-session cases are rejected. Omitted fields are preserved. If steps are supplied, pass the complete final ordered step list because it replaces the current script; omit testData where no data is consumed and never send 'Не требуется' or 'Не требуются'. Send two or more independent items as one '•' item per newline; the adapter converts those newlines to Zephyr-visible line breaks. The result includes _testdocs.webUrl.",
         inputSchema: z.object({
           confirmed: z.literal(true).describe("Set true only after the user explicitly asks to apply this correction now."),
           testCaseKey: z.string().min(1).describe("Key returned by zephyr_create_test_case during this MCP session."),

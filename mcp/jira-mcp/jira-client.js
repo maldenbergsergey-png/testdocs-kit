@@ -423,10 +423,21 @@ async function zephyrGetAllTestCases({ projectId, projectKey, fields }) {
   return result.results || [];
 }
 
+function toTmsRichText(value) {
+  return String(value).replace(/\r\n?/g, "\n").split("\n").join("<br>");
+}
+
+function isEmptyTestData(value) {
+  return /^(?:не\s+требуется|не\s+требуются|нет|—|-)\.?$/iu.test(String(value).trim());
+}
+
 function normalizeTestStep({ description, testData, expectedResult }) {
-  const normalized = { description, expectedResult };
-  if (typeof testData === "string" && testData.trim()) {
-    normalized.testData = testData;
+  const normalized = {
+    description: toTmsRichText(description),
+    expectedResult: toTmsRichText(expectedResult)
+  };
+  if (typeof testData === "string" && testData.trim() && !isEmptyTestData(testData)) {
+    normalized.testData = toTmsRichText(testData);
   }
   return normalized;
 }
@@ -459,8 +470,8 @@ async function zephyrCreateTestCase({
     projectKey,
     folder,
     name,
-    ...(objective ? { objective } : {}),
-    ...(precondition ? { precondition } : {}),
+    ...(objective ? { objective: toTmsRichText(objective) } : {}),
+    ...(precondition ? { precondition: toTmsRichText(precondition) } : {}),
     ...(status ? { status } : {}),
     ...(priority ? { priority } : {}),
     ...(labels?.length ? { labels } : {}),
@@ -534,8 +545,8 @@ async function zephyrUpdateSessionTestCase(input) {
 
   const payload = {
     ...(hasOwn(input, "name") ? { name } : {}),
-    ...(hasOwn(input, "objective") ? { objective } : {}),
-    ...(hasOwn(input, "precondition") ? { precondition } : {}),
+    ...(hasOwn(input, "objective") ? { objective: objective ? toTmsRichText(objective) : objective } : {}),
+    ...(hasOwn(input, "precondition") ? { precondition: precondition ? toTmsRichText(precondition) : precondition } : {}),
     ...(hasOwn(input, "priority") ? { priority } : {}),
     ...(hasOwn(input, "labels") ? { labels } : {}),
     ...(hasOwn(input, "customFields") ? { customFields } : {}),

@@ -85,7 +85,7 @@ Render every setup step and test step directly as a Markdown table with exactly 
 
 Never wrap an actual case or its table in a fenced block. For several cases, separate them with Markdown headings such as `### Кейс 1`, while keeping every field and table directly rendered.
 
-Inside a Markdown table cell, render two or more independent items with `<br>•`, for example `Заполнить поля:<br>• «Название»<br>• «Сортировка»`. When publishing through a TMS tool, send the equivalent text with one `•` item per newline. Do not send literal `<br>` into Zephyr unless the connected tool explicitly requires HTML.
+Inside a Markdown table cell, render two or more independent items with `<br>•`, for example `Заполнить поля:<br>• «Название»<br>• «Сортировка»`. When publishing through the bundled TMS tool, send the equivalent text with one `•` item per newline; the adapter converts it to visible Zephyr line breaks. Omit `testData` entirely when unused and never send `Не требуется` or `Не требуются` as its value.
 
 Render every complete or partial test case using the exact field names and order defined under `Обязательный формат Zephyr` in `test-case-standard.md`. Never use `Name`, `Objective`, `Preconditions`, `Steps`, `Expected result`, `Type / Platform`, `Lifecycle status`, `Scope`, `Assumptions`, `Scenario inventory`, or `Coverage notes` as output labels.
 
