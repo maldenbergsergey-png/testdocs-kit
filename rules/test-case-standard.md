@@ -1,28 +1,46 @@
 # Test case standard
 
-**Status:** proposed organizational standard derived from the supplied instructions and reusable corpus patterns; pending human review.
+**Status:** approved organizational standard.
 
 Use this standard to create test cases that can be executed repeatedly and maintained as part of a regression model. A case must preserve the intent of the supplied requirement while avoiding accidental dependence on one project, environment, or implementation.
 
-## Required case shape
+## Обязательный формат Zephyr
 
-Use the following TMS structure:
+Каждый новый или полностью предлагаемый к актуализации тест-кейс выводи в одном порядке и с русскими названиями полей:
 
-```text
-Name
-Objective
-Preconditions / setup
-Type and platform tags
-Lifecycle status
-Priority
-Postconditions when applicable
-Path
-Steps
-Step-level test data when applicable
-Expected result for every step
+```markdown
+**Название:** [краткое название пользовательского сценария]
+
+**Цель:** [что проверяется]
+
+**Предусловия:**
+
+- [необходимый доступ, состояние или подготовка]
+
+**Тестовые данные:** [данные либо «Не требуются»]
+
+**Путь:** [относительный web-путь или путь навигации в приложении]
+
+| № | Шаг | Ожидаемый результат |
+| --- | --- | --- |
+| 1 | [одно понятное действие] | [наблюдаемый результат этого действия] |
+
+**Постусловия:** [очистка/восстановление либо «Не требуются»]
+
+**Теги:** `[тип]`, `[платформа]`
+
+**Статус:** `Черновик`
+
+**Приоритет:** [подтверждённое значение либо `Не определён`]
 ```
 
-Name, objective, preconditions, status, priority, steps, and expected results are mandatory fields in the supplied TMS instructions. Type and platform tags and path are also required for classification and matrix traceability. Postconditions and test data are required when the scenario depends on them.
+Названия `Название`, `Цель`, `Предусловия`, `Тестовые данные`, `Путь`, `Шаг`, `Ожидаемый результат`, `Постусловия`, `Теги`, `Статус` и `Приоритет` обязательны и не переводятся на английский. Порядок разделов обязателен. Если данные или постусловия не нужны, явно пиши `Не требуются`, чтобы структура оставалась одинаковой.
+
+В таблице одна строка содержит ровно три отдельные колонки: номер, действие и ожидаемый результат. Не соединяй действие с результатом стрелкой, тире, точкой с запятой или общей фразой в одной колонке. Не выноси ожидаемые результаты в отдельный список после шагов.
+
+По умолчанию пиши содержание кейса на русском языке. Видимые названия элементов интерфейса, продуктов и статусы сохраняй в исходном написании. Другой язык содержания используй только по прямому запросу пользователя, но названия полей Zephyr оставляй русскими.
+
+Не добавляй в тело кейса служебные разделы `Scope`, `Assumptions`, `Scenario inventory`, `Coverage notes`, `Priority rationale`, `Lifecycle status` или аналогичные аналитические комментарии. Источники, матрицу покрытия и регрессионные связи сохраняй в поддерживаемых полях TMS или показывай отдельно только по прямому запросу.
 
 ## Core qualities
 
@@ -56,19 +74,19 @@ Apply the minimum-sufficient-detail rule: include a detail when omitting it woul
 
 ## Title
 
-Name the behavior and condition being verified. Make the title specific enough to distinguish the scenario without reading hidden context. Avoid vague verbs such as “check” and generic subjects such as “functionality.”
+Name the behavior and condition being verified. Make the title specific enough to distinguish the scenario without reading hidden context. Avoid vague verbs such as “check” and generic subjects such as “functionality.” Keep the title short and user-facing; do not put a URL, requirement summary, type, priority, or rationale in it.
 
-Build the title from broad to narrow:
+Build the title from broad to narrow using a full stop between short segments:
 
 ```text
-Page / Screen / Feature → Block → optional Element / Scenario
+Страница или функция. Блок. Сценарий
 ```
 
 The title must align with the coverage-matrix hierarchy and preserve its parent page and block. For integration cases, a direction such as `[Source] → [Target]: [Contract behavior]` may replace the page hierarchy when supported by the project structure. Omit unknown segments rather than inventing them.
 
 ## Objective and traceability
 
-State what is being verified and the case's boundary. Include links or identifiers for the requirements and designs on which the case is based. Do not invent a reference and do not repeat every step in the objective.
+State what is being verified and the case's boundary. Keep requirement and design links in the target TMS traceability fields when they are available. Include a compact source identifier in the objective only when no dedicated relation exists and it is needed for traceability. Do not invent a reference and do not repeat every step in the objective.
 
 If behavioral requirements are unavailable, label correctness as unverified rather than inferring intended behavior from an existing case alone.
 
@@ -114,6 +132,8 @@ Do not split mechanically when several assertions describe the same observable o
 
 Write numbered actions in execution order.
 
+- Use the exact Markdown table header `| № | Шаг | Ожидаемый результат |` in chat and document output.
+- Keep the action and its expected result in separate table cells.
 - Begin each step with an unambiguous action.
 - Include the target and necessary input or selection.
 - Use the stable visible name of a section, field, or control when it is needed to find the target.
@@ -157,6 +177,8 @@ Technical detail is justified only when all three conditions hold:
 Use a reusable setup procedure when the same deterministic preparation is needed by multiple cases, especially when content or test data must be created, configured, or published through an administration interface. Keep the downstream case focused on the behavior it actually verifies.
 
 A setup procedure is a dependency, not proof of product coverage. If the administration behavior is itself under test, create a focused administration-interface case instead of treating its verification as invisible setup. Apply `reusable-setup-rules.md` for the setup output, dependency, cleanup, and Zephyr mapping.
+
+Do not generate functional administration-interface cases merely because data is prepared through an administration interface. Generate them only when the user or an authoritative requirement explicitly places creation, editing, validation, publication, permissions, or other administration behavior in the test scope. Otherwise, provide one reusable preparation procedure and keep the primary cases on the user-facing surface.
 
 ## Regression reusability
 
@@ -206,4 +228,6 @@ Do not include:
 
 ## Unresolved-policy fallback
 
-When a requested case depends on an unresolved placeholder, identify the gap in the output. Use only facts and conventions present in the supplied context. Ask for a decision when the gap materially changes the case; otherwise use a neutral portable structure and label it as such.
+When a requested case depends on an unresolved placeholder, identify the gap after the case in a compact `Требуется уточнить` list. Do not repeat the gap in several sections or add speculative rationale. Use only facts and conventions present in the supplied context.
+
+Do not produce a ready case when the missing fact changes the actions or observable result, for example an unknown sort direction, validation rule, transition target, or permission outcome. Ask for the fact or omit that scenario from the ready set. When a safe partial draft remains useful, use `Не определён` only in the affected metadata field and keep status `Черновик`.

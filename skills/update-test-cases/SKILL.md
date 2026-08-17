@@ -41,29 +41,32 @@ When an external issue or case reference is supplied, use [`../collect-test-cont
 5. Recheck the proposed case for a focused scenario, repeatable setup, observable results, and independence from transient data or execution order.
 6. Recommend a split instead of expanding the baseline when the new behavior forms an independent regression scenario.
 7. Present the proposal/diff before the complete proposed version.
-8. Label the result `PROPOSAL — NOT APPLIED` and request human review.
-9. After explicit approval, use an external write tool only if the user also requests publication and a suitable tool is available.
+8. Render the complete proposed version in the exact Russian Zephyr format from `test-case-standard.md`, with separate `Шаг` and `Ожидаемый результат` columns.
+9. Label the result `ПРЕДЛОЖЕНИЕ — НЕ ПРИМЕНЕНО` and request human review.
+10. After explicit approval, use an external write tool only if the user also requests publication and a suitable tool is available.
 
 ## Output
 
 ```text
-Status: PROPOSAL — NOT APPLIED
-Baseline: case identifier/version or supplied-content description
-Change context: ...
-Missing information or conflicts: ...
+Статус: ПРЕДЛОЖЕНИЕ — НЕ ПРИМЕНЕНО
+Исходный кейс: идентификатор/версия или описание предоставленного содержимого
+Основание изменения: ...
+Недостающая информация или противоречия: ...
 
-Proposed diff
-- ADD: content, location, reason
-- MODIFY: before, after, location, reason
-- REMOVE: content, location, reason
-- KEEP: unaffected sections and reason when useful
+Предлагаемые изменения
+- ДОБАВИТЬ: содержимое, место, причина
+- ИЗМЕНИТЬ: было, стало, место, причина
+- УДАЛИТЬ: содержимое, место, причина
+- ОСТАВИТЬ: неизменяемые разделы и причина, когда полезно
 
-Complete proposed test case
+Полная предлагаемая версия
 ...
 
-Approval boundary
-- No external changes have been made.
-- Publication requires explicit user approval/request.
+Граница применения
+- Внешние изменения не выполнялись.
+- Для публикации требуется явное подтверждение пользователя.
 ```
+
+Keep analysis outside the complete proposed case. Never combine an action and expected result in one line or cell.
 
 Do not propose a complete rewrite without the specific justification required by `update-rules.md`. Never automatically delete a case from an external system.

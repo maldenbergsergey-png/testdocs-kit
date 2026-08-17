@@ -19,7 +19,8 @@ Review against approved rules and supplied requirements. Do not treat personal p
 - **Reusability:** the case avoids hidden order, transient data, temporary environments, and incidental implementation details that prevent repeated regression execution.
 - **Data safety:** test data is explicit enough to reproduce the scenario and contains no invented secrets, production records, or personal data.
 - **General rule compliance:** the case follows all other applicable approved files under `rules/`.
-- **TMS completeness:** name, objective, preconditions, required tags, status, priority, path, steps, and step-level expected results are present; test data and postconditions are present when needed.
+- **TMS completeness:** the case uses the exact Russian Zephyr fields and order from `test-case-standard.md`; test data and postconditions are explicit even when they are `Не требуются`.
+- **Step/result separation:** every numbered row has separate `Шаг` and `Ожидаемый результат` columns; an arrow or combined action/result sentence is a format defect.
 - **Matrix alignment:** the name and path preserve the supplied page, block, structure, and scenario hierarchy.
 - **Type fit:** `e2e`, `overview`, `block`, `cross`, or `integration` matches the case purpose and depth; step count outside the recommended range triggers a decomposition review, not automatic rejection.
 - **Classification:** at least one supported type tag and one supported platform tag are present.
@@ -61,5 +62,7 @@ When only behavioral requirements are missing, complete the structural review if
 - Do not require positive, negative, or boundary scenarios without requirement or risk evidence.
 - Treat vague results such as “standard behavior,” “works correctly,” or “matches the design” as findings when they do not state an observable comparison criterion.
 - Treat UI assertions about API calls, database writes, or internal parameters as findings unless the technical surface is explicitly required, observable, and appropriate to the case layer.
+- Treat English, mixed, missing, or reordered Zephyr field labels as findings unless the reviewed source is a legacy case and structural migration is explicitly outside the review scope.
+- Treat analysis scaffolding embedded in a test case as a finding when it makes execution harder or duplicates TMS metadata.
 - Do not fully rewrite a case when the user requested review only.
 - Do not change or publish external data as part of review.

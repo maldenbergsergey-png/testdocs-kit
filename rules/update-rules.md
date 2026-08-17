@@ -71,6 +71,8 @@ When the case consumes or provides reusable setup:
 
 Do not rewrite an entire case by default. Preserve unaffected content and formatting where possible. A complete rewrite requires a specific reason, such as an approved structural migration or a current structure that prevents a safe localized update. Show how the rewrite preserves supported coverage.
 
+The approved Russian Zephyr format in `test-case-standard.md` is the target format for every complete proposed version. Migrating an existing legacy format is a structural change: show it separately in the proposed diff and do not publish it without human approval.
+
 ## Context and conflict handling
 
 - Require the supplied current case and new authoritative context.

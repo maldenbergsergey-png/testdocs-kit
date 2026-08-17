@@ -1,12 +1,12 @@
 # Examples
 
-These deliberately small, anonymized examples demonstrate the repository's architecture and output shapes. They are not a complete QA standard and do not replace `rules/`.
+These deliberately small, anonymized examples demonstrate the repository's architecture and output shapes. Test-case examples follow the mandatory Russian Zephyr format from `rules/test-case-standard.md`; other example content does not replace `rules/`.
 
 ## Good examples
 
-- [`good/minimal-test-case.md`](good/minimal-test-case.md) — a compact, observable test case.
+- [`good/minimal-test-case.md`](good/minimal-test-case.md) — a compact, observable test case in the mandatory Zephyr format.
 - [`good/reusable-regression-test-case.md`](good/reusable-regression-test-case.md) — a focused case designed for repeated regression execution.
-- [`good/reusable-regression-test-case-ru.md`](good/reusable-regression-test-case-ru.md) — a Russian-language case using the style derived from the supplied corpus.
+- [`good/reusable-regression-test-case-ru.md`](good/reusable-regression-test-case-ru.md) — another Russian-language regression example in the same mandatory format.
 - [`good/shared-admin-setup-and-consumer-ru.md`](good/shared-admin-setup-and-consumer-ru.md) — a reusable Zephyr-style administration setup with an explicit output and a focused consuming case.
 - [`good/regression-model-record.md`](good/regression-model-record.md) — a traceable mapping of a reusable case into regression coverage.
 - [`good/coverage-matrix-record.md`](good/coverage-matrix-record.md) — a matrix scenario linked to a case without duplicating execution steps.

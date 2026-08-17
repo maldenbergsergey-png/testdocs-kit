@@ -69,20 +69,21 @@ Keep raw external values alongside any neutral interpretation. Do not silently t
 Map any supported test-management product to the neutral test-case fields:
 
 ```text
-Stable case identifier and version
-Name / title
-Objective
-Preconditions
-Type and platform tags
-Lifecycle status
-Priority
-Path
-Steps, test data, and expected results
-Postconditions
-Folder or hierarchy
-Requirement and issue links
-Comments and change reason when updating
-Reusable setup or called-step dependencies
+Стабильный идентификатор и версия кейса
+Название
+Цель
+Предусловия
+Тестовые данные
+Путь
+Шаг и ожидаемый результат в отдельных полях каждой строки
+Постусловия
+Теги типа и платформы
+Статус
+Приоритет
+Папка или иерархия
+Связи с требованиями и задачами
+Комментарии и причина изменения при актуализации
+Переиспользуемая подготовка или вызываемые общие шаги
 ```
 
 Do not assume that test cases are Jira issues. Some products store them as separate test objects; others represent them through Jira issue types or vendor-specific entities. Use the capabilities exposed by the connected MCP server and preserve unsupported fields as explicit gaps.

@@ -1,34 +1,29 @@
-# Reusable regression test case example
+# Пример переиспользуемого регрессионного тест-кейса
 
-> Demonstration only; fictional behavior is included to show the output shape and is not a binding product rule.
+> Демонстрационный обезличенный пример. Вымышленное требование `R-EXAMPLE-17` определяет обязательность названия и относит создание объекта к критичному пользовательскому пути.
 
-**Source behavior:** Requirement `R-EXAMPLE-17` states that an item name is required. Saving an item with an empty name displays validation and does not create the item. Required-name validation protects a critical creation path in this fictional example.
+**Название:** Создание объекта. Запрет сохранения без названия
 
-**Title:** Reject saving an item with an empty required name
+**Цель:** Проверить невозможность создать объект без значения обязательного поля «Название».
 
-**Description:** Verify that a signed-in user cannot create an item without the required name.
+**Предусловия:**
 
-**Tags:** `block`, `web`
+- Пользователь авторизован.
+- Открыта форма создания объекта.
 
-**Proposed status:** `Готов к ревью`
+**Тестовые данные:** Поле «Название» не содержит символов.
 
-**Priority:** `High` — failure would allow invalid data on the supplied critical path.
+**Путь:** `/items/new`
 
-**Path:** `/items/new`
-
-**Preconditions:**
-
-- The user is signed in.
-- The new-item form is open.
-- The item list does not contain an unnamed item created by this test.
-
-**Test data:** Name containing no characters
-
-| Step | Action | Expected result |
+| № | Шаг | Ожидаемый результат |
 | --- | --- | --- |
-| 1 | Leave the Name field empty. | The Name field remains empty. |
-| 2 | Select **Save**. | Required-field validation is displayed for Name, the form remains open, and no item is added to the item list. |
+| 1 | Оставить поле «Название» пустым. | Поле «Название» не содержит введённого значения. |
+| 2 | Нажать кнопку «Сохранить». | Для поля «Название» отображается признак обязательности. Форма остаётся открытой. Объект не добавляется в список. |
 
-**Regression notes:** The case verifies one stable validation contract, has no dependency on another case, uses no transient identifier, and produces an observable result. Exact validation text is intentionally omitted because the source behavior does not define it.
+**Постусловия:** Не требуются.
 
-**Postcondition:** None; the scenario creates no item.
+**Теги:** `block`, `web`
+
+**Статус:** `Готов к ревью`
+
+**Приоритет:** `High`

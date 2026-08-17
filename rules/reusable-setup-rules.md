@@ -20,20 +20,22 @@ Keep preparation inline when it is short, unique to one case, or is itself the a
 Every reusable setup procedure must define:
 
 ```text
-Name and purpose
-Required access and starting point
-Input data
-Ordered preparation actions with observable results
-Output passed to dependent cases
-Cleanup or restoration when required
-Source or requirement when behavior is asserted
+Название
+Назначение
+Требуемый доступ и начальная точка
+Входные данные
+Шаги подготовки в таблице «№ | Шаг | Ожидаемый результат»
+Выход для зависимых кейсов
+Очистка
+Источник или требование, когда процедура утверждает поведение
 ```
 
 Name it by the state it produces, for example `Prepare data: published content item`. Do not present a helper procedure as a complete regression test unless it independently verifies supported administration behavior.
 
 ## Writing setup steps
 
-- Use the same simple action/result style as a test case.
+- Use the same Russian labels and the same three-column `№ | Шаг | Ожидаемый результат` table as a test case.
+- Never combine an action and its result with an arrow or in one cell.
 - Identify the administration section and stable visible controls needed to find the target.
 - Include only actions required to create the promised output state.
 - Keep credentials and secrets outside the procedure; state the required role or access instead.
@@ -79,6 +81,7 @@ If setup can be safely reused across several cases, state the validity boundary.
 - Record the setup as a dependency of the consuming scenarios.
 - Do not count a helper procedure as functional coverage of the administration interface.
 - Create a separate focused case when creation, editing, publication, permissions, or validation in the administration interface is itself a requirement under test.
+- Do not create administration-interface test cases by default when the interface is used only to prepare data for a user-facing case.
 - When several cases consume one setup, keep their scenario results independent so one shared dependency does not merge their coverage intent.
 
 ## Zephyr mapping
