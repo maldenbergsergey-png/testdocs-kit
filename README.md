@@ -11,36 +11,53 @@
 - стабильный OpenCode и экспериментальный OpenCode V2;
 - другие клиенты, которые поддерживают MCP и стандарт Agent Skills.
 
-## Установка одной командой
+## Быстрая установка на macOS
 
 Понадобятся:
 
-- Git;
-- Node.js 20 или новее;
+- Git — на новом Mac при необходимости выполните `xcode-select --install`;
 - хотя бы один поддерживаемый AI-клиент;
 - адрес и учётные данные Jira и Confluence, если нужны интеграции.
 
-### 1. Скачать и запустить установщик
-
-Через SSH:
+Для первого запуска используйте HTTPS — для него не требуется SSH-ключ GitHub:
 
 ```bash
-git clone git@github.com:maldenbergsergey-png/testdocs-kit.git
-cd testdocs-kit
-npm run setup
+git clone https://github.com/maldenbergsergey-png/testdocs-kit.git && cd testdocs-kit && bash setup-macos.sh
 ```
 
-Через HTTPS:
+`setup-macos.sh` автоматически:
+
+1. Проверяет Git, Node.js и npm.
+2. Если Node.js/npm отсутствуют или версия Node.js ниже 20, предлагает установить Homebrew и Node.js.
+3. После установки запускает обычный `npm run setup`.
+
+Homebrew перед установкой показывает план изменений и может запросить пароль macOS. Его официальный установщик описан на [brew.sh](https://brew.sh/). Если Node.js уже установлен, bootstrap ничего не переустанавливает.
+
+Проверить зависимости без запуска настройки:
 
 ```bash
-git clone https://github.com/maldenbergsergey-png/testdocs-kit.git
-cd testdocs-kit
-npm run setup
+bash setup-macos.sh --check
 ```
 
-Команда одинаковая для macOS, Linux и Windows PowerShell.
+SSH используйте только после настройки ключа в GitHub:
 
-### 2. Ответить на вопросы установщика
+```bash
+git clone git@github.com:maldenbergsergey-png/testdocs-kit.git && cd testdocs-kit && bash setup-macos.sh
+```
+
+Важно использовать `&&`, а не три независимые команды. Тогда настройка не продолжится, если клонирование или переход в каталог завершились ошибкой.
+
+## Ручная установка и другие системы
+
+Для Linux и Windows установите [актуальную LTS-версию Node.js](https://nodejs.org/en/download) и Git, затем выполните:
+
+```bash
+git clone https://github.com/maldenbergsergey-png/testdocs-kit.git && cd testdocs-kit && npm run setup
+```
+
+Минимально поддерживается Node.js 20. Для новой установки рекомендуется актуальная LTS-версия.
+
+### Ответить на вопросы установщика
 
 Установщик попросит:
 
@@ -52,7 +69,7 @@ npm run setup
 
 Пароли и токены вводятся скрыто. Они не записываются в репозиторий и не попадают в конфигурации AI-клиентов.
 
-### 3. Перезапустить AI-клиент
+### Перезапустить AI-клиент
 
 После сообщения `Установка завершена` полностью перезапустите выбранный клиент.
 

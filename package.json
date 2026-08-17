@@ -1,16 +1,17 @@
 {
   "name": "testdocs-kit",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": true,
   "type": "module",
   "description": "Переносимый набор QA-скиллов и MCP-серверов для тестовой документации",
   "scripts": {
     "setup": "node scripts/install.mjs",
     "check": "node scripts/check-install.mjs",
+    "test:bootstrap": "node scripts/test-bootstrap.mjs",
     "test:installer": "node scripts/test-installer.mjs",
     "test:mcp": "npm --prefix mcp/jira-mcp test",
     "test:format": "node scripts/validate-test-case-format.mjs",
-    "test": "npm run test:format && npm run test:mcp && npm run test:installer"
+    "test": "npm run test:format && npm run test:bootstrap && npm run test:mcp && npm run test:installer"
   },
   "engines": {
     "node": ">=20"
