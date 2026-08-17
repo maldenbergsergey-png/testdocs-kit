@@ -56,7 +56,7 @@ function showHelp() {
   --answers /path/to/answers.json          Взять ответы из JSON без вопросов
   --opencode-format stable|v2              Явно выбрать формат OpenCode
   --ca-file /path/to/ca-bundle.pem         Дополнительные доверенные CA в формате PEM
-  --skip-dependencies                     Не выполнять npm ci и сборку
+  --skip-dependencies                     Не выполнять npm ci; Confluence всё равно пересобирается
   --no-cli                                Не вызывать CLI клиентов
   --skip-browser-auth                     Не открывать браузер для session-входа
   --force                                 Сделать резервную копию конфликтующих скиллов
@@ -321,19 +321,37 @@ function run(command, commandArgs, options = {}) {
 }
 
 function installDependencies(skip, config) {
+  const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+  const jiraDir = path.join(repoRoot, "mcp", "jira-mcp");
+  const confluenceDir = path.join(repoRoot, "mcp", "confluence-mcp");
+
   if (skip) {
     console.log("Установка зависимостей пропущена.");
+    if (config.jira?.enabled) {
+      const jiraSdk = path.join(jiraDir, "node_modules", "@modelcontextprotocol", "sdk", "package.json");
+      if (!fs.existsSync(jiraSdk)) {
+        throw new Error("Зависимости Jira MCP не установлены. Повторите команду без --skip-dependencies.");
+      }
+    }
+    if (config.confluence?.enabled) {
+      const confluenceSdk = path.join(confluenceDir, "node_modules", "@modelcontextprotocol", "sdk", "package.json");
+      const typescript = path.join(confluenceDir, "node_modules", ".bin", process.platform === "win32" ? "tsc.cmd" : "tsc");
+      if (!fs.existsSync(confluenceSdk) || !fs.existsSync(typescript)) {
+        throw new Error("Зависимости Confluence MCP не установлены. Повторите команду без --skip-dependencies.");
+      }
+      console.log("Пересобираю Confluence MCP из актуальных исходников...");
+      run(npm, ["run", "build"], { cwd: confluenceDir });
+    }
     return;
   }
-  const npm = process.platform === "win32" ? "npm.cmd" : "npm";
   if (config.jira?.enabled) {
     console.log("\nУстанавливаю зависимости Jira MCP...");
-    run(npm, ["ci"], { cwd: path.join(repoRoot, "mcp", "jira-mcp") });
+    run(npm, ["ci"], { cwd: jiraDir });
   }
   if (config.confluence?.enabled) {
     console.log("\nУстанавливаю и собираю Confluence MCP...");
-    run(npm, ["ci"], { cwd: path.join(repoRoot, "mcp", "confluence-mcp") });
-    run(npm, ["run", "build"], { cwd: path.join(repoRoot, "mcp", "confluence-mcp") });
+    run(npm, ["ci"], { cwd: confluenceDir });
+    run(npm, ["run", "build"], { cwd: confluenceDir });
   }
 }
 

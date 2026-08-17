@@ -67,6 +67,10 @@ try {
       process.stderr.write(result.stderr || "");
       throw new Error(`Установщик завершился с кодом ${result.status} на попытке ${attempt}`);
     }
+    assert(
+      result.stdout.includes("Пересобираю Confluence MCP из актуальных исходников"),
+      "С флагом --skip-dependencies не пересобран Confluence MCP."
+    );
   }
 
   const privateConfig = path.join(testRoot, "private-config", "config.json");
