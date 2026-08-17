@@ -34,6 +34,14 @@ Use this standard to create test cases that can be executed repeatedly and maint
 
 В таблице одна строка содержит ровно четыре отдельные колонки: номер, действие, тестовые данные и ожидаемый результат. Не соединяй действие с результатом стрелкой, тире, точкой с запятой или общей фразой в одной колонке. Не выноси ожидаемые результаты или тестовые данные в отдельный список после шагов.
 
+Если одна ячейка содержит два и более самостоятельных элемента — например, несколько полей формы, набор значений или несколько наблюдаемых признаков результата — оформляй их вертикальным маркированным списком. В Zephyr/TM4J передавай каждый пункт с новой строки с маркером `•`. В Markdown-таблице используй `<br>•`, чтобы список сохранился внутри ячейки. Не склеивай перечисление запятыми или точками с запятой. Один короткий элемент оставляй обычной строкой; не создавай список ради оформления.
+
+Пример одной строки в чате:
+
+| № | Шаг | Тестовые данные | Ожидаемый результат |
+| --- | --- | --- | --- |
+| 1 | Заполнить поля:<br>• «Название»<br>• «Сортировка» | • Название: `Тестовый объект`<br>• Сортировка: `501` | • Значения отображаются в соответствующих полях<br>• Флаг «Активность» установлен по умолчанию |
+
 В чате выводи кейс как обычную разметку Markdown. Не заключай весь кейс, его поля или таблицу шагов в тройные обратные кавычки и не используй fenced code block: таблица должна отрисоваться и быть пригодной для копирования по ячейкам.
 
 По умолчанию пиши содержание кейса на русском языке. Видимые названия элементов интерфейса, продуктов и статусы сохраняй в исходном написании. Другой язык содержания используй только по прямому запросу пользователя, но названия полей Zephyr оставляй русскими.
@@ -69,6 +77,18 @@ The case is self-explanatory only when the tester can determine from it:
 Links to requirements and designs support the case but do not replace executable instructions. Do not force the tester to reconstruct the path or expected behavior from attachments when the essential information fits in the case.
 
 Apply the minimum-sufficient-detail rule: include a detail when omitting it would create a real choice, ambiguity, or reproducibility problem; omit it when it merely explains the implementation or repeats an obvious visible state. Simplicity means low cognitive load, not missing setup or vague results.
+
+## Source-field completeness
+
+Before drafting cases from a requirement, issue, specification, form description, table, API schema, or administration page, make a lossless internal inventory of every explicitly defined field, control, tab, default, validation, visibility condition, permission, state, and constraint in the requested scope.
+
+Account for every inventory item with exactly one disposition:
+
+- `COVERED` — represented by a case, step, datum, precondition, or observable result;
+- `EXCLUDED_WITH_REASON` — intentionally outside the requested scenario or persistent coverage, with a source-backed reason;
+- `AMBIGUOUS` — the source names the item but does not define behavior needed for an executable assertion.
+
+Do not silently omit an item and do not use “прочие поля” as a substitute for inventory. Do not mechanically create one case or one step per field: group related fields into the smallest coherent user scenario while preserving failure diagnosis. Put `AMBIGUOUS` items once under `Требуется уточнить`; never invent their behavior. Show the inventory or coverage ledger only when the user requests traceability or when an exclusion or ambiguity would otherwise be surprising.
 
 ## Title
 
@@ -133,6 +153,7 @@ Write numbered actions in execution order.
 - Use the exact Markdown table header `| № | Шаг | Тестовые данные | Ожидаемый результат |` in chat and document output.
 - Keep the action, data, and expected result in separate table cells.
 - Put only data actually consumed by the action in `Тестовые данные`; use `Не требуются` when the action needs no input data.
+- Format two or more independent items in one cell as a vertical bullet list. Preserve one item per line when sending the case to a TMS; do not flatten it into a comma- or semicolon-separated sentence.
 - Begin each step with an unambiguous action.
 - Include the target and necessary input or selection.
 - Use the stable visible name of a section, field, or control when it is needed to find the target.
@@ -224,6 +245,7 @@ Do not include:
 - production secrets or personal data;
 - accidental dependence on another case, a temporary environment, or an execution order;
 - stylistic imitation that preserves a known defect or contradicts an approved rule.
+- silent omission of a source-defined field, control, state, default, validation, or constraint from both coverage and the explicit gap list.
 
 ## Unresolved-policy fallback
 

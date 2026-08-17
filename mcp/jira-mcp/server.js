@@ -2,13 +2,15 @@ const express = require("express");
 require("dotenv").config();
 
 const { tools } = require("./jira-client");
+const { createSessionCaseRegistry } = require("./session-case-registry");
 
 const app = express();
 const { PORT = 3333 } = process.env;
 const writesEnabled = process.env.TESTDOCS_ENABLE_WRITES === "1";
 const writeTools = new Set(["add_comment", "transition_issue"]);
 const createsEnabled = process.env.TESTDOCS_ENABLE_TEST_CASE_CREATION !== "0";
-const createTools = new Set(["zephyr_create_test_case"]);
+const createTools = new Set(["zephyr_create_test_case", "zephyr_update_session_test_case"]);
+const sessionCases = createSessionCaseRegistry();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -37,11 +39,18 @@ app.post("/mcp", async (req, res) => {
 
     if (createTools.has(tool) && !createsEnabled) {
       return res.status(403).json({
-        error: "Test-case creation is disabled."
+        error: "Test-case creation and current-session correction are disabled."
       });
     }
 
+    if (tool === "zephyr_update_session_test_case") {
+      sessionCases.assertEditable(params?.testCaseKey);
+    }
+
     const result = await tools[tool](params || {});
+    if (tool === "zephyr_create_test_case") {
+      sessionCases.recordCreated(result);
+    }
     return res.json({ result });
   } catch (err) {
     return res.status(500).json({

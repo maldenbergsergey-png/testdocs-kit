@@ -38,10 +38,11 @@ When an external issue, page, or case reference is supplied, use [`../collect-te
 4. Record each issue at a precise field or step location, cite the rule section, explain impact, and recommend a focused correction.
 5. Apply the first-pass executability test from the perspective of a competent tester unfamiliar with the project.
 6. Check traceability, scenario focus, minimum sufficient detail, repeatability, observable outcomes, diagnostic value, transient dependencies, and hidden execution order.
-7. Check the exact Russian Zephyr labels and field order, verify that there is no separate case-level test-data section, and verify that every step has separate `Шаг`, `Тестовые данные`, and `Ожидаемый результат` cells.
-8. When setup is reused, verify its named output, consumer reference, validity, cleanup ownership, and separation from the tested behavior.
-9. Separate confirmed problems from suggestions and from unresolved rule placeholders.
-10. Assign the overall status defined in `review-rules.md` and summarize the most important findings.
+7. When authoritative source content is supplied, build its field inventory and verify that every in-scope item is covered, explicitly excluded with a reason, or identified as ambiguous. Report silent omissions without requiring one case per field.
+8. Check the exact Russian Zephyr labels and field order, verify that there is no separate case-level test-data section, and verify that every step has separate `Шаг`, `Тестовые данные`, and `Ожидаемый результат` cells.
+9. When setup is reused, verify its named output, consumer reference, validity, cleanup ownership, and separation from the tested behavior.
+10. Separate confirmed problems from suggestions and from unresolved rule placeholders.
+11. Assign the overall status defined in `review-rules.md` and summarize the most important findings.
 
 ## Output
 

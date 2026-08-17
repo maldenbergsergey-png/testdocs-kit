@@ -3,6 +3,7 @@ const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio
 const { z } = require("zod");
 
 const { tools } = require("./jira-client");
+const { createSessionCaseRegistry } = require("./session-case-registry");
 
 function toTextResult(data) {
   return {
@@ -18,6 +19,7 @@ function toTextResult(data) {
 async function main() {
   const writesEnabled = process.env.TESTDOCS_ENABLE_WRITES === "1";
   const createsEnabled = process.env.TESTDOCS_ENABLE_TEST_CASE_CREATION !== "0";
+  const sessionCases = createSessionCaseRegistry();
   const server = new McpServer({
     name: "jira-mcp",
     version: "1.0.0"
@@ -187,7 +189,7 @@ async function main() {
     server.registerTool(
       "zephyr_create_test_case",
       {
-        description: "Create one new Zephyr Scale Server/DC or compatible TM4J test case. Call only when the user explicitly asks to create or publish it now. This tool does not update existing cases. The folder must already exist; use '/' only when the user explicitly chooses the project root. Test data belongs to each step.",
+        description: "Create one new Zephyr Scale Server/DC or compatible TM4J test case. Call only when the user explicitly asks to create or publish it now. This tool does not update existing cases. The folder must already exist; use '/' only when the user explicitly chooses the project root. Test data belongs to each step. In any step field, send two or more independent items as one '•' item per newline instead of flattening them with commas or semicolons.",
         inputSchema: z.object({
           confirmed: z.literal(true).describe("Set true only after an explicit user request to create/publish this new case."),
           projectKey: z.string().min(1).describe("Target Jira project key, not numeric projectId."),
@@ -210,7 +212,56 @@ async function main() {
           })).min(1)
         })
       },
-      async (input) => toTextResult(await tools.zephyr_create_test_case(input))
+      async (input) => {
+        const result = await tools.zephyr_create_test_case(input);
+        const key = sessionCases.recordCreated(result);
+        return toTextResult({
+          ...result,
+          _testdocs: {
+            editableThisSession: Boolean(key),
+            sessionScope: "current_mcp_process"
+          }
+        });
+      }
+    );
+
+    server.registerTool(
+      "zephyr_update_session_test_case",
+      {
+        description: "Correct a Zephyr/TM4J test case only if this MCP process created it during the current session and the user explicitly asks to apply the correction. Previously existing, discovered, or created-in-another-session cases are rejected. Omitted fields are preserved. If steps are supplied, pass the complete final ordered step list because it replaces the current script. In any step field, send two or more independent items as one '•' item per newline.",
+        inputSchema: z.object({
+          confirmed: z.literal(true).describe("Set true only after the user explicitly asks to apply this correction now."),
+          testCaseKey: z.string().min(1).describe("Key returned by zephyr_create_test_case during this MCP session."),
+          name: z.string().min(1).max(255).optional(),
+          objective: z.string().optional().describe("Use an empty string only when the user explicitly asks to clear the objective."),
+          precondition: z.string().optional().describe("Use an empty string only when the user explicitly asks to clear preconditions."),
+          priority: z.string().min(1).optional().describe("Raw case-sensitive TMS value only when confirmed."),
+          labels: z.array(z.string().min(1)).optional(),
+          customFields: z.record(
+            z.string(),
+            z.union([
+              z.string(),
+              z.number(),
+              z.boolean(),
+              z.null(),
+              z.array(z.union([z.string(), z.number(), z.boolean()]))
+            ])
+          ).optional().describe("Only confirmed custom-field names and values; include every affected required value."),
+          steps: z.array(z.object({
+            description: z.string().min(1),
+            testData: z.string().min(1).optional(),
+            expectedResult: z.string().min(1)
+          })).min(1).optional().describe("Complete final ordered list. Supplying it replaces all existing steps in this just-created case.")
+        }).refine(
+          (input) => ["name", "objective", "precondition", "priority", "labels", "customFields", "steps"]
+            .some((field) => Object.prototype.hasOwnProperty.call(input, field)),
+          { message: "At least one editable field is required." }
+        )
+      },
+      async (input) => {
+        sessionCases.assertEditable(input.testCaseKey);
+        return toTextResult(await tools.zephyr_update_session_test_case(input));
+      }
     );
   }
 

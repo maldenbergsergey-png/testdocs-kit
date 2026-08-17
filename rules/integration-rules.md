@@ -46,6 +46,7 @@ Input mode: ISSUE_ANCHORED | MANUAL_CONTEXT
 Scope anchor: issue key/link or supplied-context description
 Issue facts: summary, behavior, acceptance criteria, status, decisions
 Relevant linked requirements and knowledge: stable ID/link, title, version when available, relevant content
+Source field inventory: every explicitly defined field, control, tab, default, validation, visibility condition, role, state, and constraint; each marked retrieved, ambiguous, or unavailable
 Existing test coverage: stable case IDs, versions, lifecycle, links, and complete case content when needed
 Source conflicts: ...
 Missing capabilities or permissions: ...
@@ -62,6 +63,7 @@ Keep raw external values alongside any neutral interpretation. Do not silently t
 - Do not assume that a Jira description is newer than a linked specification or that the latest comment overrides approved acceptance criteria.
 - Report conflicting behavior or versions and request a decision when the conflict changes coverage or expected results.
 - Retrieve only fields and attachments relevant to the QA task. Avoid collecting credentials, personal data, or unrelated comments.
+- When the source describes a form, entity, table, API object, or configurable screen, enumerate every explicitly defined field and its supported properties before summarizing. Do not collapse unprocessed rows into “other fields” or silently omit a field because it looks secondary.
 - Do not imply that linked pages or cases were checked when a tool, permission, or relation was unavailable.
 
 ## TMS compatibility
@@ -105,14 +107,16 @@ Treat these as separate write operations. New-case creation requires either an e
 
 Confirm the target Jira instance, project, TMS product, existing folder path (or explicit root), and exact operation before writing. For creation, validate the complete case payload before the call and report the returned stable case key afterward. Never delete external cases automatically. A request to generate, analyze, review, or check actualization does not authorize publication.
 
-The bundled integration exposes creation of new Zephyr/TM4J cases only. Keep updates, new versions, moves, post-creation links, comments, lifecycle changes, and deletions unavailable until the user explicitly changes this policy. Supplying issue links as part of the initial create payload is allowed only when those exact links are included in the explicit creation scope.
+The bundled integration exposes creation of new Zephyr/TM4J cases and one narrow correction operation. The correction operation may update only a case whose key was returned by the same running MCP process after it created that case in the current session. It requires an explicit user instruction to apply the correction. The allowed-key registry is memory-only: restarting or reconnecting the MCP process clears it. Never accept a user-supplied claim that an older key was created in the current session as a substitute for this registry.
+
+For a session-created case, omitted fields must remain unchanged. When correcting steps, send the complete final ordered step list and warn that the Server/DC API replaces the current step-by-step script: missing steps are deleted and steps without IDs are recreated. Do not use this exception for folder moves, new versions, comments, lifecycle transitions, deletion, or updates to a case found through search/read tools. Previously existing, discovered, or created-in-another-session cases remain proposal-only. Supplying issue links as part of the initial create payload is allowed only when those exact links are included in the explicit creation scope.
 
 ## Least privilege
 
 - Prefer read-only credentials or a read-only tool allowlist for onboarding and analysis.
 - Keep tokens, passwords, cookies, and private keys outside the repository, prompts, examples, and committed configuration.
 - Store browser-session cookies only in a service-specific private file, restrict them to the configured origin, and never return their values through MCP tools.
-- Expose the create-only tool only for explicit publication requests and keep host-side write approvals enabled when the client supports them.
+- Expose creation and current-session correction only for explicit user requests, enforce session provenance inside the MCP server, and keep host-side write approvals enabled when the client supports them.
 - Scope project configuration to trusted projects and company-approved servers.
 
 ## Browser-session authentication

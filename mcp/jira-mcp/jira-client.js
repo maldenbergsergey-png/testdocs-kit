@@ -102,6 +102,10 @@ async function jiraRequest(path, method = "GET", body) {
     );
   }
 
+  if (!rawText) {
+    return {};
+  }
+
   if (!looksLikeJson) {
     throw new Error(
       `Jira returned non-JSON response (${res.status}) for ${url}. Content-Type: ${contentType || "unknown"}. Body starts with: ${rawText.slice(0, 300)}`
@@ -198,6 +202,10 @@ async function zephyrRequest(path, method = "GET", body) {
     error.status = res.status;
     error.url = url;
     throw error;
+  }
+
+  if (!rawText) {
+    return {};
   }
 
   if (!looksLikeJson) {
@@ -361,6 +369,92 @@ async function zephyrCreateTestCase({
   return zephyrRequest("/rest/atm/1.0/testcase", "POST", payload);
 }
 
+function hasOwn(input, field) {
+  return Object.prototype.hasOwnProperty.call(input, field);
+}
+
+async function zephyrUpdateSessionTestCase(input) {
+  const {
+    confirmed,
+    testCaseKey,
+    name,
+    objective,
+    precondition,
+    priority,
+    labels,
+    customFields,
+    steps
+  } = input;
+
+  if (confirmed !== true) {
+    throw new Error("Explicit user confirmation is required to update a session-created test case.");
+  }
+  if (!testCaseKey) {
+    throw new Error("testCaseKey is required.");
+  }
+  const forbiddenFields = ["projectKey", "folder", "status", "issueLinks"];
+  const forbiddenField = forbiddenFields.find((field) => hasOwn(input, field));
+  if (forbiddenField) {
+    throw new Error(`${forbiddenField} cannot be changed through the current-session correction tool.`);
+  }
+  if (hasOwn(input, "name") && !name) {
+    throw new Error("name cannot be empty.");
+  }
+  if (hasOwn(input, "priority") && !priority) {
+    throw new Error("priority cannot be empty.");
+  }
+  if (hasOwn(input, "steps")) {
+    if (!Array.isArray(steps) || !steps.length) {
+      throw new Error("A complete non-empty final step list is required when updating steps.");
+    }
+    if (steps.some((step) => !step?.description || !step?.expectedResult)) {
+      throw new Error("Every updated test step requires description and expectedResult.");
+    }
+  }
+
+  const mutableFields = [
+    "name",
+    "objective",
+    "precondition",
+    "priority",
+    "labels",
+    "customFields",
+    "steps"
+  ];
+  if (!mutableFields.some((field) => hasOwn(input, field))) {
+    throw new Error("At least one editable field is required.");
+  }
+
+  const payload = {
+    ...(hasOwn(input, "name") ? { name } : {}),
+    ...(hasOwn(input, "objective") ? { objective } : {}),
+    ...(hasOwn(input, "precondition") ? { precondition } : {}),
+    ...(hasOwn(input, "priority") ? { priority } : {}),
+    ...(hasOwn(input, "labels") ? { labels } : {}),
+    ...(hasOwn(input, "customFields") ? { customFields } : {}),
+    ...(hasOwn(input, "steps") ? {
+      testScript: {
+        type: "STEP_BY_STEP",
+        steps: steps.map(({ description, testData, expectedResult }) => ({
+          description,
+          testData: testData || "Не требуются",
+          expectedResult
+        }))
+      }
+    } : {})
+  };
+
+  const result = await zephyrRequest(
+    `/rest/atm/1.0/testcase/${encodeURIComponent(testCaseKey)}`,
+    "PUT",
+    payload
+  );
+  return {
+    ...result,
+    key: result?.key || testCaseKey
+  };
+}
+
 module.exports = {
   jiraRequest,
   zephyrRequest,
@@ -379,6 +473,7 @@ module.exports = {
      zephyr_get_iterations: zephyrGetIterations,
      zephyr_get_test_case: zephyrGetTestCase,
      zephyr_get_all_test_cases: zephyrGetAllTestCases,
-     zephyr_create_test_case: zephyrCreateTestCase
+     zephyr_create_test_case: zephyrCreateTestCase,
+     zephyr_update_session_test_case: zephyrUpdateSessionTestCase
   }
 };

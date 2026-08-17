@@ -1,4 +1,4 @@
 interface:
   display_name: "Update Test Cases"
-  short_description: "Propose read-only changes to existing test cases"
-  default_prompt: "Use $update-test-cases to propose a reviewable update to the existing test case without changing it in the TMS."
+  short_description: "Propose updates or correct a just-created case"
+  default_prompt: "Use $update-test-cases to propose a reviewable case update. Apply it only when I explicitly ask and the MCP confirms the case was created in this running session."

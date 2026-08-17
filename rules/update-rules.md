@@ -2,13 +2,15 @@
 
 **Status:** proposed organizational standard derived from the supplied instructions; pending human review.
 
-All changes to an existing test case must follow this sequence:
+Changes to a previously existing, discovered, or prior-session test case follow this sequence:
 
 ```text
 Context → AI analysis → Proposal → Human review
 ```
 
 The proposal must distinguish additions, modifications, removals, and unchanged content, and explain every proposed change. Show the complete proposed case after the diff.
+
+The only external-write exception is a user-requested correction to a case created by the same running MCP process. That path still requires a source-backed diff and complete final version, but the explicit correction request authorizes applying it immediately under the registry checks below.
 
 ## Source and version procedure
 
@@ -26,7 +28,19 @@ If the team later applies the reviewed update outside this tool:
 3. Move the case to `Готов к ревью`.
 4. Check whether related cases are affected by the same product change.
 
-Reading a comment or history does not authorize a write. External updates, version creation, saving, commenting, linking, moving, and status changes are currently disabled; provide a reviewed proposal only.
+Reading a comment or history does not authorize a write. Except for the narrowly verified current-session correction below, external updates, version creation, saving, commenting, linking, moving, and status changes remain disabled; provide a reviewed proposal only.
+
+## Current-session correction exception
+
+A user may explicitly request an immediate correction to a case that the connected MCP process created earlier in the same running session. Apply the correction only when the server-side in-memory registry contains that exact returned case key. This exception is intended for fixing a just-created draft before handoff.
+
+- Read the just-created case or use its complete returned/current content as the baseline.
+- Apply only the requested, source-supported correction and preserve omitted fields.
+- If steps change, submit the complete final ordered list; never send a partial step list as though it were a patch.
+- Report the changed fields and the returned case key after the operation.
+- Do not create a new version, move the case, add a comment, change workflow status implicitly, link new objects after creation, or delete anything.
+
+If the key came from search, existed before the session, was created by another client or earlier MCP process, or is absent from the registry, stop at a proposal. Restarting the MCP process intentionally removes update eligibility. Never bypass this boundary based on conversational memory or a user-supplied assertion alone.
 
 ## Add content
 
@@ -80,4 +94,4 @@ The approved Russian Zephyr format in `test-case-standard.md` is the target form
 - Do not silently choose between conflicting requirements.
 - Do not infer unseen fields or reconstruct an unavailable baseline.
 - Label all output as a proposal until the user approves it.
-- Do not use an external write tool for an existing case; the current workflow ends with a reviewed proposal.
+- Do not use an external write tool for a previously existing, discovered, or prior-session case. Only the explicit current-session correction exception above may be applied externally.

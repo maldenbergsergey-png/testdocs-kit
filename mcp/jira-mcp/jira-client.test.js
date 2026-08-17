@@ -88,9 +88,9 @@ test("zephyr_create_test_case sends step-level test data to the public Server AP
     issueLinks: ["DEMO-10"],
     steps: [
       {
-        description: "Ввести название.",
-        testData: "Тестовый объект",
-        expectedResult: "Название отображается в поле."
+        description: "Заполнить поля:\n• «Название»\n• «Сортировка»",
+        testData: "• Название: Тестовый объект\n• Сортировка: 501",
+        expectedResult: "• Значения отображаются в соответствующих полях\n• Флаг «Активность» установлен"
       },
       {
         description: "Нажать «Сохранить».",
@@ -113,9 +113,9 @@ test("zephyr_create_test_case sends step-level test data to the public Server AP
       type: "STEP_BY_STEP",
       steps: [
         {
-          description: "Ввести название.",
-          testData: "Тестовый объект",
-          expectedResult: "Название отображается в поле."
+          description: "Заполнить поля:\n• «Название»\n• «Сортировка»",
+          testData: "• Название: Тестовый объект\n• Сортировка: 501",
+          expectedResult: "• Значения отображаются в соответствующих полях\n• Флаг «Активность» установлен"
         },
         {
           description: "Нажать «Сохранить».",
@@ -153,4 +153,101 @@ test("zephyr_create_test_case rejects incomplete steps before any request", asyn
     /Every test step requires/
   );
   assert.equal(fetchMock.mock.callCount(), 0);
+});
+
+test("zephyr_update_session_test_case sends only requested fields and a complete final step list", async (t) => {
+  let request;
+  t.mock.method(global, "fetch", async (url, options) => {
+    request = { url: String(url), options };
+    return response(200, { key: "DEMO-T10" });
+  });
+
+  const result = await tools.zephyr_update_session_test_case({
+    confirmed: true,
+    testCaseKey: "DEMO-T10",
+    objective: "",
+    labels: [],
+    steps: [
+      {
+        description: "Открыть форму.",
+        expectedResult: "Форма открывается."
+      },
+      {
+        description: "Ввести новое название.",
+        testData: "Исправленный объект",
+        expectedResult: "Новое название отображается в поле."
+      }
+    ]
+  });
+
+  assert.equal(request.url, "https://jira.example.test/rest/atm/1.0/testcase/DEMO-T10");
+  assert.equal(request.options.method, "PUT");
+  assert.deepEqual(JSON.parse(request.options.body), {
+    objective: "",
+    labels: [],
+    testScript: {
+      type: "STEP_BY_STEP",
+      steps: [
+        {
+          description: "Открыть форму.",
+          testData: "Не требуются",
+          expectedResult: "Форма открывается."
+        },
+        {
+          description: "Ввести новое название.",
+          testData: "Исправленный объект",
+          expectedResult: "Новое название отображается в поле."
+        }
+      ]
+    }
+  });
+  assert.equal(result.key, "DEMO-T10");
+});
+
+test("zephyr_update_session_test_case rejects empty or unconfirmed updates", async (t) => {
+  const fetchMock = t.mock.method(global, "fetch", async () => response(200, { key: "UNEXPECTED-T1" }));
+
+  await assert.rejects(
+    tools.zephyr_update_session_test_case({
+      testCaseKey: "DEMO-T10",
+      name: "Новое название"
+    }),
+    /Explicit user confirmation/
+  );
+  await assert.rejects(
+    tools.zephyr_update_session_test_case({
+      confirmed: true,
+      testCaseKey: "DEMO-T10"
+    }),
+    /At least one editable field/
+  );
+  await assert.rejects(
+    tools.zephyr_update_session_test_case({
+      confirmed: true,
+      testCaseKey: "DEMO-T10",
+      steps: []
+    }),
+    /complete non-empty final step list/
+  );
+  await assert.rejects(
+    tools.zephyr_update_session_test_case({
+      confirmed: true,
+      testCaseKey: "DEMO-T10",
+      status: "Approved"
+    }),
+    /status cannot be changed/
+  );
+  assert.equal(fetchMock.mock.callCount(), 0);
+});
+
+test("zephyr_update_session_test_case accepts the official empty success response", async (t) => {
+  t.mock.method(global, "fetch", async () => response(200, "", "text/plain"));
+
+  const result = await tools.zephyr_update_session_test_case({
+    confirmed: true,
+    testCaseKey: "DEMO-T10",
+    name: "Исправленное название"
+  });
+
+  assert.equal(result.key, "DEMO-T10");
 });

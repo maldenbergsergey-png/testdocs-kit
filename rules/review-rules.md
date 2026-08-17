@@ -11,6 +11,7 @@ Review against approved rules and supplied requirements. Do not treat personal p
 - **First-pass executability:** a competent tester unfamiliar with the project can identify the entry point, required role and state, actions, and comparison criteria without oral guidance or reconstructing the case from links and screenshots.
 - **Minimum sufficient detail:** the case contains every detail needed to avoid a real execution choice while excluding implementation explanation and redundant visible information.
 - **Completeness:** all information needed to execute the stated scenario and observe its supported outcome is present; unrelated coverage is not required inside the same case.
+- **Source-field accounting:** when authoritative source content is supplied, every field, control, default, validation, visibility condition, permission, state, and constraint in scope is covered, explicitly excluded with a reason, or identified as ambiguous; none is silently skipped.
 - **Scenario focus:** the case has one primary verification intent and one coherent path. Independent initial states or materially different outcomes are split when combining them harms diagnosis.
 - **Step atomicity:** each step is attributable enough to execute and diagnose. Multiple mechanical actions may remain together when they form one inseparable interaction and have one outcome.
 - **Expected-result correctness:** results are observable, attributable to the triggering action, and supported by authoritative context.
@@ -21,6 +22,7 @@ Review against approved rules and supplied requirements. Do not treat personal p
 - **General rule compliance:** the case follows all other applicable approved files under `rules/`.
 - **TMS completeness:** the case uses the exact Russian Zephyr fields and order from `test-case-standard.md`; step-level test data and postconditions are explicit even when they are `Не требуются`.
 - **Step/data/result separation:** every numbered row has separate `Шаг`, `Тестовые данные`, and `Ожидаемый результат` columns; a case-level test-data section, an arrow, or a combined action/result sentence is a format defect.
+- **List readability:** two or more independent fields, values, or expected assertions inside one cell are shown one per line as a marked list rather than flattened into a comma- or semicolon-separated paragraph.
 - **Chat rendering:** a generated or fully proposed case is rendered as Markdown, not enclosed in a fenced code block that prevents the steps table from displaying normally.
 - **Matrix alignment:** the name and path preserve the supplied page, block, structure, and scenario hierarchy.
 - **Type fit:** `e2e`, `overview`, `block`, `cross`, or `integration` matches the case purpose and depth; step count outside the recommended range triggers a decomposition review, not automatic rejection.
@@ -65,5 +67,6 @@ When only behavioral requirements are missing, complete the structural review if
 - Treat UI assertions about API calls, database writes, or internal parameters as findings unless the technical surface is explicitly required, observable, and appropriate to the case layer.
 - Treat English, mixed, missing, or reordered Zephyr field labels as findings unless the reviewed source is a legacy case and structural migration is explicitly outside the review scope.
 - Treat analysis scaffolding embedded in a test case as a finding when it makes execution harder or duplicates TMS metadata.
+- Treat a source-defined item that is absent from both the intended coverage and an explicit exclusion or ambiguity list as a completeness finding. Do not demand one case per field when a coherent scenario covers several items.
 - Do not fully rewrite a case when the user requested review only.
 - Do not change or publish external data as part of review.
