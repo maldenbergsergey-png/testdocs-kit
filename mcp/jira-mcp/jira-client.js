@@ -136,6 +136,105 @@ async function addComment({ key, comment }) {
   });
 }
 
+function splitWikiRow(line) {
+  const delimiter = line.startsWith("||") ? "||" : "|";
+  const source = line.slice(delimiter.length, -delimiter.length);
+  const cells = [];
+  let current = "";
+  for (let index = 0; index < source.length; index += 1) {
+    if (source[index] === "\\" && source[index + 1] === "|") {
+      current += "|";
+      index += 1;
+    } else if (source.startsWith(delimiter, index)) {
+      cells.push(current);
+      current = "";
+      index += delimiter.length - 1;
+    } else {
+      current += source[index];
+    }
+  }
+  cells.push(current);
+  return cells;
+}
+
+function plainWikiText(value) {
+  return String(value || "")
+    .replace(/\{color:[^}]+\}/g, "")
+    .replace(/\{color\}/g, "")
+    .replace(/^\*|\*$/g, "")
+    .trim();
+}
+
+function adfParagraph(value) {
+  const text = plainWikiText(value);
+  return { type: "paragraph", content: text ? [{ type: "text", text }] : [] };
+}
+
+function jiraWikiChecklistToAdf(markup) {
+  const content = [];
+  let tableRows = [];
+  const flushTable = () => {
+    if (!tableRows.length) return;
+    content.push({ type: "table", attrs: { isNumberColumnEnabled: false, layout: "default" }, content: tableRows });
+    tableRows = [];
+  };
+  for (const rawLine of String(markup || "").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) {
+      flushTable();
+      continue;
+    }
+    if (line.startsWith("h2. ")) {
+      flushTable();
+      content.push({ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: line.slice(4).trim() }] });
+      continue;
+    }
+    if ((line.startsWith("||") && line.endsWith("||")) || (line.startsWith("|") && line.endsWith("|"))) {
+      const header = line.startsWith("||");
+      tableRows.push({
+        type: "tableRow",
+        content: splitWikiRow(line).map((cell) => ({
+          type: header ? "tableHeader" : "tableCell",
+          attrs: {},
+          content: [adfParagraph(cell)]
+        }))
+      });
+      continue;
+    }
+    flushTable();
+    content.push(adfParagraph(line));
+  }
+  flushTable();
+  return { type: "doc", version: 1, content };
+}
+
+async function publishChecklistComment({ confirmed, key, content }) {
+  if (confirmed !== true) {
+    throw new Error("Explicit user confirmation is required to publish a Jira checklist comment.");
+  }
+  if (!key || typeof content !== "string" || !content.trim()) {
+    throw new Error("key and non-empty checklist content are required.");
+  }
+  if (!content.includes("||Номер||")) {
+    throw new Error("Checklist content must contain a supported Jira Wiki table header.");
+  }
+  const body = String(JIRA_API_VERSION) === "3" ? jiraWikiChecklistToAdf(content) : content;
+  const result = await jiraRequest(
+    `/rest/api/${JIRA_API_VERSION}/issue/${encodeURIComponent(key)}/comment`,
+    "POST",
+    { body }
+  );
+  return {
+    ...result,
+    _testdocs: {
+      published: true,
+      issueKey: key,
+      commentId: result?.id ? String(result.id) : "",
+      format: String(JIRA_API_VERSION) === "3" ? "adf" : "jira_wiki"
+    }
+  };
+}
+
 async function transitionIssue({ key, transitionId }) {
   return jiraRequest(`/rest/api/${JIRA_API_VERSION}/issue/${key}/transitions`, "POST", {
     transition: { id: transitionId }
@@ -638,6 +737,7 @@ module.exports = {
   tools: {
     get_issue: getIssue,
     add_comment: addComment,
+    jira_publish_checklist_comment: publishChecklistComment,
     transition_issue: transitionIssue,
     get_transitions: getTransitions,
     search_issues: searchIssues,
@@ -653,5 +753,6 @@ module.exports = {
      zephyr_create_test_case: zephyrCreateTestCase,
      zephyr_update_session_test_case: zephyrUpdateSessionTestCase,
      zephyr_update_test_case: zephyrUpdateTestCase
-  }
+  },
+  jiraWikiChecklistToAdf
 };

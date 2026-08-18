@@ -15,6 +15,8 @@ Identify integrations by capability rather than product name or MCP tool name:
 | Knowledge read | Retrieve a supplied or issue-linked specification or Confluence page | Optional |
 | TMS read | Find and read existing cases, versions, links, folders, and lifecycle metadata | Optional |
 | TMS write | Create, update, link, comment on, version, or change status of reviewed cases | Optional and approval-gated |
+| Jira checklist comment | Publish finalized Jira Wiki checklist to the anchored issue as the authenticated user | Optional and approval-gated |
+| QA Report import | Send finalized Jira Wiki checklist and receive a short-lived editor URL | Optional and approval-gated |
 
 Do not assume a capability exists because a server is named Jira, Confluence, Zephyr, or TMS. Inspect the tools exposed by the current connection. Preserve separate error states for unavailable capability, permission denied, not found, ambiguous instance, and empty result.
 
@@ -107,13 +109,25 @@ Treat these as separate write operations. New-case creation requires either an e
 - link a case to an issue or requirement;
 - add a comment;
 - change lifecycle status;
-- move a case or change folder membership.
+- move a case or change folder membership;
+- publish a checklist as a Jira comment;
+- send a checklist to QA Report.
 
-Confirm the target Jira instance, project, TMS product, existing folder path (or explicit root), and exact operation before writing. For creation, validate the complete case payload before the call and report the returned stable case key and full case URL afterward. After any successful case creation or permitted current-session correction, return a clickable full URL supplied by the connector. If the connector cannot supply one, report that gap and do not invent a route. Never delete external cases automatically. A request to generate, analyze, review, or check actualization does not authorize publication.
+For a TMS write, confirm the target Jira instance, project, TMS product, existing folder path (or explicit root), and exact operation. For creation, validate the complete case payload before the call and report the returned stable case key and full case URL afterward. After any successful case creation or permitted current-session correction, return a clickable full URL supplied by the connector. If the connector cannot supply one, report that gap and do not invent a route. Checklist delivery uses the narrower destination rules below. Never delete external cases automatically. A request to generate, analyze, review, or check actualization does not authorize publication.
 
 The bundled integration exposes new-case creation, narrow correction of a case created by the running process, and guarded update of a previously existing case. Every update requires an explicit user instruction. Existing-case update additionally requires a content fingerprint captured from the complete baseline read; the adapter re-reads the case immediately before PUT and rejects a stale proposal when the fingerprint differs.
 
 For every update, omitted fields remain unchanged. When changing steps, send the complete final ordered step list: the Server/DC API replaces the script, so a partial list can delete steps. Existing-case update is limited to supported content fields and cannot move, version, comment, link, transition, retire, or delete a case. On a fingerprint conflict, perform no write and require a refreshed proposal. Supplying issue links as part of initial creation remains allowed only when those exact links are in scope.
+
+## Checklist delivery
+
+- A request to generate, show, copy, or prepare a checklist does not authorize publication.
+- Jira publication requires the exact anchored issue key, the finalized Jira Wiki content, and an explicit publish request. Publish through the dedicated checklist-comment capability, not a generic comment or transition tool. The authenticated Jira account is the comment author. Report the returned comment ID or connector URL; never claim success without the response.
+- QA Report import requires an explicitly configured base URL, finalized Jira Wiki content, and an explicit send/open request. Follow the documented `POST /api/checklists/import` contract with `source`, `format: jira`, optional title, full Jira issue URL in `issueKey`, and `content` in the request body.
+- Do not put checklist content in a query string. Use only the short-lived editor URL returned by QA Report.
+- Open that URL only when the user asks to open the editor and a browser capability is available. Use a separate external tab/window, never an iframe or embedded view. Otherwise return a clickable URL.
+- Jira publication and QA Report import are independent. If one fails, report that result without implying the other succeeded or failed.
+- Both installer permissions remain disabled by default and are enabled independently. Do not enable generic Jira comments, issue transitions, or other write tools as a side effect.
 
 ## Least privilege
 

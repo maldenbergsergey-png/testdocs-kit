@@ -26,4 +26,4 @@ Example labels such as item names and case IDs are fictional.
 
 ## Workflow examples
 
-The anonymized examples under [`workflows/`](workflows/) demonstrate checklist-only, full-package, no-change, create/update/retire, bugfix, insufficient-context, and review-with-fix outputs. They illustrate the rules but do not define policy.
+The anonymized examples under [`workflows/`](workflows/) demonstrate checklist-only, compact single-section checklist, full-package, no-change, create/update/retire, bugfix, insufficient-context, and review-with-fix outputs. They illustrate the rules but do not define policy.

@@ -3,6 +3,7 @@ const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio
 const { z } = require("zod");
 
 const { tools } = require("./jira-client");
+const { qaReportImportChecklist } = require("./qa-report-client");
 const { createSessionCaseRegistry } = require("./session-case-registry");
 
 function toTextResult(data) {
@@ -18,12 +19,36 @@ function toTextResult(data) {
 
 async function main() {
   const writesEnabled = process.env.TESTDOCS_ENABLE_WRITES === "1";
+  const checklistCommentsEnabled = process.env.TESTDOCS_ENABLE_CHECKLIST_COMMENT_PUBLICATION === "1";
+  const qaReportImportEnabled = process.env.TESTDOCS_ENABLE_QA_REPORT_IMPORT === "1";
+  const deliveryOnly = process.env.TESTDOCS_DELIVERY_ONLY === "1";
   const createsEnabled = process.env.TESTDOCS_ENABLE_TEST_CASE_CREATION !== "0";
   const sessionCases = createSessionCaseRegistry();
   const server = new McpServer({
-    name: "jira-mcp",
+    name: deliveryOnly ? "testdocs-delivery-mcp" : "jira-mcp",
     version: "1.0.0"
   });
+
+  if (deliveryOnly) {
+    if (qaReportImportEnabled) {
+      server.registerTool(
+        "qa_report_import_checklist",
+        {
+          description: "Send a reviewed Jira Wiki checklist to QA Report after an explicit user request. Returns a short-lived editor URL; open it only in a separate external browser tab/window when the user asks, never embed it. The payload is sent in the POST body, not in the URL.",
+          inputSchema: z.object({
+            confirmed: z.literal(true),
+            title: z.string().min(1).max(300).optional(),
+            issueUrl: z.string().url().max(2000).optional(),
+            content: z.string().min(1)
+          })
+        },
+        async (input) => toTextResult(await qaReportImportChecklist(input))
+      );
+    }
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    return;
+  }
 
   server.registerTool(
     "get_issue",
@@ -60,6 +85,21 @@ async function main() {
       },
       async ({ key, transitionId }) =>
         toTextResult(await tools.transition_issue({ key, transitionId }))
+    );
+  }
+
+  if (checklistCommentsEnabled) {
+    server.registerTool(
+      "jira_publish_checklist_comment",
+      {
+        description: "Publish the exact reviewed checklist as a Jira issue comment only after the user explicitly asks to publish it. Accepts Jira Wiki Markup and converts it to ADF for Jira API v3. Does not edit or delete comments.",
+        inputSchema: z.object({
+          confirmed: z.literal(true),
+          key: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*-\d+$/),
+          content: z.string().min(1)
+        })
+      },
+      async (input) => toTextResult(await tools.jira_publish_checklist_comment(input))
     );
   }
 

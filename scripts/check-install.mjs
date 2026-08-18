@@ -31,11 +31,14 @@ function validatePrivateConfig() {
       assert(config.confluence.secret, "Не заполнены учётные данные Confluence.");
     }
   }
+  if (config.qaReport?.enabled) {
+    assert(/^https?:\/\//.test(config.qaReport.baseUrl || ""), "Неполные настройки QA Report.");
+  }
   return config;
 }
 
 async function loadMcpClient(config) {
-  const packageFile = config.jira?.enabled
+  const packageFile = config.jira?.enabled || (config.qaReport?.enabled && config.enableQaReportImport === true)
     ? path.join(repoRoot, "mcp", "jira-mcp", "package.json")
     : path.join(repoRoot, "mcp", "confluence-mcp", "package.json");
   const requireFromService = createRequire(packageFile);
@@ -63,7 +66,7 @@ async function listTools(service, Client, StdioClientTransport) {
 
 async function main() {
   const config = validatePrivateConfig();
-  if (!config.jira?.enabled && !config.confluence?.enabled) {
+  if (!config.jira?.enabled && !config.confluence?.enabled && !(config.qaReport?.enabled && config.enableQaReportImport === true)) {
     console.log("MCP-сервисы отключены; проверен только файл настроек.");
     console.log("Проверка установки: OK");
     return;
@@ -81,7 +84,18 @@ async function main() {
     }
     assert(!tools.includes("add_comment"), "Write-инструмент add_comment включён без разрешения.");
     assert(!tools.includes("transition_issue"), "Write-инструмент transition_issue включён без разрешения.");
+    if (config.enableChecklistCommentPublication === true) {
+      assert(tools.includes("jira_publish_checklist_comment"), "Jira MCP не отдал защищённую публикацию checklist-комментария.");
+    } else {
+      assert(!tools.includes("jira_publish_checklist_comment"), "Публикация checklist-комментария включена без разрешения.");
+    }
     results.push(`Jira MCP: ${tools.length} инструментов (чтение + создание и защищённое обновление по явному запросу)`);
+  }
+
+  if (config.qaReport?.enabled && config.enableQaReportImport === true) {
+    const tools = await listTools("delivery", Client, StdioClientTransport);
+    assert(tools.includes("qa_report_import_checklist"), "Delivery MCP не отдал импорт checklist в QA Report.");
+    results.push(`QA Report: ${tools.length} инструмент импорта по явному запросу`);
   }
 
   if (config.confluence?.enabled) {

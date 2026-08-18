@@ -267,6 +267,16 @@ async function collectConfluence(previous = {}) {
   };
 }
 
+async function collectQaReport(previous = {}) {
+  const enabled = await confirm("Подключить QA Report для открытия чек-листов в редакторе", previous.enabled ?? false);
+  if (!enabled) return { ...previous, enabled: false };
+  const baseUrl = (await ask(
+    "Адрес QA Report без завершающего слеша",
+    previous.baseUrl || "http://localhost:4173"
+  )).replace(/\/+$/, "");
+  return { enabled: true, baseUrl };
+}
+
 function validateAnswers(config) {
   if (!config || typeof config !== "object") throw new Error("Файл ответов должен содержать JSON-объект.");
   for (const service of ["jira", "confluence"]) {
@@ -289,6 +299,14 @@ function validateAnswers(config) {
       throw new Error("jira.testCaseUrlTemplate должен быть полным HTTP(S)-адресом.");
     }
   }
+  if (config.qaReport?.enabled) {
+    try {
+      const url = new URL(config.qaReport.baseUrl);
+      if (!["http:", "https:"].includes(url.protocol)) throw new Error("unsupported protocol");
+    } catch {
+      throw new Error("qaReport.baseUrl должен быть полным HTTP(S)-адресом.");
+    }
+  }
   return config;
 }
 
@@ -300,13 +318,30 @@ async function collectConfig(args, clients) {
 
   const previous = readExistingConfig();
   console.log("\nСекреты вводятся скрыто и сохраняются вне репозитория.\n");
+  const jira = await collectJira(previous.jira);
+  const enableChecklistCommentPublication = jira.enabled
+    ? await confirm(
+      "Разрешить публикацию готового checklist в комментарий Jira по явному запросу",
+      previous.enableChecklistCommentPublication ?? false
+    )
+    : false;
+  const qaReport = await collectQaReport(previous.qaReport);
+  const enableQaReportImport = qaReport.enabled
+    ? await confirm(
+      "Разрешить отправку checklist в QA Report по явному запросу",
+      previous.enableQaReportImport ?? false
+    )
+    : false;
   return {
     version: 1,
     clients,
     enableWrites: false,
     enableTestCaseCreation: true,
-    jira: await collectJira(previous.jira),
-    confluence: await collectConfluence(previous.confluence)
+    enableChecklistCommentPublication,
+    enableQaReportImport,
+    jira,
+    confluence: await collectConfluence(previous.confluence),
+    qaReport
   };
 }
 
@@ -348,7 +383,7 @@ function installDependencies(skip, config) {
 
   if (skip) {
     console.log("Установка зависимостей пропущена.");
-    if (config.jira?.enabled) {
+    if (config.jira?.enabled || (config.qaReport?.enabled && config.enableQaReportImport === true)) {
       const jiraSdk = path.join(jiraDir, "node_modules", "@modelcontextprotocol", "sdk", "package.json");
       if (!fs.existsSync(jiraSdk)) {
         throw new Error("Зависимости Jira MCP не установлены. Повторите команду без --skip-dependencies.");
@@ -365,7 +400,7 @@ function installDependencies(skip, config) {
     }
     return;
   }
-  if (config.jira?.enabled) {
+  if (config.jira?.enabled || (config.qaReport?.enabled && config.enableQaReportImport === true)) {
     console.log("\nУстанавливаю зависимости Jira MCP...");
     run(npm, ["ci"], { cwd: jiraDir });
   }
@@ -444,12 +479,22 @@ args = [${tomlString(launcherFile)}, "jira"]
 enabled = true
 required = false
 enabled_tools = [
-  "get_issue", "get_transitions", "search_issues",
+  "get_issue", "get_transitions", "search_issues"${config.enableChecklistCommentPublication === true ? ', "jira_publish_checklist_comment"' : ""},
   "zephyr_get_projects", "zephyr_get_project", "zephyr_search_test_cases",
   "zephyr_get_test_plans", "zephyr_get_test_plan", "zephyr_get_iterations",
   "zephyr_get_test_case", "zephyr_get_all_test_cases",
   "zephyr_create_test_case", "zephyr_update_session_test_case", "zephyr_update_test_case"
 ]
+default_tools_approval_mode = "approve"`);
+  }
+  if (config.qaReport?.enabled && config.enableQaReportImport === true) {
+    sections.push(`
+[mcp_servers.testdocs_delivery]
+command = ${tomlString(process.execPath)}
+args = [${tomlString(launcherFile)}, "delivery"]
+enabled = true
+required = false
+enabled_tools = ["qa_report_import_checklist"]
 default_tools_approval_mode = "approve"`);
   }
   if (config.confluence?.enabled) {
@@ -549,7 +594,7 @@ function removeManagedOpenCodePermissions(data) {
 }
 
 function ensureSafeFormatMigration(data, format) {
-  const managedNames = new Set(["testdocs_jira", "testdocs_confluence"]);
+  const managedNames = new Set(["testdocs_jira", "testdocs_confluence", "testdocs_delivery"]);
   if (format === "stable" && data.mcp?.servers) {
     const foreignServers = Object.keys(data.mcp.servers).filter((name) => !managedNames.has(name));
     if (foreignServers.length) {
@@ -614,20 +659,25 @@ function mergeOpenCodeConfig(config, args) {
     if (data.mcp.servers) delete data.mcp.servers;
     delete data.mcp.testdocs_jira;
     delete data.mcp.testdocs_confluence;
+    delete data.mcp.testdocs_delivery;
     if (config.jira?.enabled) data.mcp.testdocs_jira = stableMcpServerConfig("jira");
     if (config.confluence?.enabled) {
       data.mcp.testdocs_confluence = stableMcpServerConfig("confluence");
     }
+    if (config.qaReport?.enabled && config.enableQaReportImport === true) data.mcp.testdocs_delivery = stableMcpServerConfig("delivery");
   } else {
     data.mcp.servers ||= {};
     delete data.mcp.testdocs_jira;
     delete data.mcp.testdocs_confluence;
+    delete data.mcp.testdocs_delivery;
     delete data.mcp.servers.testdocs_jira;
     delete data.mcp.servers.testdocs_confluence;
+    delete data.mcp.servers.testdocs_delivery;
     if (config.jira?.enabled) data.mcp.servers.testdocs_jira = v2McpServerConfig("jira");
     if (config.confluence?.enabled) {
       data.mcp.servers.testdocs_confluence = v2McpServerConfig("confluence");
     }
+    if (config.qaReport?.enabled && config.enableQaReportImport === true) data.mcp.servers.testdocs_delivery = v2McpServerConfig("delivery");
   }
   writeJsonWithBackup(target, data);
   console.log(`OpenCode настроен (${format}): ${target}`);
@@ -642,6 +692,9 @@ function claudeCommands(config) {
   if (config.confluence?.enabled) {
     commands.push(`claude mcp add --transport stdio --scope user testdocs_confluence -- ${JSON.stringify(process.execPath)} ${JSON.stringify(launcherFile)} confluence`);
   }
+  if (config.qaReport?.enabled && config.enableQaReportImport === true) {
+    commands.push(`claude mcp add --transport stdio --scope user testdocs_delivery -- ${JSON.stringify(process.execPath)} ${JSON.stringify(launcherFile)} delivery`);
+  }
   return commands;
 }
 
@@ -655,7 +708,7 @@ function configureClaude(config, noCli) {
     return;
   }
 
-  for (const [service, enabled] of [["jira", config.jira?.enabled], ["confluence", config.confluence?.enabled]]) {
+  for (const [service, enabled] of [["jira", config.jira?.enabled], ["confluence", config.confluence?.enabled], ["delivery", config.qaReport?.enabled && config.enableQaReportImport === true]]) {
     if (!enabled) continue;
     const name = `testdocs_${service}`;
     const current = spawnSync("claude", ["mcp", "get", name], { stdio: "ignore" });
@@ -678,6 +731,9 @@ function writeGenericSnippet(config) {
   }
   if (config.confluence?.enabled) {
     mcpServers.testdocs_confluence = { command: process.execPath, args: [launcherFile, "confluence"] };
+  }
+  if (config.qaReport?.enabled && config.enableQaReportImport === true) {
+    mcpServers.testdocs_delivery = { command: process.execPath, args: [launcherFile, "delivery"] };
   }
   const target = path.join(getConfigDir(), "client-snippets", "generic-mcp.json");
   writeJsonWithBackup(target, { mcpServers });
@@ -747,7 +803,8 @@ async function main() {
 3. Выполните пробный запрос из README.md.
 
 Создание новых Zephyr/TM4J-кейсов доступно только по явному запросу.
-Существующий кейс обновляется только по явному запросу после повторного чтения и проверки актуальности proposal; перенос, смена статуса и удаление отключены.`);
+Существующий кейс обновляется только по явному запросу после повторного чтения и проверки актуальности proposal.
+Checklist-комментарии Jira и QA Report доступны только если были отдельно разрешены при setup; перенос, смена статуса и удаление отключены.`);
 }
 
 main().catch((error) => {

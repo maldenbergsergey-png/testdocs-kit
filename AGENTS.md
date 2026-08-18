@@ -15,5 +15,6 @@ This repository is a portable skill pack for QA test documentation, not an appli
 - Show results in chat by default.
 - Treat every change to existing documentation as a proposal for human review. Review output includes a complete corrected proposal when findings affect content.
 - Use an external write operation only after an explicit user request or confirmation. Existing-case updates must re-read and pass the connector's stale-proposal check. Never automatically perform destructive changes or delete external test cases; use `RETIRE_PROPOSAL` for reviewable retirement recommendations.
+- Publishing a finalized checklist to a Jira comment or sending it to QA Report are separate optional writes. Perform either only when the user explicitly asks for that destination. A QA Report editor URL may be opened only as a separate external browser tab/window, never embedded.
 - Keep edits focused on rules, skills, examples, agent guidance, integrations, MCP adapters, and their portable installer or verification scripts. Do not add an application, service, database, model dependency, or orchestration runtime.
 - Keep credentials outside the repository and client configuration. Installer output must not print secrets, and external write tools must remain disabled by default.

@@ -10,6 +10,7 @@ Integrations are context transport, not QA logic. This repository works fully wi
 - [`profiles/tm4j-legacy.md`](profiles/tm4j-legacy.md) — legacy Test Management for Jira, including version 6.9.0.
 - [`../rules/integration-rules.md`](../rules/integration-rules.md) — neutral context bundle and mandatory read/write boundaries.
 - [`../skills/collect-test-context/SKILL.md`](../skills/collect-test-context/SKILL.md) — read-only collection and routing workflow.
+- [`profiles/qa-report.md`](profiles/qa-report.md) — optional finalized-checklist import and external editor handoff.
 
 ## Manual context is the baseline
 

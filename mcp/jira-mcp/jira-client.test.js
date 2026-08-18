@@ -5,8 +5,9 @@ process.env.JIRA_URL = "https://jira.example.test";
 process.env.JIRA_EMAIL = "tester@example.test";
 process.env.JIRA_TOKEN = "not-a-real-secret";
 process.env.JIRA_AUTH_MODE = "basic";
+process.env.JIRA_API_VERSION = "2";
 
-const { tools } = require("./jira-client");
+const { tools, jiraWikiChecklistToAdf } = require("./jira-client");
 
 function response(status, value, contentType = "application/json") {
   return {
@@ -42,6 +43,50 @@ test("zephyr_get_test_case returns the complete ATM case with ordered steps", as
   assert.deepEqual(result.testScript.steps.map((step) => step.index), [0, 1, 2]);
   assert.equal(result.testScript.steps[0].expectedResult, "Результат 1");
   assert.equal(result._testdocs.webUrl, "https://jira.example.test/secure/Tests.jspa#/testCase/DEMO-T7");
+});
+
+test("jira_publish_checklist_comment publishes exact wiki markup only after confirmation", async (t) => {
+  let request;
+  t.mock.method(global, "fetch", async (url, options) => {
+    request = { url: String(url), options };
+    return response(201, { id: "12345" });
+  });
+  const content = "h2. Экспорт\n||Номер||Проверка||Как проверить||Ожидаемый результат||Фактический результат||Комментарий||Статус||\n|1.|Экспорт списка|Нажать Export|Файл загружен| | | |";
+  const result = await tools.jira_publish_checklist_comment({
+    confirmed: true,
+    key: "DEMO-123",
+    content
+  });
+  assert.equal(request.url, "https://jira.example.test/rest/api/2/issue/DEMO-123/comment");
+  assert.equal(JSON.parse(request.options.body).body, content);
+  assert.equal(result._testdocs.commentId, "12345");
+  assert.equal(result._testdocs.format, "jira_wiki");
+});
+
+test("jira_publish_checklist_comment rejects silent publication before a request", async (t) => {
+  const fetchMock = t.mock.method(global, "fetch", async () => response(201, { id: "unexpected" }));
+  await assert.rejects(
+    tools.jira_publish_checklist_comment({
+      key: "DEMO-123",
+      content: "||Номер||Проверка||\n|1.|Не публиковать|"
+    }),
+    /Explicit user confirmation/
+  );
+  assert.equal(fetchMock.mock.callCount(), 0);
+});
+
+test("Jira Wiki checklist conversion creates ADF headings and tables for Cloud", () => {
+  const adf = jiraWikiChecklistToAdf(
+    "h2. Права доступа\n||Номер||Проверка||Статус||\n|1.|Доступ Admin|{color:#bf6700}*ТРЕБУЕТ УТОЧНЕНИЯ*{color}|"
+  );
+  assert.equal(adf.type, "doc");
+  assert.equal(adf.content[0].type, "heading");
+  assert.equal(adf.content[1].type, "table");
+  assert.equal(adf.content[1].content[0].content[0].type, "tableHeader");
+  assert.equal(
+    adf.content[1].content[1].content[2].content[0].content[0].text,
+    "ТРЕБУЕТ УТОЧНЕНИЯ"
+  );
 });
 
 test("zephyr_get_test_case marks a metadata-only fallback explicitly", async (t) => {

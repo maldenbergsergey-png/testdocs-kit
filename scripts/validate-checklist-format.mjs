@@ -5,7 +5,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const files = [path.join(repoRoot, "examples", "workflows", "task-checklist-only.md")];
+const files = [
+  path.join(repoRoot, "examples", "workflows", "task-checklist-only.md"),
+  path.join(repoRoot, "examples", "workflows", "task-compact-checklist.md")
+];
 const executionHeader = "||Номер||Проверка||Как проверить||Ожидаемый результат||Фактический результат||Комментарий||Статус||";
 const questionHeader = "||Номер||Вопрос||Текущее наблюдение||Статус||";
 
@@ -30,7 +33,8 @@ function cells(row) {
 }
 
 for (const file of files) {
-  const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
+  const source = fs.readFileSync(file, "utf8");
+  const lines = source.split(/\r?\n/);
   let mode = null;
   let bodyRows = 0;
   for (const [offset, line] of lines.entries()) {
@@ -55,6 +59,10 @@ for (const file of files) {
   }
   assert(lines.includes(executionHeader), `${file}: отсутствует header исполнимой таблицы.`);
   assert(bodyRows > 0, `${file}: нет строк checklist.`);
+  if (file.endsWith("task-compact-checklist.md")) {
+    assert(!source.includes(questionHeader), `${file}: компактный fixture не должен содержать искусственный раздел уточнений.`);
+    assert((source.match(/^h2\. /gm) || []).length === 1, `${file}: компактный fixture должен содержать один смысловой раздел.`);
+  }
 }
 
 console.log(`Jira Wiki checklist format: OK (${files.length} fixture)`);

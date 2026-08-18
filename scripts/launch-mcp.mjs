@@ -30,6 +30,9 @@ function buildEnvironment(service, config) {
     ...process.env,
     TESTDOCS_ENABLE_WRITES: config.enableWrites ? "1" : "0",
     TESTDOCS_ENABLE_TEST_CASE_CREATION: config.enableTestCaseCreation === false ? "0" : "1",
+    TESTDOCS_ENABLE_CHECKLIST_COMMENT_PUBLICATION:
+      config.enableChecklistCommentPublication === true ? "1" : "0",
+    TESTDOCS_ENABLE_QA_REPORT_IMPORT: config.enableQaReportImport === true ? "1" : "0",
     ...(config.caFile ? { NODE_EXTRA_CA_CERTS: config.caFile } : {})
   };
 
@@ -55,6 +58,17 @@ function buildEnvironment(service, config) {
     };
   }
 
+  if (service === "delivery") {
+    if (!config.qaReport?.enabled || !config.qaReport.baseUrl) {
+      fail("подключение QA Report выключено или не настроено.");
+    }
+    return {
+      ...common,
+      TESTDOCS_DELIVERY_ONLY: "1",
+      QA_REPORT_URL: config.qaReport.baseUrl
+    };
+  }
+
   const confluence = config.confluence;
   if (!confluence?.enabled) fail("подключение Confluence выключено в настройках.");
   if (!confluence.baseUrl || !confluence.authMode) {
@@ -77,12 +91,12 @@ function buildEnvironment(service, config) {
 
 const service = process.argv[2];
 if (!Object.hasOwn(serviceEntries, service)) {
-  fail("укажите сервис jira или confluence.");
+  fail("укажите сервис jira, confluence или delivery.");
 }
 
 const config = readConfig();
 const child = spawn(process.execPath, [serviceEntries[service]], {
-  cwd: new URL(`../mcp/${service === "jira" ? "jira-mcp" : "confluence-mcp"}/`, import.meta.url),
+  cwd: new URL(`../mcp/${service === "confluence" ? "confluence-mcp" : "jira-mcp"}/`, import.meta.url),
   env: buildEnvironment(service, config),
   stdio: "inherit"
 });

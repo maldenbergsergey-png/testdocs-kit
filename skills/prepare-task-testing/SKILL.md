@@ -41,3 +41,5 @@ Route the normalized context to [`../generate-test-checklist/SKILL.md`](../gener
 6. Format the result exactly as required by `task-testing-rules.md`.
 
 Never write to an external system during preparation. Creation, update, retirement/status changes and publication require a separate explicit request under their specialized skill and integration contract.
+
+An explicit same-request instruction such as “подготовь и опубликуй checklist в Jira” or “подготовь и открой в QA Report” includes the corresponding delivery intent. First show/finalize the checklist, then follow the delivery contract in `generate-test-checklist`. It does not authorize any other write.

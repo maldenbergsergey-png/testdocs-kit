@@ -14,6 +14,8 @@ const answersFile = path.join(testRoot, "answers.json");
 const answers = {
   version: 1,
   enableWrites: false,
+  enableChecklistCommentPublication: true,
+  enableQaReportImport: true,
   jira: {
     enabled: true,
     profile: "3",
@@ -32,6 +34,10 @@ const answers = {
     secret: "dummy-confluence-password",
     authMode: "basic",
     insecureTls: false
+  },
+  qaReport: {
+    enabled: true,
+    baseUrl: "http://qa-report.example.invalid:4173"
   }
 };
 
@@ -84,6 +90,8 @@ try {
   const savedPrivateConfig = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
   assert(savedPrivateConfig.caFile?.endsWith("globalsign-gcc-r3-dv-tls-ca-2020.pem"), "Не сохранён CA-файл.");
   assert(savedPrivateConfig.enableTestCaseCreation === true, "Не включены создание и защищённое исправление кейса Zephyr.");
+  assert(savedPrivateConfig.enableChecklistCommentPublication === true, "Не включена явная публикация checklist в Jira.");
+  assert(savedPrivateConfig.enableQaReportImport === true, "Не включён импорт checklist в QA Report.");
   assert(
     savedPrivateConfig.jira.testCaseUrlTemplate === "https://jira.example.invalid/secure/Tests.jspa#/testCase/{key}",
     "Не сохранён шаблон полной ссылки на кейс Zephyr."
@@ -100,10 +108,14 @@ try {
     fs.readFileSync(codexConfig, "utf8").split("# BEGIN testdocs-kit").length - 1 === 1,
     "Повторный запуск продублировал Codex-конфигурацию."
   );
+  assert(fs.readFileSync(codexConfig, "utf8").includes("jira_publish_checklist_comment"), "Codex не получил разрешённый checklist-comment tool.");
+  assert(fs.readFileSync(codexConfig, "utf8").includes("testdocs_delivery"), "Codex не получил QA Report MCP.");
+  assert(JSON.parse(fs.readFileSync(genericConfig, "utf8")).mcpServers?.testdocs_delivery, "Generic client не получил QA Report MCP.");
 
   const openCode = JSON.parse(fs.readFileSync(openCodeConfig, "utf8"));
   assert(openCode.mcp?.testdocs_jira, "Не добавлен OpenCode stable Jira MCP.");
   assert(openCode.mcp?.testdocs_confluence, "Не добавлен OpenCode stable Confluence MCP.");
+  assert(openCode.mcp?.testdocs_delivery, "Не добавлен OpenCode stable QA Report MCP.");
   assert(!openCode.permissions, "В stable-конфиг попало несовместимое поле permissions.");
   if (spawnSync("opencode", ["--version"], { env, stdio: "ignore" }).status === 0) {
     const validation = spawnSync("opencode", ["debug", "config"], {
@@ -214,11 +226,37 @@ try {
   assert(browserPrivateConfig.jira.authMode === "browser_session", "Не сохранён browser_session для Jira.");
   assert(browserPrivateConfig.confluence.authMode === "browser_session", "Не сохранён browser_session для Confluence.");
 
+  // QA Report delivery remains independently usable without Jira or Confluence.
+  fs.writeFileSync(answersFile, JSON.stringify({
+    version: 1,
+    enableWrites: false,
+    enableTestCaseCreation: false,
+    enableChecklistCommentPublication: false,
+    enableQaReportImport: true,
+    jira: { enabled: false },
+    confluence: { enabled: false },
+    qaReport: { enabled: true, baseUrl: "http://qa-report.example.invalid:4173" }
+  }), "utf8");
+  const qaOnlyResult = spawnSync(process.execPath, [
+    path.join(scriptsDir, "install.mjs"),
+    "--clients", "generic",
+    "--answers", answersFile,
+    "--skip-dependencies",
+    "--no-cli"
+  ], { cwd: repoRoot, env, encoding: "utf8" });
+  if (qaOnlyResult.status !== 0) {
+    process.stdout.write(qaOnlyResult.stdout || "");
+    process.stderr.write(qaOnlyResult.stderr || "");
+    throw new Error("Не установлена независимая QA Report integration.");
+  }
+  assert(qaOnlyResult.stdout.includes("QA Report: 1 инструмент"), "QA Report MCP не прошёл независимый handshake.");
+
   console.log("Изолированная установка Codex/Claude Code/OpenCode/generic: OK");
   console.log("Повторная установка без дублирования: OK");
   console.log("OpenCode stable, миграция ошибочного конфига и V2: OK");
   console.log("Секреты отсутствуют в клиентских MCP-конфигах: OK");
   console.log("Режим browser-session без пароля: OK");
+  console.log("Независимая QA Report integration без Jira/Confluence: OK");
 } finally {
   fs.rmSync(testRoot, { recursive: true, force: true });
 }
