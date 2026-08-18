@@ -25,4 +25,8 @@ In username/password mode, the proxy requests a short-lived Bearer token from `/
 
 Tool schemas come from the connected QA Tools instance, so the adapter follows the installed product version instead of hard-coding unstable REST endpoints. Preserve stable identifiers and raw fields, then map retrieved content through `rules/integration-rules.md`.
 
+## Direct test-case links
+
+Treat a UI link such as `https://qa-tools.company.example/project/3/test-cases/5392` as an explicit TMS reference. Parse the project and test-case identifiers from the path, then call `testops_find_testcases` with that exact scope according to its live schema. The browser page itself requires JavaScript and is not the integration endpoint; do not route this link through generic WebFetch when `testdocs_qa_tools` is connected.
+
 Official references: [MCP connection](https://docs.qatools.ru/ecosystem/mcp/setup/), [MCP tools](https://docs.qatools.ru/ecosystem/mcp/tools/).

@@ -78,6 +78,10 @@ try {
       result.stdout.includes("Пересобираю Confluence MCP из актуальных исходников"),
       "С флагом --skip-dependencies не пересобран Confluence MCP."
     );
+    assert(
+      result.stdout.indexOf("Codex настроен:") < result.stdout.indexOf("Пересобираю Confluence MCP из актуальных исходников"),
+      "MCP-сервисы не зарегистрированы до независимой пересборки Confluence."
+    );
   }
 
   const privateConfig = path.join(testRoot, "private-config", "config.json");

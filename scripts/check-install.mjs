@@ -76,6 +76,7 @@ async function listTools(service, Client, StdioClientTransport) {
 }
 
 async function main() {
+  const offlineExternal = process.argv.includes("--offline-external");
   const config = validatePrivateConfig();
   if (!config.jira?.enabled && !config.confluence?.enabled && !(config.qaReport?.enabled && config.enableQaReportImport === true) && config.tms?.provider !== "qa_tools") {
     console.log("MCP-сервисы отключены; проверен только файл настроек.");
@@ -110,7 +111,13 @@ async function main() {
     const entry = path.join(repoRoot, "mcp", "qa-tools-mcp", "mcp-stdio.js");
     const syntax = spawnSync(process.execPath, ["--check", entry], { encoding: "utf8" });
     assert(syntax.status === 0, `Некорректный QA Tools MCP proxy: ${syntax.stderr}`);
-    results.push("QA Tools MCP proxy: настройки и локальный код проверены; удалённый handshake выполняется после перезапуска клиента");
+    if (offlineExternal) {
+      results.push("QA Tools MCP proxy: локальный код проверен; удалённый handshake пропущен в offline-режиме");
+    } else {
+      const tools = await listTools("qa_tools", Client, StdioClientTransport);
+      assert(tools.includes("testops_find_testcases"), "QA Tools MCP не отдал инструмент чтения testops_find_testcases.");
+      results.push(`QA Tools MCP: удалённое соединение и авторизация проверены, доступно ${tools.length} инструментов`);
+    }
   }
 
   if (config.qaReport?.enabled && config.enableQaReportImport === true) {

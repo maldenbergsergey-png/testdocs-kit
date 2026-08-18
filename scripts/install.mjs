@@ -88,6 +88,11 @@ async function ask(question, fallback = "") {
   return answer || fallback;
 }
 
+async function askReusable(question, previous = "") {
+  const keepHint = previous ? " (Enter — оставить текущее значение)" : "";
+  return ask(`${question}${keepHint}`, previous);
+}
+
 async function confirm(question, fallback = true) {
   const hint = fallback ? "Y/n" : "y/N";
   const answer = (await ask(`${question} (${hint})`)).toLowerCase();
@@ -205,7 +210,7 @@ async function collectJira(previous = {}) {
   }
   const username = preset.authMode === "bearer"
     ? ""
-    : await ask("Логин или email Jira", previous.username || "");
+    : await askReusable("Логин или email Jira", previous.username || "");
   const secret = await askSecret(
     preset.authMode === "bearer" ? "PAT Jira" : profile === "1" ? "API-токен Jira" : "Пароль Jira",
     previous.secret || ""
@@ -249,7 +254,7 @@ async function collectConfluence(previous = {}) {
   }
   const username = authMode === "bearer"
     ? ""
-    : await ask("Логин или email Confluence", previous.username || "");
+    : await askReusable("Логин или email Confluence", previous.username || "");
   const secret = await askSecret(
     authMode === "bearer" ? "PAT Confluence" : profile === "1" ? "API-токен Confluence" : "Пароль Confluence",
     previous.secret || ""
@@ -304,13 +309,13 @@ async function collectTms(previousTms = {}, previousQaTools = {}, previousWriteS
   );
   const authMode = authChoice === "2" || authChoice === "password" ? "password" : "api_token";
   const username = authMode === "password"
-    ? await ask("Логин QA Tools", previousQaTools.username || "")
+    ? await askReusable("Логин QA Tools", previousQaTools.username || "")
     : "";
   const secret = await askSecret(authMode === "password" ? "Пароль QA Tools" : "Персональный API-токен QA Tools", previousQaTools.secret || "");
   if (authMode === "password" && !username) throw new Error("Не заполнен логин QA Tools.");
   if (!secret) throw new Error("Не заполнены учётные данные QA Tools.");
   const enableQaToolsWrites = await confirm(
-    "Разрешить изменяющие POST/PUT/PATCH-запросы к QA Tools по явному запросу",
+    "Разрешить изменяющие инструменты QA Tools по явному запросу",
     previousWriteSetting === true
   );
   return {
@@ -458,8 +463,6 @@ function installDependencies(skip, config) {
       if (!fs.existsSync(confluenceSdk) || !fs.existsSync(typescript)) {
         throw new Error("Зависимости Confluence MCP не установлены. Повторите команду без --skip-dependencies.");
       }
-      console.log("Пересобираю Confluence MCP из актуальных исходников...");
-      run(npm, ["run", "build"], { cwd: confluenceDir });
     }
     if (config.tms?.provider === "qa_tools") {
       const qaToolsSdk = path.join(qaToolsDir, "node_modules", "@modelcontextprotocol", "sdk", "package.json");
@@ -474,14 +477,21 @@ function installDependencies(skip, config) {
     run(npm, ["ci"], { cwd: jiraDir });
   }
   if (config.confluence?.enabled) {
-    console.log("\nУстанавливаю и собираю Confluence MCP...");
+    console.log("\nУстанавливаю зависимости Confluence MCP...");
     run(npm, ["ci"], { cwd: confluenceDir });
-    run(npm, ["run", "build"], { cwd: confluenceDir });
   }
   if (config.tms?.provider === "qa_tools") {
     console.log("\nУстанавливаю зависимости QA Tools MCP...");
     run(npm, ["ci"], { cwd: qaToolsDir });
   }
+}
+
+function buildAdapters(config) {
+  if (!config.confluence?.enabled) return;
+  const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+  const confluenceDir = path.join(repoRoot, "mcp", "confluence-mcp");
+  console.log("\nПересобираю Confluence MCP из актуальных исходников...");
+  run(npm, ["run", "build"], { cwd: confluenceDir });
 }
 
 function backupPath(target) {
@@ -847,9 +857,11 @@ function configureClients(config, clients, args) {
   if (clients.includes("claude")) configureClaude(config, args.noCli);
 }
 
-function verifyInstallation() {
+function verifyInstallation(args) {
   console.log("\nПроверяю локальный MCP-handshake...");
-  run(process.execPath, [path.join(repoRoot, "scripts", "check-install.mjs")]);
+  const checkArgs = [path.join(repoRoot, "scripts", "check-install.mjs")];
+  if (args.noCli) checkArgs.push("--offline-external");
+  run(process.execPath, checkArgs);
 }
 
 function authenticateBrowserSessions(config, args) {
@@ -895,7 +907,9 @@ async function main() {
   installDependencies(args.skipDependencies, config);
   installSkills(clients, args.force);
   configureClients(config, clients, args);
-  verifyInstallation();
+  // Register independent MCP services before an optional adapter build can fail.
+  buildAdapters(config);
+  verifyInstallation(args);
   authenticateBrowserSessions(config, args);
 
   const tmsSummary = config.tms.provider === "qa_tools"
