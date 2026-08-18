@@ -35,4 +35,35 @@ async function getAuthorizationHeader(options = {}) {
   return `Bearer ${data.access_token}`;
 }
 
-module.exports = { getAuthorizationHeader };
+async function exchangeApiTokenForBearer(options = {}) {
+  const baseUrl = options.baseUrl || process.env.QA_TOOLS_URL;
+  const secret = options.secret || process.env.QA_TOOLS_TOKEN;
+  const fetchImpl = options.fetchImpl || globalThis.fetch;
+  if (!secret) throw new Error("QA_TOOLS_TOKEN is required");
+
+  const form = new FormData();
+  form.set("grant_type", "apitoken");
+  form.set("scope", "openid");
+  form.set("token", secret);
+  const response = await fetchImpl(`${String(baseUrl).replace(/\/+$/, "")}/api/uaa/oauth/token`, {
+    method: "POST",
+    headers: { Accept: "application/json" },
+    body: form
+  });
+  const text = await response.text();
+  let data;
+  try { data = text ? JSON.parse(text) : {}; } catch { data = null; }
+  if (!response.ok || !data?.access_token) {
+    const reason = [data?.error, data?.error_description]
+      .filter((value) => typeof value === "string" && value.length <= 300)
+      .join(": ");
+    throw new Error(
+      `QA Tools API-token exchange failed (${response.status}). ` +
+      `${reason ? `Причина: ${reason}. ` : ""}` +
+      "Проверьте, что персональный API-токен действителен и принадлежит пользователю с доступом к нужному инстансу."
+    );
+  }
+  return `Bearer ${data.access_token}`;
+}
+
+module.exports = { exchangeApiTokenForBearer, getAuthorizationHeader };

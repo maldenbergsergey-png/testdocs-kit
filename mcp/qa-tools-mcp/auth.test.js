@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { getAuthorizationHeader } = require("./auth");
+const { exchangeApiTokenForBearer, getAuthorizationHeader } = require("./auth");
 
 test("uses the vendor Api-Token header without exposing a token elsewhere", async () => {
   assert.equal(await getAuthorizationHeader({
@@ -55,4 +55,26 @@ test("reports a safe OAuth reason when password grant is rejected", async () => 
       return true;
     }
   );
+});
+
+test("exchanges an API token for a bearer fallback without leaking it", async () => {
+  let request;
+  const header = await exchangeApiTokenForBearer({
+    baseUrl: "https://qa-tools.company.example/",
+    secret: "personal-token",
+    fetchImpl: async (url, options) => {
+      assert.doesNotThrow(() => new Request(url, options));
+      request = { url, options };
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ access_token: "fallback-jwt" })
+      };
+    }
+  });
+  assert.equal(request.url, "https://qa-tools.company.example/api/uaa/oauth/token");
+  assert.equal(request.options.body.get("grant_type"), "apitoken");
+  assert.equal(request.options.body.get("token"), "personal-token");
+  assert.equal(new Headers(request.options.headers).has("expect"), false);
+  assert.equal(header, "Bearer fallback-jwt");
 });

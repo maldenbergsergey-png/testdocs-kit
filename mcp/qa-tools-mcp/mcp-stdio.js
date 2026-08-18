@@ -4,16 +4,40 @@ const { Server } = require("@modelcontextprotocol/sdk/server/index.js");
 const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio.js");
 const { CallToolRequestSchema, ListToolsRequestSchema } = require("@modelcontextprotocol/sdk/types.js");
 const { buildMcpUrl, exposeTool, prepareCall } = require("./proxy-policy");
-const { getAuthorizationHeader } = require("./auth");
+const { exchangeApiTokenForBearer, getAuthorizationHeader } = require("./auth");
+
+function isAccessDenied(error) {
+  return /(?:forbidden|unauthorized|\b401\b|\b403\b)/i.test(error instanceof Error ? error.message : String(error));
+}
+
+async function connectUpstream(authorization) {
+  const client = new Client({ name: "testdocs-kit-qa-tools-proxy", version: "1.0.0" });
+  const transport = new StreamableHTTPClientTransport(buildMcpUrl(process.env.QA_TOOLS_URL), {
+    requestInit: { headers: { Authorization: authorization } }
+  });
+  await client.connect(transport);
+  return client;
+}
 
 async function main() {
   const writesEnabled = process.env.TESTDOCS_ENABLE_QA_TOOLS_WRITES === "1";
   const authorization = await getAuthorizationHeader();
-  const upstream = new Client({ name: "testdocs-kit-qa-tools-proxy", version: "1.0.0" });
-  const upstreamTransport = new StreamableHTTPClientTransport(buildMcpUrl(process.env.QA_TOOLS_URL), {
-    requestInit: { headers: { Authorization: authorization } }
-  });
-  await upstream.connect(upstreamTransport);
+  let upstream;
+  try {
+    upstream = await connectUpstream(authorization);
+  } catch (error) {
+    if (process.env.QA_TOOLS_AUTH_MODE !== "api_token" || !isAccessDenied(error)) throw error;
+    const bearer = await exchangeApiTokenForBearer();
+    try {
+      upstream = await connectUpstream(bearer);
+    } catch (fallbackError) {
+      if (!isAccessDenied(fallbackError)) throw fallbackError;
+      throw new Error(
+        "QA Tools MCP вернул Forbidden и для Api-Token, и для Bearer. " +
+        "Проверьте доступ владельца токена, наличие MCP в лицензии и включённость MCP на этом инстансе."
+      );
+    }
+  }
 
   const server = new Server(
     { name: "testdocs-qa-tools-mcp", version: "1.0.0" },
@@ -45,6 +69,13 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
+  if (isAccessDenied(error)) {
+    console.error(
+      "QA Tools MCP вернул Forbidden. Проверьте доступ пользователя, действительность токена, " +
+      "наличие MCP в лицензии и включённость MCP на этом инстансе."
+    );
+  } else {
+    console.error(error instanceof Error ? error.message : String(error));
+  }
   process.exit(1);
 });

@@ -12,6 +12,8 @@ Setup supports a personal API token or a local QA Tools username and password. W
 Authorization: Api-Token <API token>
 ```
 
+If an older or differently configured instance rejects that header with `401` or `403`, the proxy performs the vendor-documented API-token exchange at `/api/uaa/oauth/token` and retries once with the returned short-lived Bearer token. If both variants are forbidden, treat this as an instance permission, license, or MCP enablement problem rather than retrying credentials indefinitely.
+
 The token acts with its owner's project permissions. Keep it outside prompts, examples, logs, and committed configuration.
 
 In username/password mode, the proxy requests a short-lived Bearer token from `/api/uaa/oauth/token` with the standard URL-encoded `grant_type=password` form and sends only that Bearer token to MCP. Some instances can disable password grant even though interactive local login is available; in that case use a personal API token, which is the vendor-documented MCP mode. Login and password remain only in the private Testdocs Kit config.
