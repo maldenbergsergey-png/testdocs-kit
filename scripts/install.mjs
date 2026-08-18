@@ -311,7 +311,7 @@ async function collectTms(previousTms = {}, previousQaTools = {}, previousWriteS
     "https://qa-tools.company.example"
   )).replace(/\/+$/, "");
   const authChoice = await ask(
-    "Авторизация QA Tools: 1 — персональный API-токен, 2 — логин и пароль",
+    "Авторизация QA Tools: 1 — персональный API-токен (рекомендуется для MCP), 2 — логин и пароль (если инстанс разрешает password grant)",
     previousQaTools.authMode === "password" ? "2" : "1"
   );
   const authMode = authChoice === "2" || authChoice === "password" ? "password" : "api_token";

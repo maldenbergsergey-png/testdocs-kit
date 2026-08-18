@@ -9,7 +9,7 @@ async function getAuthorizationHeader(options = {}) {
   if (authMode !== "password") throw new Error(`Unsupported QA Tools auth mode: ${authMode}`);
   if (!username) throw new Error("QA_TOOLS_USERNAME is required for password authentication");
 
-  const form = new FormData();
+  const form = new URLSearchParams();
   form.set("grant_type", "password");
   form.set("scope", "openid");
   form.set("username", username);
@@ -23,9 +23,13 @@ async function getAuthorizationHeader(options = {}) {
   let data;
   try { data = text ? JSON.parse(text) : {}; } catch { data = null; }
   if (!response.ok || !data?.access_token) {
+    const reason = [data?.error, data?.error_description]
+      .filter((value) => typeof value === "string" && value.length <= 300)
+      .join(": ");
     throw new Error(
       `QA Tools login/password authentication failed (${response.status}). ` +
-      "Проверьте логин и пароль; если инстанс запрещает password grant для MCP, используйте персональный API-токен."
+      `${reason ? `Причина: ${reason}. ` : ""}` +
+      "Проверьте логин и пароль; если инстанс запрещает password grant, повторите setup без --answers и выберите персональный API-токен."
     );
   }
   return `Bearer ${data.access_token}`;

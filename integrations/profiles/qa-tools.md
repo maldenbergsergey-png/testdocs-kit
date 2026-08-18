@@ -14,7 +14,7 @@ Authorization: Api-Token <API token>
 
 The token acts with its owner's project permissions. Keep it outside prompts, examples, logs, and committed configuration.
 
-In username/password mode, the proxy requests a short-lived Bearer token from `/api/uaa/oauth/token` with `grant_type=password` and sends only that Bearer token to MCP. Some instances can disable password grant even though interactive local login is available; in that case use a personal API token, which is the vendor-documented MCP mode. Login and password remain only in the private Testdocs Kit config.
+In username/password mode, the proxy requests a short-lived Bearer token from `/api/uaa/oauth/token` with the standard URL-encoded `grant_type=password` form and sends only that Bearer token to MCP. Some instances can disable password grant even though interactive local login is available; in that case use a personal API token, which is the vendor-documented MCP mode. Login and password remain only in the private Testdocs Kit config.
 
 ## Tool exposure
 
