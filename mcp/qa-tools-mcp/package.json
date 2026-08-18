@@ -1,0 +1,15 @@
+{
+  "name": "testdocs-qa-tools-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Safe STDIO proxy for the QA Tools / ТестОпс MCP server",
+  "main": "mcp-stdio.js",
+  "scripts": {
+    "start": "node mcp-stdio.js",
+    "test": "node --test *.test.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.3.6"
+  }
+}

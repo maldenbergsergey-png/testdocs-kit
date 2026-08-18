@@ -20,7 +20,7 @@ enabled_tools = [
 default_tools_approval_mode = "approve"
 
 [mcp_servers.qa_jira.env]
-JIRA_URL = "https://jira.example.com"
+JIRA_URL = "https://jira.company.example"
 JIRA_EMAIL = "your-username-or-email"
 JIRA_TOKEN = "your-token-or-password"
 JIRA_AUTH_MODE = "basic"

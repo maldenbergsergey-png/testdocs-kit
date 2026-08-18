@@ -185,7 +185,7 @@ async function collectJira(previous = {}) {
     "4": { profile: "4", authMode: "browser_session", apiVersion: "2" }
   };
   const preset = presets[profile] || presets["3"];
-  const url = (await ask("Адрес Jira без завершающего слеша", previous.url || "https://jira.example.com")).replace(/\/+$/, "");
+  const url = (await ask("Адрес Jira без завершающего слеша", previous.url || "https://jira.company.example")).replace(/\/+$/, "");
   const previousDefaultTemplate = previous.url
     ? `${String(previous.url).replace(/\/+$/, "")}/secure/Tests.jspa#/testCase/{key}`
     : null;
@@ -234,7 +234,7 @@ async function collectConfluence(previous = {}) {
   const authMode = profile === "2" ? "bearer" : profile === "4" ? "browser_session" : "basic";
   const baseUrl = (await ask(
     "Адрес Confluence без завершающего слеша",
-    previous.baseUrl || "https://confluence.example.com"
+    previous.baseUrl || "https://confluence.company.example"
   )).replace(/\/+$/, "");
   if (authMode === "browser_session") {
     return {
@@ -277,6 +277,49 @@ async function collectQaReport(previous = {}) {
   return { enabled: true, baseUrl };
 }
 
+async function collectTms(previousTms = {}, previousQaTools = {}, previousWriteSetting = false) {
+  const fallback = previousTms.provider === "qa_tools" ? "2" : "1";
+  const choice = await ask(
+    "Какая TMS используется: 1 — Zephyr Scale / Test Management for Jira, 2 — QA Tools (ТестОпс)",
+    fallback
+  );
+  const provider = choice === "2" || choice === "qa_tools"
+    ? "qa_tools"
+    : "zephyr_scale";
+  if (provider === "zephyr_scale") {
+    return {
+      tms: { provider },
+      qaTools: { enabled: false },
+      enableQaToolsWrites: false
+    };
+  }
+
+  const baseUrl = (await ask(
+    "Адрес QA Tools (ТестОпс) без завершающего слеша",
+    previousQaTools.baseUrl || "https://qa-tools.company.example"
+  )).replace(/\/+$/, "");
+  const authChoice = await ask(
+    "Авторизация QA Tools: 1 — персональный API-токен, 2 — логин и пароль",
+    previousQaTools.authMode === "password" ? "2" : "1"
+  );
+  const authMode = authChoice === "2" || authChoice === "password" ? "password" : "api_token";
+  const username = authMode === "password"
+    ? await ask("Логин QA Tools", previousQaTools.username || "")
+    : "";
+  const secret = await askSecret(authMode === "password" ? "Пароль QA Tools" : "Персональный API-токен QA Tools", previousQaTools.secret || "");
+  if (authMode === "password" && !username) throw new Error("Не заполнен логин QA Tools.");
+  if (!secret) throw new Error("Не заполнены учётные данные QA Tools.");
+  const enableQaToolsWrites = await confirm(
+    "Разрешить изменяющие POST/PUT/PATCH-запросы к QA Tools по явному запросу",
+    previousWriteSetting === true
+  );
+  return {
+    tms: { provider },
+    qaTools: { enabled: true, baseUrl, authMode, username, secret, insecureTls: false },
+    enableQaToolsWrites
+  };
+}
+
 function validateAnswers(config) {
   if (!config || typeof config !== "object") throw new Error("Файл ответов должен содержать JSON-объект.");
   for (const service of ["jira", "confluence"]) {
@@ -307,6 +350,23 @@ function validateAnswers(config) {
       throw new Error("qaReport.baseUrl должен быть полным HTTP(S)-адресом.");
     }
   }
+  const provider = config.tms?.provider || "zephyr_scale";
+  if (!["zephyr_scale", "qa_tools"].includes(provider)) {
+    throw new Error("tms.provider должен быть zephyr_scale или qa_tools.");
+  }
+  config.tms = { ...(config.tms || {}), provider };
+  if (provider === "qa_tools") {
+    const qaTools = config.qaTools;
+    if (!qaTools?.enabled || !qaTools.baseUrl || !qaTools.secret || !["api_token", "password"].includes(qaTools.authMode) || (qaTools.authMode === "password" && !qaTools.username)) {
+      throw new Error("В файле ответов не полностью настроен QA Tools (ТестОпс).");
+    }
+    try {
+      const url = new URL(qaTools.baseUrl);
+      if (!["http:", "https:"].includes(url.protocol)) throw new Error("unsupported protocol");
+    } catch {
+      throw new Error("qaTools.baseUrl должен быть полным HTTP(S)-адресом.");
+    }
+  }
   return config;
 }
 
@@ -325,6 +385,7 @@ async function collectConfig(args, clients) {
       previous.enableChecklistCommentPublication ?? false
     )
     : false;
+  const tmsConfig = await collectTms(previous.tms, previous.qaTools, previous.enableQaToolsWrites);
   const qaReport = await collectQaReport(previous.qaReport);
   const enableQaReportImport = qaReport.enabled
     ? await confirm(
@@ -341,7 +402,8 @@ async function collectConfig(args, clients) {
     enableQaReportImport,
     jira,
     confluence: await collectConfluence(previous.confluence),
-    qaReport
+    qaReport,
+    ...tmsConfig
   };
 }
 
@@ -380,6 +442,7 @@ function installDependencies(skip, config) {
   const npm = process.platform === "win32" ? "npm.cmd" : "npm";
   const jiraDir = path.join(repoRoot, "mcp", "jira-mcp");
   const confluenceDir = path.join(repoRoot, "mcp", "confluence-mcp");
+  const qaToolsDir = path.join(repoRoot, "mcp", "qa-tools-mcp");
 
   if (skip) {
     console.log("Установка зависимостей пропущена.");
@@ -398,6 +461,12 @@ function installDependencies(skip, config) {
       console.log("Пересобираю Confluence MCP из актуальных исходников...");
       run(npm, ["run", "build"], { cwd: confluenceDir });
     }
+    if (config.tms?.provider === "qa_tools") {
+      const qaToolsSdk = path.join(qaToolsDir, "node_modules", "@modelcontextprotocol", "sdk", "package.json");
+      if (!fs.existsSync(qaToolsSdk)) {
+        throw new Error("Зависимости QA Tools MCP не установлены. Повторите команду без --skip-dependencies.");
+      }
+    }
     return;
   }
   if (config.jira?.enabled || (config.qaReport?.enabled && config.enableQaReportImport === true)) {
@@ -408,6 +477,10 @@ function installDependencies(skip, config) {
     console.log("\nУстанавливаю и собираю Confluence MCP...");
     run(npm, ["ci"], { cwd: confluenceDir });
     run(npm, ["run", "build"], { cwd: confluenceDir });
+  }
+  if (config.tms?.provider === "qa_tools") {
+    console.log("\nУстанавливаю зависимости QA Tools MCP...");
+    run(npm, ["ci"], { cwd: qaToolsDir });
   }
 }
 
@@ -472,6 +545,11 @@ function tomlString(value) {
 function codexBlock(config) {
   const sections = [MANAGED_BEGIN];
   if (config.jira?.enabled) {
+    const zephyrTools = config.tms?.provider === "qa_tools" ? "" : `,
+  "zephyr_get_projects", "zephyr_get_project", "zephyr_search_test_cases",
+  "zephyr_get_test_plans", "zephyr_get_test_plan", "zephyr_get_iterations",
+  "zephyr_get_test_case", "zephyr_get_all_test_cases",
+  "zephyr_create_test_case", "zephyr_update_session_test_case", "zephyr_update_test_case"`;
     sections.push(`
 [mcp_servers.testdocs_jira]
 command = ${tomlString(process.execPath)}
@@ -479,12 +557,17 @@ args = [${tomlString(launcherFile)}, "jira"]
 enabled = true
 required = false
 enabled_tools = [
-  "get_issue", "get_transitions", "search_issues"${config.enableChecklistCommentPublication === true ? ', "jira_publish_checklist_comment"' : ""},
-  "zephyr_get_projects", "zephyr_get_project", "zephyr_search_test_cases",
-  "zephyr_get_test_plans", "zephyr_get_test_plan", "zephyr_get_iterations",
-  "zephyr_get_test_case", "zephyr_get_all_test_cases",
-  "zephyr_create_test_case", "zephyr_update_session_test_case", "zephyr_update_test_case"
+  "get_issue", "get_transitions", "search_issues"${config.enableChecklistCommentPublication === true ? ', "jira_publish_checklist_comment"' : ""}${zephyrTools}
 ]
+default_tools_approval_mode = "approve"`);
+  }
+  if (config.tms?.provider === "qa_tools" && config.qaTools?.enabled) {
+    sections.push(`
+[mcp_servers.testdocs_qa_tools]
+command = ${tomlString(process.execPath)}
+args = [${tomlString(launcherFile)}, "qa_tools"]
+enabled = true
+required = false
 default_tools_approval_mode = "approve"`);
   }
   if (config.qaReport?.enabled && config.enableQaReportImport === true) {
@@ -549,6 +632,12 @@ function openCodeSnippet(config, format) {
   const buildServer = format === "v2" ? v2McpServerConfig : stableMcpServerConfig;
   if (config.jira?.enabled) servers.testdocs_jira = buildServer("jira");
   if (config.confluence?.enabled) servers.testdocs_confluence = buildServer("confluence");
+  if (config.tms?.provider === "qa_tools" && config.qaTools?.enabled) {
+    servers.testdocs_qa_tools = buildServer("qa_tools");
+  }
+  if (config.qaReport?.enabled && config.enableQaReportImport === true) {
+    servers.testdocs_delivery = buildServer("delivery");
+  }
   return {
     $schema: "https://opencode.ai/config.json",
     mcp: format === "v2" ? { servers } : servers
@@ -594,7 +683,7 @@ function removeManagedOpenCodePermissions(data) {
 }
 
 function ensureSafeFormatMigration(data, format) {
-  const managedNames = new Set(["testdocs_jira", "testdocs_confluence", "testdocs_delivery"]);
+  const managedNames = new Set(["testdocs_jira", "testdocs_confluence", "testdocs_delivery", "testdocs_qa_tools"]);
   if (format === "stable" && data.mcp?.servers) {
     const foreignServers = Object.keys(data.mcp.servers).filter((name) => !managedNames.has(name));
     if (foreignServers.length) {
@@ -660,24 +749,29 @@ function mergeOpenCodeConfig(config, args) {
     delete data.mcp.testdocs_jira;
     delete data.mcp.testdocs_confluence;
     delete data.mcp.testdocs_delivery;
+    delete data.mcp.testdocs_qa_tools;
     if (config.jira?.enabled) data.mcp.testdocs_jira = stableMcpServerConfig("jira");
     if (config.confluence?.enabled) {
       data.mcp.testdocs_confluence = stableMcpServerConfig("confluence");
     }
     if (config.qaReport?.enabled && config.enableQaReportImport === true) data.mcp.testdocs_delivery = stableMcpServerConfig("delivery");
+    if (config.tms?.provider === "qa_tools" && config.qaTools?.enabled) data.mcp.testdocs_qa_tools = stableMcpServerConfig("qa_tools");
   } else {
     data.mcp.servers ||= {};
     delete data.mcp.testdocs_jira;
     delete data.mcp.testdocs_confluence;
     delete data.mcp.testdocs_delivery;
+    delete data.mcp.testdocs_qa_tools;
     delete data.mcp.servers.testdocs_jira;
     delete data.mcp.servers.testdocs_confluence;
     delete data.mcp.servers.testdocs_delivery;
+    delete data.mcp.servers.testdocs_qa_tools;
     if (config.jira?.enabled) data.mcp.servers.testdocs_jira = v2McpServerConfig("jira");
     if (config.confluence?.enabled) {
       data.mcp.servers.testdocs_confluence = v2McpServerConfig("confluence");
     }
     if (config.qaReport?.enabled && config.enableQaReportImport === true) data.mcp.servers.testdocs_delivery = v2McpServerConfig("delivery");
+    if (config.tms?.provider === "qa_tools" && config.qaTools?.enabled) data.mcp.servers.testdocs_qa_tools = v2McpServerConfig("qa_tools");
   }
   writeJsonWithBackup(target, data);
   console.log(`OpenCode настроен (${format}): ${target}`);
@@ -695,6 +789,9 @@ function claudeCommands(config) {
   if (config.qaReport?.enabled && config.enableQaReportImport === true) {
     commands.push(`claude mcp add --transport stdio --scope user testdocs_delivery -- ${JSON.stringify(process.execPath)} ${JSON.stringify(launcherFile)} delivery`);
   }
+  if (config.tms?.provider === "qa_tools" && config.qaTools?.enabled) {
+    commands.push(`claude mcp add --transport stdio --scope user testdocs_qa_tools -- ${JSON.stringify(process.execPath)} ${JSON.stringify(launcherFile)} qa_tools`);
+  }
   return commands;
 }
 
@@ -708,7 +805,7 @@ function configureClaude(config, noCli) {
     return;
   }
 
-  for (const [service, enabled] of [["jira", config.jira?.enabled], ["confluence", config.confluence?.enabled], ["delivery", config.qaReport?.enabled && config.enableQaReportImport === true]]) {
+  for (const [service, enabled] of [["jira", config.jira?.enabled], ["confluence", config.confluence?.enabled], ["delivery", config.qaReport?.enabled && config.enableQaReportImport === true], ["qa_tools", config.tms?.provider === "qa_tools" && config.qaTools?.enabled]]) {
     if (!enabled) continue;
     const name = `testdocs_${service}`;
     const current = spawnSync("claude", ["mcp", "get", name], { stdio: "ignore" });
@@ -734,6 +831,9 @@ function writeGenericSnippet(config) {
   }
   if (config.qaReport?.enabled && config.enableQaReportImport === true) {
     mcpServers.testdocs_delivery = { command: process.execPath, args: [launcherFile, "delivery"] };
+  }
+  if (config.tms?.provider === "qa_tools" && config.qaTools?.enabled) {
+    mcpServers.testdocs_qa_tools = { command: process.execPath, args: [launcherFile, "qa_tools"] };
   }
   const target = path.join(getConfigDir(), "client-snippets", "generic-mcp.json");
   writeJsonWithBackup(target, { mcpServers });
@@ -785,6 +885,7 @@ async function main() {
   config.clients = clients;
   config.enableWrites = false;
   config.enableTestCaseCreation = true;
+  config.tms ||= { provider: "zephyr_scale" };
   if (config.jira?.enabled && !config.jira.testCaseUrlTemplate) {
     config.jira.testCaseUrlTemplate = `${config.jira.url}/secure/Tests.jspa#/testCase/{key}`;
   }
@@ -797,14 +898,16 @@ async function main() {
   verifyInstallation();
   authenticateBrowserSessions(config, args);
 
+  const tmsSummary = config.tms.provider === "qa_tools"
+    ? "QA Tools подключён через официальный MCP; изменяющие tools требуют отдельного разрешения и явного запроса, удаление скрыто."
+    : "Создание новых Zephyr/TM4J-кейсов доступно только по явному запросу.\nСуществующий кейс обновляется только по явному запросу после повторного чтения и проверки актуальности proposal.";
   console.log(`\nУстановка завершена.
 1. Перезапустите выбранный AI-клиент.
 2. Проверьте MCP-командой клиента.
 3. Выполните пробный запрос из README.md.
 
-Создание новых Zephyr/TM4J-кейсов доступно только по явному запросу.
-Существующий кейс обновляется только по явному запросу после повторного чтения и проверки актуальности proposal.
-Checklist-комментарии Jira и QA Report доступны только если были отдельно разрешены при setup; перенос, смена статуса и удаление отключены.`);
+${tmsSummary}
+Checklist-комментарии Jira и QA Report доступны только если были отдельно разрешены при setup. Автоматическое удаление внешних тест-кейсов отключено.`);
 }
 
 main().catch((error) => {

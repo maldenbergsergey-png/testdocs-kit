@@ -11,7 +11,7 @@ Send `POST {baseUrl}/api/checklists/import` with JSON:
   "source": "testdocs-kit",
   "format": "jira",
   "title": "Readable checklist title",
-  "issueKey": "https://jira.example.com/browse/DEMO-123",
+  "issueKey": "https://jira.company.example/browse/TASK-123",
   "content": "h2. ..."
 }
 ```

@@ -97,6 +97,10 @@ Do not assume that test cases are Jira issues. Some products store them as separ
 
 Do not assume modern Zephyr Scale endpoints, cloud field names, versioning, or call-step behavior for a legacy Test Management for Jira installation. Confirm the deployment, product version, and actual MCP tool schema first.
 
+The installer records one active TMS provider: `zephyr_scale` for Zephyr Scale / legacy Test Management for Jira, or `qa_tools` for QA Tools (ТестОпс). Zephyr shares the configured Jira connection and requires no separate base URL or credentials. QA Tools is an independent connection and requires its instance URL plus an API token or local username/password authentication. Use the selected provider's exposed capabilities only; do not query both TMS products speculatively.
+
+For QA Tools, prefer the vendor's version-matched `testops_*` MCP tools over hard-coded REST endpoints. Treat `testops_find_*`, `testops_get_*`, and `testops_list_*` as reads. Every other tool is a separate external change and requires installer opt-in plus exact user approval. The local proxy never exposes tool names containing `delete` or `remove`.
+
 ## Read and write boundary
 
 Read-only retrieval is allowed when the user places the source in scope. Every workflow shows its result in chat by default. A user request that explicitly says to create or publish new cases may authorize creation in the same turn after the payload and exact target pass validation; no second confirmation is required. A request only to draft, generate, show, analyze, review, or check does not authorize a write.
@@ -135,7 +139,7 @@ For every update, omitted fields remain unchanged. When changing steps, send the
 - Keep tokens, passwords, cookies, and private keys outside the repository, prompts, examples, and committed configuration.
 - Store browser-session cookies only in a service-specific private file, restrict them to the configured origin, and never return their values through MCP tools.
 - Expose creation and updates only for explicit user requests, enforce session provenance or baseline fingerprints inside the MCP server, and keep host-side write approvals enabled when the client supports them.
-- Scope project configuration to trusted projects and company-approved servers.
+- Scope project configuration to trusted projects and approved servers.
 
 ## Browser-session authentication
 

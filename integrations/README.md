@@ -8,6 +8,7 @@ Integrations are context transport, not QA logic. This repository works fully wi
 - [`profiles/jira-confluence.md`](profiles/jira-confluence.md) — issue and knowledge capability expectations.
 - [`profiles/zephyr-scale.md`](profiles/zephyr-scale.md) — modern Zephyr Scale capability profile.
 - [`profiles/tm4j-legacy.md`](profiles/tm4j-legacy.md) — legacy Test Management for Jira, including version 6.9.0.
+- [`profiles/qa-tools.md`](profiles/qa-tools.md) — QA Tools / ТестОпс MCP and authentication profile.
 - [`../rules/integration-rules.md`](../rules/integration-rules.md) — neutral context bundle and mandatory read/write boundaries.
 - [`../skills/collect-test-context/SKILL.md`](../skills/collect-test-context/SKILL.md) — read-only collection and routing workflow.
 - [`profiles/qa-report.md`](profiles/qa-report.md) — optional finalized-checklist import and external editor handoff.

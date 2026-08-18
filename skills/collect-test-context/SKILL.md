@@ -32,6 +32,8 @@ Infer `prepare task testing` for ordinary task-level requests to prepare testing
 
 Inspect the tools available in the current host and classify them as issue read, issue relations, knowledge read, TMS read, or TMS write. Match by documented capability and input/output shape, not by a hard-coded tool name.
 
+When setup selected QA Tools, use its `testops_find_*`, `testops_get_*`, or `testops_list_*` capabilities for scoped TMS reads. When setup selected Zephyr Scale / Test Management for Jira, use only the Zephyr-compatible capabilities from the Jira connection. Do not search an unselected second TMS.
+
 When more than one Jira or company connection could satisfy the same key, stop before retrieval and request the intended instance. Never choose a company environment from key shape alone.
 
 ## Workflow

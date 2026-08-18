@@ -54,7 +54,27 @@ function buildEnvironment(service, config) {
       JIRA_API_VERSION: String(jira.apiVersion || "2"),
       JIRA_INSECURE_TLS: jira.insecureTls ? "1" : "0",
       JIRA_TEST_CASE_URL_TEMPLATE:
-        jira.testCaseUrlTemplate || `${jira.url}/secure/Tests.jspa#/testCase/{key}`
+        jira.testCaseUrlTemplate || `${jira.url}/secure/Tests.jspa#/testCase/{key}`,
+      TESTDOCS_TMS_PROVIDER: config.tms?.provider || "zephyr_scale"
+    };
+  }
+
+  if (service === "qa_tools") {
+    const qaTools = config.qaTools;
+    if (config.tms?.provider !== "qa_tools" || !qaTools?.enabled) {
+      fail("QA Tools (ТестОпс) не выбран как TMS.");
+    }
+    if (!qaTools.baseUrl || !qaTools.authMode || !qaTools.secret) {
+      fail("для QA Tools не заполнены адрес или учётные данные.");
+    }
+    return {
+      ...common,
+      QA_TOOLS_URL: qaTools.baseUrl,
+      QA_TOOLS_AUTH_MODE: qaTools.authMode,
+      QA_TOOLS_USERNAME: qaTools.username || "",
+      QA_TOOLS_TOKEN: qaTools.secret,
+      QA_TOOLS_INSECURE_TLS: qaTools.insecureTls ? "1" : "0",
+      TESTDOCS_ENABLE_QA_TOOLS_WRITES: config.enableQaToolsWrites === true ? "1" : "0"
     };
   }
 
@@ -91,12 +111,12 @@ function buildEnvironment(service, config) {
 
 const service = process.argv[2];
 if (!Object.hasOwn(serviceEntries, service)) {
-  fail("укажите сервис jira, confluence или delivery.");
+  fail("укажите сервис jira, confluence, qa_tools или delivery.");
 }
 
 const config = readConfig();
 const child = spawn(process.execPath, [serviceEntries[service]], {
-  cwd: new URL(`../mcp/${service === "confluence" ? "confluence-mcp" : "jira-mcp"}/`, import.meta.url),
+  cwd: new URL(`../mcp/${service === "confluence" ? "confluence-mcp" : service === "qa_tools" ? "qa-tools-mcp" : "jira-mcp"}/`, import.meta.url),
   env: buildEnvironment(service, config),
   stdio: "inherit"
 });

@@ -23,6 +23,7 @@ async function main() {
   const qaReportImportEnabled = process.env.TESTDOCS_ENABLE_QA_REPORT_IMPORT === "1";
   const deliveryOnly = process.env.TESTDOCS_DELIVERY_ONLY === "1";
   const createsEnabled = process.env.TESTDOCS_ENABLE_TEST_CASE_CREATION !== "0";
+  const zephyrEnabled = (process.env.TESTDOCS_TMS_PROVIDER || "zephyr_scale") === "zephyr_scale";
   const sessionCases = createSessionCaseRegistry();
   const server = new McpServer({
     name: deliveryOnly ? "testdocs-delivery-mcp" : "jira-mcp",
@@ -127,6 +128,7 @@ async function main() {
       toTextResult(await tools.search_issues({ jql, maxResults }))
   );
 
+  if (zephyrEnabled) {
   // --- Zephyr Scale tools ---
 
   server.registerTool(
@@ -341,6 +343,7 @@ async function main() {
       },
       async (input) => toTextResult(await tools.zephyr_update_test_case(input))
     );
+  }
   }
 
   const transport = new StdioServerTransport();

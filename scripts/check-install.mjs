@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
+import { spawnSync } from "node:child_process";
 import { getConfigFile, launcherFile, repoRoot } from "./paths.mjs";
 
 function assert(condition, message) {
@@ -34,11 +35,21 @@ function validatePrivateConfig() {
   if (config.qaReport?.enabled) {
     assert(/^https?:\/\//.test(config.qaReport.baseUrl || ""), "Неполные настройки QA Report.");
   }
+  assert(["zephyr_scale", "qa_tools"].includes(config.tms?.provider || "zephyr_scale"), "Неизвестный TMS provider.");
+  if (config.tms?.provider === "qa_tools") {
+    assert(config.qaTools?.enabled, "QA Tools выключен при выбранной TMS.");
+    assert(/^https?:\/\//.test(config.qaTools.baseUrl || ""), "Неполный адрес QA Tools.");
+    assert(["api_token", "password"].includes(config.qaTools.authMode), "Неизвестный режим авторизации QA Tools.");
+    if (config.qaTools.authMode === "password") assert(config.qaTools.username, "Не заполнен логин QA Tools.");
+    assert(config.qaTools.secret, "Не заполнены учётные данные QA Tools.");
+  }
   return config;
 }
 
 async function loadMcpClient(config) {
-  const packageFile = config.jira?.enabled || (config.qaReport?.enabled && config.enableQaReportImport === true)
+  const packageFile = config.tms?.provider === "qa_tools"
+    ? path.join(repoRoot, "mcp", "qa-tools-mcp", "package.json")
+    : config.jira?.enabled || (config.qaReport?.enabled && config.enableQaReportImport === true)
     ? path.join(repoRoot, "mcp", "jira-mcp", "package.json")
     : path.join(repoRoot, "mcp", "confluence-mcp", "package.json");
   const requireFromService = createRequire(packageFile);
@@ -66,7 +77,7 @@ async function listTools(service, Client, StdioClientTransport) {
 
 async function main() {
   const config = validatePrivateConfig();
-  if (!config.jira?.enabled && !config.confluence?.enabled && !(config.qaReport?.enabled && config.enableQaReportImport === true)) {
+  if (!config.jira?.enabled && !config.confluence?.enabled && !(config.qaReport?.enabled && config.enableQaReportImport === true) && config.tms?.provider !== "qa_tools") {
     console.log("MCP-сервисы отключены; проверен только файл настроек.");
     console.log("Проверка установки: OK");
     return;
@@ -77,10 +88,13 @@ async function main() {
   if (config.jira?.enabled) {
     const tools = await listTools("jira", Client, StdioClientTransport);
     assert(tools.includes("get_issue"), "Jira MCP не отдал get_issue.");
-    if (config.enableTestCaseCreation !== false) {
+    if ((config.tms?.provider || "zephyr_scale") === "zephyr_scale" && config.enableTestCaseCreation !== false) {
       assert(tools.includes("zephyr_create_test_case"), "Jira MCP не отдал инструмент создания кейса Zephyr.");
       assert(tools.includes("zephyr_update_session_test_case"), "Jira MCP не отдал защищённый инструмент исправления кейса текущей сессии.");
       assert(tools.includes("zephyr_update_test_case"), "Jira MCP не отдал защищённый инструмент обновления существующего кейса.");
+    }
+    if (config.tms?.provider === "qa_tools") {
+      assert(!tools.some((tool) => tool.startsWith("zephyr_")), "Jira MCP отдал Zephyr tools при выбранном QA Tools.");
     }
     assert(!tools.includes("add_comment"), "Write-инструмент add_comment включён без разрешения.");
     assert(!tools.includes("transition_issue"), "Write-инструмент transition_issue включён без разрешения.");
@@ -90,6 +104,13 @@ async function main() {
       assert(!tools.includes("jira_publish_checklist_comment"), "Публикация checklist-комментария включена без разрешения.");
     }
     results.push(`Jira MCP: ${tools.length} инструментов (чтение + создание и защищённое обновление по явному запросу)`);
+  }
+
+  if (config.tms?.provider === "qa_tools") {
+    const entry = path.join(repoRoot, "mcp", "qa-tools-mcp", "mcp-stdio.js");
+    const syntax = spawnSync(process.execPath, ["--check", entry], { encoding: "utf8" });
+    assert(syntax.status === 0, `Некорректный QA Tools MCP proxy: ${syntax.stderr}`);
+    results.push("QA Tools MCP proxy: настройки и локальный код проверены; удалённый handshake выполняется после перезапуска клиента");
   }
 
   if (config.qaReport?.enabled && config.enableQaReportImport === true) {

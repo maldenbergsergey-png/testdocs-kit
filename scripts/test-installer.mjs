@@ -16,6 +16,7 @@ const answers = {
   enableWrites: false,
   enableChecklistCommentPublication: true,
   enableQaReportImport: true,
+  tms: { provider: "zephyr_scale" },
   jira: {
     enabled: true,
     profile: "3",
@@ -251,12 +252,54 @@ try {
   }
   assert(qaOnlyResult.stdout.includes("QA Report: 1 инструмент"), "QA Report MCP не прошёл независимый handshake.");
 
+  // QA Tools can be selected independently and keeps login/password out of client configs.
+  fs.writeFileSync(answersFile, JSON.stringify({
+    version: 1,
+    enableWrites: false,
+    enableTestCaseCreation: false,
+    enableQaToolsWrites: true,
+    tms: { provider: "qa_tools" },
+    jira: { enabled: false },
+    confluence: { enabled: false },
+    qaTools: {
+      enabled: true,
+      baseUrl: "https://qa-tools.company.example",
+      authMode: "password",
+      username: "qa-user",
+      secret: "dummy-qa-tools-password",
+      insecureTls: false
+    }
+  }), "utf8");
+  const qaToolsResult = spawnSync(process.execPath, [
+    path.join(scriptsDir, "install.mjs"),
+    "--clients", "codex,opencode,generic",
+    "--answers", answersFile,
+    "--skip-dependencies",
+    "--no-cli",
+    "--opencode-format", "v2"
+  ], { cwd: repoRoot, env, encoding: "utf8" });
+  if (qaToolsResult.status !== 0) {
+    process.stdout.write(qaToolsResult.stdout || "");
+    process.stderr.write(qaToolsResult.stderr || "");
+    throw new Error("Не установлена QA Tools integration.");
+  }
+  const qaToolsPrivateConfig = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
+  assert(qaToolsPrivateConfig.tms.provider === "qa_tools", "Не сохранён выбор QA Tools.");
+  assert(qaToolsPrivateConfig.qaTools.authMode === "password", "Не сохранён режим логин/пароль QA Tools.");
+  const qaToolsPublicConfigs = [codexConfig, openCodeConfig, genericConfig].map((file) => fs.readFileSync(file, "utf8")).join("\n");
+  assert(qaToolsPublicConfigs.includes("testdocs_qa_tools"), "QA Tools MCP не добавлен в клиентские конфиги.");
+  assert(!qaToolsPublicConfigs.includes("qa-user"), "Логин QA Tools попал в клиентскую конфигурацию.");
+  assert(!qaToolsPublicConfigs.includes("dummy-qa-tools-password"), "Пароль QA Tools попал в клиентскую конфигурацию.");
+  assert(!qaToolsPublicConfigs.includes("zephyr_get_test_case"), "Zephyr tools остались при выбранном QA Tools.");
+  assert(qaToolsResult.stdout.includes("QA Tools MCP proxy"), "Не проверен локальный QA Tools MCP proxy.");
+
   console.log("Изолированная установка Codex/Claude Code/OpenCode/generic: OK");
   console.log("Повторная установка без дублирования: OK");
   console.log("OpenCode stable, миграция ошибочного конфига и V2: OK");
   console.log("Секреты отсутствуют в клиентских MCP-конфигах: OK");
   console.log("Режим browser-session без пароля: OK");
   console.log("Независимая QA Report integration без Jira/Confluence: OK");
+  console.log("Выбор QA Tools, login/password и защищённый MCP proxy: OK");
 } finally {
   fs.rmSync(testRoot, { recursive: true, force: true });
 }
