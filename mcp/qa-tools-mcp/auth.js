@@ -16,7 +16,7 @@ async function getAuthorizationHeader(options = {}) {
   form.set("password", secret);
   const response = await fetchImpl(`${String(baseUrl).replace(/\/+$/, "")}/api/uaa/oauth/token`, {
     method: "POST",
-    headers: { Accept: "application/json", Expect: "" },
+    headers: { Accept: "application/json" },
     body: form
   });
   const text = await response.text();

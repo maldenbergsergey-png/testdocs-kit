@@ -88,9 +88,9 @@ async function ask(question, fallback = "") {
   return answer || fallback;
 }
 
-async function askReusable(question, previous = "") {
+async function askReusable(question, previous = "", initial = "") {
   const keepHint = previous ? " (Enter — оставить текущее значение)" : "";
-  return ask(`${question}${keepHint}`, previous);
+  return ask(`${question}${keepHint}`, previous || initial);
 }
 
 async function confirm(question, fallback = true) {
@@ -190,7 +190,11 @@ async function collectJira(previous = {}) {
     "4": { profile: "4", authMode: "browser_session", apiVersion: "2" }
   };
   const preset = presets[profile] || presets["3"];
-  const url = (await ask("Адрес Jira без завершающего слеша", previous.url || "https://jira.company.example")).replace(/\/+$/, "");
+  const url = (await askReusable(
+    "Адрес Jira без завершающего слеша",
+    previous.url || "",
+    "https://jira.company.example"
+  )).replace(/\/+$/, "");
   const previousDefaultTemplate = previous.url
     ? `${String(previous.url).replace(/\/+$/, "")}/secure/Tests.jspa#/testCase/{key}`
     : null;
@@ -237,9 +241,10 @@ async function collectConfluence(previous = {}) {
     previous.profile || "3"
   );
   const authMode = profile === "2" ? "bearer" : profile === "4" ? "browser_session" : "basic";
-  const baseUrl = (await ask(
+  const baseUrl = (await askReusable(
     "Адрес Confluence без завершающего слеша",
-    previous.baseUrl || "https://confluence.company.example"
+    previous.baseUrl || "",
+    "https://confluence.company.example"
   )).replace(/\/+$/, "");
   if (authMode === "browser_session") {
     return {
@@ -275,9 +280,10 @@ async function collectConfluence(previous = {}) {
 async function collectQaReport(previous = {}) {
   const enabled = await confirm("Подключить QA Report для открытия чек-листов в редакторе", previous.enabled ?? false);
   if (!enabled) return { ...previous, enabled: false };
-  const baseUrl = (await ask(
+  const baseUrl = (await askReusable(
     "Адрес QA Report без завершающего слеша",
-    previous.baseUrl || "http://localhost:4173"
+    previous.baseUrl || "",
+    "http://localhost:4173"
   )).replace(/\/+$/, "");
   return { enabled: true, baseUrl };
 }
@@ -299,9 +305,10 @@ async function collectTms(previousTms = {}, previousQaTools = {}, previousWriteS
     };
   }
 
-  const baseUrl = (await ask(
+  const baseUrl = (await askReusable(
     "Адрес QA Tools (ТестОпс) без завершающего слеша",
-    previousQaTools.baseUrl || "https://qa-tools.company.example"
+    previousQaTools.baseUrl || "",
+    "https://qa-tools.company.example"
   )).replace(/\/+$/, "");
   const authChoice = await ask(
     "Авторизация QA Tools: 1 — персональный API-токен, 2 — логин и пароль",

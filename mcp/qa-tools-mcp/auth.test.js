@@ -18,6 +18,7 @@ test("exchanges a login and password for a bearer token", async () => {
     username: "tester",
     secret: "password",
     fetchImpl: async (url, options) => {
+      assert.doesNotThrow(() => new Request(url, options));
       request = { url, options };
       return {
         ok: true,
@@ -30,5 +31,6 @@ test("exchanges a login and password for a bearer token", async () => {
   assert.equal(request.options.body.get("grant_type"), "password");
   assert.equal(request.options.body.get("username"), "tester");
   assert.equal(request.options.body.get("password"), "password");
+  assert.equal(new Headers(request.options.headers).has("expect"), false);
   assert.equal(header, "Bearer short-lived-jwt");
 });
