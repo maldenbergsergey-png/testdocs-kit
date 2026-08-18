@@ -1,6 +1,6 @@
 ---
 name: analyze-test-coverage
-description: Analyze how a supplied product or requirement change affects permanent QA test coverage and classify each scenario as CREATE, UPDATE, NO_CHANGE, or INSUFFICIENT_CONTEXT. Use for impact analysis and coverage decisions, not for automatically creating or editing test cases.
+description: Analyze how a supplied product or requirement change affects permanent QA test coverage and classify each scenario as CREATE, UPDATE, NO_CHANGE, RETIRE_PROPOSAL, or INSUFFICIENT_CONTEXT. Use for impact analysis and coverage decisions, not for automatically creating, editing, retiring, or deleting test cases.
 ---
 
 # Analyze test coverage
@@ -33,7 +33,7 @@ When the request supplies an issue key, external page, or TMS reference, use [`.
 1. Identify each materially distinct changed scenario by its initial state, action, and observable outcome.
 2. Map supplied evidence about the scenario to existing cases or coverage summaries.
 3. Apply the decision criteria in `coverage-rules.md`.
-4. Assign exactly one supported category per scenario: `CREATE`, `UPDATE`, `NO_CHANGE`, or `INSUFFICIENT_CONTEXT`.
+4. Assign exactly one supported category per scenario: `CREATE`, `UPDATE`, `NO_CHANGE`, `RETIRE_PROPOSAL`, or `INSUFFICIENT_CONTEXT`.
 5. Identify whether the change modifies a reusable setup contract and list every supplied consuming case that may be affected.
 6. Explain persistent regression value using available risk, recurrence, distinctness, stability, diagnostic value, and maintenance evidence without inventing scores or suite labels.
 7. Explicitly distinguish facts, permitted assumptions, and unresolved rule placeholders.
@@ -44,7 +44,7 @@ When the request supplies an issue key, external page, or TMS reference, use [`.
 Return one decision record per scenario:
 
 ```text
-Decision: CREATE | UPDATE | NO_CHANGE | INSUFFICIENT_CONTEXT
+Decision: CREATE | UPDATE | NO_CHANGE | RETIRE_PROPOSAL | INSUFFICIENT_CONTEXT
 Scenario or affected area: ...
 Evidence: ...
 Rationale: ...
@@ -57,6 +57,7 @@ Recommended next action: ...
 - For `CREATE`, describe the valuable persistent scenario to create, not a complete case.
 - For `UPDATE`, identify the existing case and affected portion. If it cannot be identified, use `INSUFFICIENT_CONTEXT`.
 - For `NO_CHANGE`, explain the evidence that existing coverage is sufficient or that no permanent case is justified.
+- For `RETIRE_PROPOSAL`, identify the exact case and disappeared or superseded behavior; propose organizational retirement after review, never deletion.
 - For `INSUFFICIENT_CONTEXT`, list the exact missing inputs needed to decide.
 
 ## Optional integrations

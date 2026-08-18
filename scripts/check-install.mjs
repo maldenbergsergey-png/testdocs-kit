@@ -77,10 +77,11 @@ async function main() {
     if (config.enableTestCaseCreation !== false) {
       assert(tools.includes("zephyr_create_test_case"), "Jira MCP не отдал инструмент создания кейса Zephyr.");
       assert(tools.includes("zephyr_update_session_test_case"), "Jira MCP не отдал защищённый инструмент исправления кейса текущей сессии.");
+      assert(tools.includes("zephyr_update_test_case"), "Jira MCP не отдал защищённый инструмент обновления существующего кейса.");
     }
     assert(!tools.includes("add_comment"), "Write-инструмент add_comment включён без разрешения.");
     assert(!tools.includes("transition_issue"), "Write-инструмент transition_issue включён без разрешения.");
-    results.push(`Jira MCP: ${tools.length} инструментов (чтение + создание и исправление кейса текущей сессии по явному запросу)`);
+    results.push(`Jira MCP: ${tools.length} инструментов (чтение + создание и защищённое обновление по явному запросу)`);
   }
 
   if (config.confluence?.enabled) {

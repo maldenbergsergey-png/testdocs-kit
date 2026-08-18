@@ -270,6 +270,37 @@ async function main() {
         return toTextResult(await tools.zephyr_update_session_test_case(input));
       }
     );
+
+    server.registerTool(
+      "zephyr_update_test_case",
+      {
+        description: "Update one previously existing Zephyr/TM4J test case only after the user explicitly asks to apply a reviewed proposal. expectedBaselineHash must come from _testdocs.contentHash of a complete zephyr_get_test_case response. The adapter re-reads the case immediately before PUT and rejects STALE_PROPOSAL on any mismatch. Omitted fields are preserved. If steps change, pass the complete final ordered list because it replaces the script. This tool cannot change folder, status, links, comments, versions, or delete/retire a case.",
+        inputSchema: z.object({
+          confirmed: z.literal(true).describe("Set true only after the user explicitly asks to apply the reviewed proposal now."),
+          testCaseKey: z.string().min(1),
+          expectedBaselineHash: z.string().regex(/^[a-f0-9]{64}$/).describe("Exact _testdocs.contentHash returned by the complete baseline read used for the proposal."),
+          name: z.string().min(1).max(255).optional(),
+          objective: z.string().optional(),
+          precondition: z.string().optional(),
+          priority: z.string().min(1).optional(),
+          labels: z.array(z.string().min(1)).optional(),
+          customFields: z.record(
+            z.string(),
+            z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(z.union([z.string(), z.number(), z.boolean()]))])
+          ).optional(),
+          steps: z.array(z.object({
+            description: z.string().min(1),
+            testData: z.string().min(1).optional(),
+            expectedResult: z.string().min(1)
+          })).min(1).optional().describe("Complete final ordered list; supplying it replaces every current step.")
+        }).refine(
+          (input) => ["name", "objective", "precondition", "priority", "labels", "customFields", "steps"]
+            .some((field) => Object.prototype.hasOwnProperty.call(input, field)),
+          { message: "At least one editable field is required." }
+        )
+      },
+      async (input) => toTextResult(await tools.zephyr_update_test_case(input))
+    );
   }
 
   const transport = new StdioServerTransport();

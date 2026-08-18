@@ -26,7 +26,7 @@ Accept:
 - a TMS case key, URL, folder, or explicitly scoped search request;
 - plain chat context or local files when no external reference is supplied.
 
-Infer the downstream intent only when the request clearly means generate, analyze coverage, update, review, build a matrix, or build a regression model. Otherwise return the context bundle and ask which QA operation is wanted.
+Infer `prepare task testing` for ordinary task-level requests to prepare testing, full documentation, or a checklist. Also recognize generate, analyze coverage, update, review, build a matrix, and build a regression model. Do not make the user choose internal skills when their intent is clear.
 
 ## Discover capabilities
 
@@ -41,11 +41,13 @@ When more than one Jira or company connection could satisfy the same key, stop b
 3. Retrieve only relevant parent, child, linked issue, decision comment, attachment, and knowledge-page content needed to understand the requested behavior.
 4. Inventory every URL in the primary issue and scoped knowledge pages. Classify relevant targets such as requirements, designs/mockups, API contracts, attachments, related decisions, and supporting documents; follow them only when they can materially affect the requested QA result. Preserve the exact URL, readable purpose, source location, and retrieval status. Do not claim an inaccessible target was read and do not crawl unrelated navigation.
 5. Before summarizing a structured source, inventory every explicitly named field, control, tab, default, validation, visibility condition, permission, state, and constraint in scope. Preserve the source wording and mark each item retrieved, ambiguous, or unavailable. Do not collapse unprocessed items into “other fields.”
-6. When existing coverage matters, use TMS read capabilities to retrieve linked cases and their complete current versions. Preserve raw product fields and stable identifiers. If a case key is known, read it directly instead of searching or listing the project first.
+6. When existing coverage matters, use targeted discovery in this order: directly linked cases; cases explicitly named in sources; cases associated with a relevant parent, epic, or affected function when supported; focused search by stable page, function, block, or scenario terms; a confirmed folder or TMS area. Preserve raw product fields and stable identifiers. If a case key is known, read it directly. Do not use project-wide `get all` by default.
 7. If no key or link is supplied, use only the supplied chat, files, and explicitly scoped sources. Do not search an arbitrary external project.
 8. Separate facts, source conflicts, missing permissions, missing capabilities, and missing behavioral information. Use `PARTIAL_CONTEXT` when a page, attachment, table, field list, or relevant linked target was truncated or only partly retrieved.
 9. Normalize the evidence into the context bundle from `integration-rules.md`.
 10. Route sufficient context to the requested downstream skill:
+   - checklist-only task preparation → `prepare-task-testing` checklist branch;
+   - generic/full task preparation → `prepare-task-testing` full branch;
    - generation → `generate-test-cases`;
    - coverage or actualization need → `analyze-test-coverage`;
    - approved update proposal → `update-test-cases`;
@@ -88,6 +90,12 @@ Relevant linked requirements and knowledge: ...
 Relevant source links: ...
 Source field inventory: ...
 Existing test coverage: ...
+Existing coverage discovery:
+  Status: COMPLETE | PARTIAL | UNAVAILABLE
+  Directly linked cases: ...
+  Discovered relevant cases: ...
+  Search scope: ...
+  Limitations: ...
 Source conflicts: ...
 Missing capabilities or permissions: ...
 Missing behavioral context: ...
@@ -97,6 +105,8 @@ Recommended downstream skill: ...
 External writes performed: none
 ```
 
+This bundle is internal. In an ordinary task workflow, expose only source-backed QA results and material limitations, not skill routing or raw integration narration.
+
 ## Write boundary
 
-Keep this skill read-only. It may route an explicit new-case creation request to `generate-test-cases`, which must identify the target instance, project, TMS product, existing folder, and complete content before using the creation tool. It may route an explicit correction request to `update-test-cases`, but only that skill and the MCP session registry can decide whether the just-created-case exception applies. Context collection never authorizes updates, versions, moves, comments, status changes, or deletion.
+Keep this skill read-only. It may route an explicit new-case creation request to `generate-test-cases`, which must validate the target and complete content. It may route an explicit correction/apply request to `update-test-cases`, but only that skill and the MCP registry or fingerprint guard can authorize an update. Context collection never authorizes updates, versions, moves, comments, status changes, or deletion.

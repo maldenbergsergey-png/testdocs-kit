@@ -1,11 +1,11 @@
 ---
 name: review-test-cases
-description: Review one or more QA test cases against the repository's shared standards and supplied requirements, returning status, located findings, rationale, and focused recommendations. Use for audits or review requests; do not rewrite cases unless the user separately asks for revisions.
+description: Review one or more QA test cases against shared standards and supplied requirements, returning status, located findings, rationale, recommendations, and a complete corrected proposal when content changes are needed. Never write to the TMS during review.
 ---
 
 # Review test cases
 
-Review the supplied cases and report evidence-based findings without changing them.
+Review the supplied cases, report evidence-based findings, and include a complete corrected proposal when supported findings affect content. Do not change external data.
 
 ## Read the source of truth
 
@@ -43,6 +43,7 @@ When an external issue, page, or case reference is supplied, use [`../collect-te
 9. When setup is reused, verify its named output, consumer reference, validity, cleanup ownership, and separation from the tested behavior.
 10. Separate confirmed problems from suggestions and from unresolved rule placeholders.
 11. Assign the overall status defined in `review-rules.md` and summarize the most important findings.
+12. Unless the result is `PASS`, apply supported content corrections to a complete proposed version in the exact Russian Zephyr format. Preserve unaffected content and label it as not applied.
 
 ## Output
 
@@ -59,9 +60,14 @@ When an external issue, page, or case reference is supplied, use [`../collect-te
    Рекомендация: ...
 
 Итог: ...
+
+Полная исправленная предлагаемая версия
+... (required when findings affect content)
+
+Граница применения: внешние изменения не выполнялись.
 ```
 
-State explicitly when no rule-backed issues are found. Do not fully rewrite a case when the user asks only for review; offer a separate update proposal if useful.
+State explicitly when no rule-backed issues are found. For `PASS`, do not invent a rewrite. For a partial case or unresolved behavior that prevents a safe complete proposal, state the exact gap instead of inventing content.
 
 ## Optional integrations
 

@@ -1,11 +1,11 @@
 ---
 name: update-test-cases
-description: Propose reviewable changes to an existing QA test case, or apply an explicitly requested correction only to a case created by the same running MCP process in the current session. Use when a user asks to update, revise, correct, or adapt a case. Previously existing, discovered, and prior-session cases remain read-only.
+description: Propose reviewable changes to an existing QA test case and, after an explicit apply request, safely update either a current-session-created case or a previously existing case using stale-proposal protection.
 ---
 
 # Update test cases
 
-Produce a proposal for human review by default. Apply a change only through the narrowly verified current-session correction path.
+Produce a proposal for human review by default. Apply a change only after an explicit request through the applicable registry or baseline-fingerprint guard.
 
 ## Read the source of truth
 
@@ -43,7 +43,13 @@ When an external issue or case reference is supplied, use [`../collect-test-cont
 7. Reconcile the proposed version against every in-scope source item and relevant source/design link; do not silently drop fields, constraints, or materials introduced by the correction context.
 8. Present the proposal/diff before the complete proposed version.
 9. Render the complete proposed version directly as Markdown in the exact Russian Zephyr format from `test-case-standard.md`, with separate `Шаг`, `Тестовые данные`, and `Ожидаемый результат` columns. Never wrap it in a fenced code block.
-10. For every previously existing, discovered, or prior-session case, label the result `ПРЕДЛОЖЕНИЕ — НЕ ПРИМЕНЕНО` and request human review. Do not call an update tool.
+10. Label every proposal `ПРЕДЛОЖЕНИЕ — НЕ ПРИМЕНЕНО`. Store the connector-provided complete-baseline fingerprint for a possible later apply request, but do not expose internal hashes unless needed to diagnose a conflict.
+
+## Apply an approved proposal to an existing case
+
+When the user explicitly says to apply/update the exact case, re-read it through `zephyr_update_test_case`, passing the connector-provided baseline fingerprint and only the approved changed fields. If steps change, pass the complete final ordered list. The tool itself must re-read and reject stale content before PUT.
+
+On conflict, do not write. Explain that another change invalidated the proposal, read the current version, and prepare a refreshed proposal for another human review. On success, show the returned key/URL and changed fields. Never use this path for versions, folders, links, comments, lifecycle transitions, retirement, or deletion.
 
 ## Apply a correction to a just-created case
 
@@ -58,7 +64,7 @@ Show the focused diff and final version, then call `zephyr_update_session_test_c
 
 Preserve readable lists during correction: use `<br>•` inside Markdown table cells and send one `•` item per newline to the TMS. Do not flatten multiple fields, values, or expected assertions into one comma- or semicolon-separated paragraph.
 
-If the MCP rejects the key, the process restarted, or provenance is uncertain, return the normal proposal and state that the external change was not applied. Never use another generic write tool to bypass the registry. Do not move, version, comment on, change status implicitly, link after creation, or delete the case.
+If the MCP rejects the session key, use the guarded existing-case path only when a reviewed baseline fingerprint exists and the user explicitly asked to apply it. Otherwise return the normal proposal. Never bypass either guard.
 
 ## Output
 

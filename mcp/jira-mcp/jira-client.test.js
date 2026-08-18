@@ -257,6 +257,91 @@ test("zephyr_update_session_test_case accepts the official empty success respons
   assert.equal(result._testdocs.webUrl, "https://jira.example.test/secure/Tests.jspa#/testCase/DEMO-T10");
 });
 
+test("zephyr_update_test_case re-reads the baseline and preserves the complete final step list", async (t) => {
+  const baseline = {
+    key: "DEMO-T20",
+    name: "Исходный кейс",
+    testScript: {
+      type: "STEP_BY_STEP",
+      steps: [
+        { index: 1, description: "Шаг 1", expectedResult: "Результат 1" },
+        { index: 0, description: "Шаг 0", expectedResult: "Результат 0" }
+      ]
+    }
+  };
+  const requests = [];
+  t.mock.method(global, "fetch", async (url, options = {}) => {
+    requests.push({ url: String(url), options });
+    if ((options.method || "GET") === "GET") return response(200, baseline);
+    return response(200, { key: "DEMO-T20" });
+  });
+
+  const read = await tools.zephyr_get_test_case({ testCaseKey: "DEMO-T20" });
+  const result = await tools.zephyr_update_test_case({
+    confirmed: true,
+    testCaseKey: "DEMO-T20",
+    expectedBaselineHash: read._testdocs.contentHash,
+    steps: [
+      { description: "Шаг 0", expectedResult: "Результат 0" },
+      { description: "Шаг 1", expectedResult: "Новый результат 1" }
+    ]
+  });
+
+  assert.equal(requests.length, 3);
+  assert.equal(requests[2].options.method, "PUT");
+  assert.equal(JSON.parse(requests[2].options.body).testScript.steps.length, 2);
+  assert.equal(result._testdocs.baselineVerified, true);
+  assert.deepEqual(result._testdocs.changedFields, ["steps"]);
+});
+
+test("zephyr_update_test_case rejects a stale proposal without PUT", async (t) => {
+  let reads = 0;
+  const requests = [];
+  t.mock.method(global, "fetch", async (url, options = {}) => {
+    requests.push({ url: String(url), options });
+    reads += 1;
+    return response(200, {
+      key: "DEMO-T21",
+      name: reads === 1 ? "Baseline" : "Changed by another user",
+      testScript: { type: "STEP_BY_STEP", steps: [{ index: 0, description: "Шаг", expectedResult: "Результат" }] }
+    });
+  });
+
+  const read = await tools.zephyr_get_test_case({ testCaseKey: "DEMO-T21" });
+  await assert.rejects(
+    tools.zephyr_update_test_case({
+      confirmed: true,
+      testCaseKey: "DEMO-T21",
+      expectedBaselineHash: read._testdocs.contentHash,
+      name: "Proposal"
+    }),
+    /STALE_PROPOSAL/
+  );
+  assert.equal(requests.length, 2);
+  assert(requests.every(({ options }) => (options.method || "GET") === "GET"));
+});
+
+test("zephyr_update_test_case rejects silent or unversioned updates before reading", async (t) => {
+  const fetchMock = t.mock.method(global, "fetch", async () => response(200, { key: "UNEXPECTED-T1" }));
+  await assert.rejects(
+    tools.zephyr_update_test_case({
+      testCaseKey: "DEMO-T22",
+      expectedBaselineHash: "a".repeat(64),
+      name: "Silent update"
+    }),
+    /Explicit user confirmation/
+  );
+  await assert.rejects(
+    tools.zephyr_update_test_case({
+      confirmed: true,
+      testCaseKey: "DEMO-T22",
+      name: "No baseline"
+    }),
+    /expectedBaselineHash/
+  );
+  assert.equal(fetchMock.mock.callCount(), 0);
+});
+
 test("zephyr_search_test_cases uses the ATM endpoint directly when projectKey is known", async (t) => {
   const calls = [];
   t.mock.method(global, "fetch", async (url) => {

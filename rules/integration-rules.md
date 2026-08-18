@@ -41,7 +41,7 @@ Use the context supplied in chat, files, or other explicitly scoped sources. Do 
 Normalize retrieved material into this tool-independent bundle:
 
 ```text
-Request intent: generate | analyze coverage | update | review | build matrix | build regression model
+Request intent: prepare task testing (checklist-only | full package) | generate | analyze coverage | update | review | build matrix | build regression model
 Input mode: ISSUE_ANCHORED | MANUAL_CONTEXT
 Scope anchor: issue key/link or supplied-context description
 Issue facts: summary, behavior, acceptance criteria, status, decisions
@@ -49,6 +49,7 @@ Relevant linked requirements and knowledge: stable ID/link, title, version when 
 Relevant source links: exact URL, readable purpose, source location, retrieval status, and whether it influenced the requested QA result
 Source field inventory: every explicitly defined field, control, tab, default, validation, visibility condition, role, state, and constraint; each marked retrieved, ambiguous, or unavailable
 Existing test coverage: stable case IDs, versions, lifecycle, links, and complete case content when needed
+Existing coverage discovery: COMPLETE | PARTIAL | UNAVAILABLE; directly linked cases; discovered relevant cases; search scope; limitations
 Source conflicts: ...
 Missing capabilities or permissions: ...
 Missing behavioral context: ...
@@ -110,16 +111,16 @@ Treat these as separate write operations. New-case creation requires either an e
 
 Confirm the target Jira instance, project, TMS product, existing folder path (or explicit root), and exact operation before writing. For creation, validate the complete case payload before the call and report the returned stable case key and full case URL afterward. After any successful case creation or permitted current-session correction, return a clickable full URL supplied by the connector. If the connector cannot supply one, report that gap and do not invent a route. Never delete external cases automatically. A request to generate, analyze, review, or check actualization does not authorize publication.
 
-The bundled integration exposes creation of new Zephyr/TM4J cases and one narrow correction operation. The correction operation may update only a case whose key was returned by the same running MCP process after it created that case in the current session. It requires an explicit user instruction to apply the correction. The allowed-key registry is memory-only: restarting or reconnecting the MCP process clears it. Never accept a user-supplied claim that an older key was created in the current session as a substitute for this registry.
+The bundled integration exposes new-case creation, narrow correction of a case created by the running process, and guarded update of a previously existing case. Every update requires an explicit user instruction. Existing-case update additionally requires a content fingerprint captured from the complete baseline read; the adapter re-reads the case immediately before PUT and rejects a stale proposal when the fingerprint differs.
 
-For a session-created case, omitted fields must remain unchanged. When correcting steps, send the complete final ordered step list and warn that the Server/DC API replaces the current step-by-step script: missing steps are deleted and steps without IDs are recreated. Do not use this exception for folder moves, new versions, comments, lifecycle transitions, deletion, or updates to a case found through search/read tools. Previously existing, discovered, or created-in-another-session cases remain proposal-only. Supplying issue links as part of the initial create payload is allowed only when those exact links are included in the explicit creation scope.
+For every update, omitted fields remain unchanged. When changing steps, send the complete final ordered step list: the Server/DC API replaces the script, so a partial list can delete steps. Existing-case update is limited to supported content fields and cannot move, version, comment, link, transition, retire, or delete a case. On a fingerprint conflict, perform no write and require a refreshed proposal. Supplying issue links as part of initial creation remains allowed only when those exact links are in scope.
 
 ## Least privilege
 
 - Prefer read-only credentials or a read-only tool allowlist for onboarding and analysis.
 - Keep tokens, passwords, cookies, and private keys outside the repository, prompts, examples, and committed configuration.
 - Store browser-session cookies only in a service-specific private file, restrict them to the configured origin, and never return their values through MCP tools.
-- Expose creation and current-session correction only for explicit user requests, enforce session provenance inside the MCP server, and keep host-side write approvals enabled when the client supports them.
+- Expose creation and updates only for explicit user requests, enforce session provenance or baseline fingerprints inside the MCP server, and keep host-side write approvals enabled when the client supports them.
 - Scope project configuration to trusted projects and company-approved servers.
 
 ## Browser-session authentication

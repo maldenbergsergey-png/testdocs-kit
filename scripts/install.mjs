@@ -448,7 +448,7 @@ enabled_tools = [
   "zephyr_get_projects", "zephyr_get_project", "zephyr_search_test_cases",
   "zephyr_get_test_plans", "zephyr_get_test_plan", "zephyr_get_iterations",
   "zephyr_get_test_case", "zephyr_get_all_test_cases",
-  "zephyr_create_test_case", "zephyr_update_session_test_case"
+  "zephyr_create_test_case", "zephyr_update_session_test_case", "zephyr_update_test_case"
 ]
 default_tools_approval_mode = "approve"`);
   }
@@ -747,7 +747,7 @@ async function main() {
 3. Выполните пробный запрос из README.md.
 
 Создание новых Zephyr/TM4J-кейсов доступно только по явному запросу.
-Исправление доступно только для кейса, созданного текущей MCP-сессией; прочие обновления, перенос, смена статуса и удаление отключены.`);
+Существующий кейс обновляется только по явному запросу после повторного чтения и проверки актуальности proposal; перенос, смена статуса и удаление отключены.`);
 }
 
 main().catch((error) => {
