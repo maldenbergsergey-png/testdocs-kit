@@ -43,7 +43,7 @@ Why it matters: execution, coverage, maintenance, or interpretation impact
 Recommendation: focused correction
 ```
 
-Keep confirmed violations, unresolved-policy gaps, and optional suggestions separate. Recommendations should identify a focused correction without silently rewriting the complete case.
+Keep confirmed violations, unresolved-policy gaps, and optional suggestions separate. Recommendations identify a focused correction. When a content-affecting finding exists, follow the findings with a complete corrected proposal in the approved Russian Zephyr format. Preserve unaffected content.
 
 ## Overall status
 
@@ -69,5 +69,6 @@ When only behavioral requirements are missing, complete the structural review if
 - Treat English, mixed, missing, or reordered Zephyr field labels as findings unless the reviewed source is a legacy case and structural migration is explicitly outside the review scope.
 - Treat analysis scaffolding embedded in a test case as a finding when it makes execution harder or duplicates TMS metadata.
 - Treat a source-defined item that is absent from both the intended coverage and an explicit exclusion or ambiguity list as a completeness finding. Do not demand one case per field when a coherent scenario covers several items.
-- Do not fully rewrite a case when the user requested review only.
+- If status is `PASS`, do not rewrite the case artificially. Otherwise, when supported corrections affect content, include the complete corrected proposed version immediately; it remains a proposal and does not authorize a write.
+- In follow-up dialogue, treat a user correction as new context. Revise the proposal when it is supported; when it conflicts with an authoritative source or approved rule, explain the conflict and retain the justified finding rather than agreeing automatically.
 - Do not change or publish external data as part of review.

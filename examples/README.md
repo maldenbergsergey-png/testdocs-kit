@@ -23,3 +23,7 @@ These deliberately small, anonymized examples demonstrate the repository's archi
 - [`bad/technical-overload.md`](bad/technical-overload.md) — a UI case made non-executable by hidden setup, vague results, and internal implementation detail.
 
 Example labels such as item names and case IDs are fictional.
+
+## Workflow examples
+
+The anonymized examples under [`workflows/`](workflows/) demonstrate checklist-only, full-package, no-change, create/update/retire, bugfix, insufficient-context, and review-with-fix outputs. They illustrate the rules but do not define policy.

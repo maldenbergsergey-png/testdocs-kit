@@ -5,6 +5,8 @@ This directory is the source of truth for QA test-documentation policy. Skills d
 ## Rule files
 
 - [`test-case-standard.md`](test-case-standard.md) — test-case content and writing standard.
+- [`test-checklist-standard.md`](test-checklist-standard.md) — task-level Jira checklist contract.
+- [`task-testing-rules.md`](task-testing-rules.md) — task-first routing and full-package output contract.
 - [`test-case-type-rules.md`](test-case-type-rules.md) — E2E, overview, block, cross-page, integration, and platform classification.
 - [`test-case-lifecycle-rules.md`](test-case-lifecycle-rules.md) — lifecycle statuses, review readiness, and task linkage.
 - [`reusable-setup-rules.md`](reusable-setup-rules.md) — shared preparation procedures, administration content, dependency outputs, and cleanup.

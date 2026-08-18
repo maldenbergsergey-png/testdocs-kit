@@ -1,4 +1,5 @@
 require("dotenv").config({ quiet: true });
+const crypto = require("node:crypto");
 
 const {
   createAuthRequiredError,
@@ -255,6 +256,29 @@ function withTestCaseWebUrl(testCase, fallbackKey) {
   };
 }
 
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).filter((key) => key !== "_testdocs").sort()
+      .map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function withTestCaseFingerprint(testCase, complete) {
+  if (!testCase || typeof testCase !== "object") return testCase;
+  return {
+    ...testCase,
+    _testdocs: {
+      ...(testCase._testdocs || {}),
+      complete,
+      contentHash: complete
+        ? crypto.createHash("sha256").update(stableJson(testCase)).digest("hex")
+        : null
+    }
+  };
+}
+
 function normalizeZephyrSearchResult(data) {
   if (Array.isArray(data)) {
     return { results: data.map((item) => withTestCaseWebUrl(item)), total: data.length };
@@ -380,7 +404,10 @@ async function zephyrGetTestCase({ projectId, testCaseKey }) {
   // including step-by-step scripts, through the ATM compatibility endpoint.
   try {
     const completeCase = await zephyrRequest(`/rest/atm/1.0/testcase/${encodedKey}`);
-    return withTestCaseWebUrl(normalizeZephyrTestCase(completeCase), testCaseKey);
+    return withTestCaseFingerprint(
+      withTestCaseWebUrl(normalizeZephyrTestCase(completeCase), testCaseKey),
+      true
+    );
   } catch (error) {
     // Keep compatibility with installations that expose only the newer
     // /rest/tests/1.0 search API. Authentication and permission errors must
@@ -401,14 +428,14 @@ async function zephyrGetTestCase({ projectId, testCaseKey }) {
   if (!testCase) {
     throw new Error(`Test case ${testCaseKey} not found in project ${projectId}`);
   }
-  return withTestCaseWebUrl({
+  return withTestCaseFingerprint(withTestCaseWebUrl({
     ...testCase,
     _testdocs: {
       ...(testCase._testdocs || {}),
       complete: false,
       warning: "The connected Zephyr API returned metadata only; test steps are unavailable on this installation."
     }
-  }, testCaseKey);
+  }, testCaseKey), false);
 }
 
 async function zephyrGetAllTestCases({ projectId, projectKey, fields }) {
@@ -569,6 +596,42 @@ async function zephyrUpdateSessionTestCase(input) {
   }, testCaseKey);
 }
 
+async function zephyrUpdateTestCase(input) {
+  const { confirmed, testCaseKey, expectedBaselineHash, ...changes } = input;
+  if (confirmed !== true) {
+    throw new Error("Explicit user confirmation is required to update an existing test case.");
+  }
+  if (!testCaseKey || !expectedBaselineHash) {
+    throw new Error("testCaseKey and expectedBaselineHash from a complete baseline read are required.");
+  }
+
+  const current = await zephyrGetTestCase({ testCaseKey });
+  if (current?._testdocs?.complete !== true || !current._testdocs.contentHash) {
+    throw new Error("Existing-case update requires a complete direct baseline read; metadata-only content is unsafe.");
+  }
+  if (current._testdocs.contentHash !== expectedBaselineHash) {
+    const error = new Error(
+      `STALE_PROPOSAL: Test case ${testCaseKey} changed after the proposal baseline was read. No update was applied.`
+    );
+    error.code = "STALE_PROPOSAL";
+    throw error;
+  }
+
+  const result = await zephyrUpdateSessionTestCase({
+    confirmed: true,
+    testCaseKey,
+    ...changes
+  });
+  return {
+    ...result,
+    _testdocs: {
+      ...(result?._testdocs || {}),
+      baselineVerified: true,
+      changedFields: Object.keys(changes)
+    }
+  };
+}
+
 module.exports = {
   jiraRequest,
   zephyrRequest,
@@ -588,6 +651,7 @@ module.exports = {
      zephyr_get_test_case: zephyrGetTestCase,
      zephyr_get_all_test_cases: zephyrGetAllTestCases,
      zephyr_create_test_case: zephyrCreateTestCase,
-     zephyr_update_session_test_case: zephyrUpdateSessionTestCase
+     zephyr_update_session_test_case: zephyrUpdateSessionTestCase,
+     zephyr_update_test_case: zephyrUpdateTestCase
   }
 };

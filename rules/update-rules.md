@@ -2,15 +2,15 @@
 
 **Status:** proposed organizational standard derived from the supplied instructions; pending human review.
 
-Changes to a previously existing, discovered, or prior-session test case follow this sequence:
+Changes to a test case follow this sequence:
 
 ```text
-Context → AI analysis → Proposal → Human review
+Context → AI analysis → Proposal → Human review → explicit apply request
 ```
 
 The proposal must distinguish additions, modifications, removals, and unchanged content, and explain every proposed change. Show the complete proposed case after the diff.
 
-The only external-write exception is a user-requested correction to a case created by the same running MCP process. That path still requires a source-backed diff and complete final version, but the explicit correction request authorizes applying it immediately under the registry checks below.
+An external write is permitted only after an explicit apply/update request. A session-created case uses the registry guard below. A previously existing case uses the guarded baseline-fingerprint procedure; drafting, reviewing, or showing a proposal never authorizes either write.
 
 ## Source and version procedure
 
@@ -21,6 +21,8 @@ Before proposing an update:
 3. Establish the requirement, design, defect, or approved correction that supports the change.
 4. For a significant change, create a new TMS version so history is preserved rather than editing the current version directly.
 
+If the supplied lifecycle policy requires a new version but the connector cannot create one safely, stop at the proposal and state that limitation; do not silently replace version creation with an in-place update.
+
 If the team later applies the reviewed update outside this tool:
 
 1. Save the changed steps, expected results, preconditions, test data, requirement links, designs, path, tags, priority, or cleanup as applicable.
@@ -28,7 +30,20 @@ If the team later applies the reviewed update outside this tool:
 3. Move the case to `Готов к ревью`.
 4. Check whether related cases are affected by the same product change.
 
-Reading a comment or history does not authorize a write. Except for the narrowly verified current-session correction below, external updates, version creation, saving, commenting, linking, moving, and status changes remain disabled; provide a reviewed proposal only.
+Reading a comment or history does not authorize a write. The bundled existing-case tool changes only supported content fields after a stale-proposal check. Version creation, comments, links, moves, status changes, retirement, and deletion remain disabled.
+
+## Guarded existing-case update
+
+After the user explicitly asks to apply a reviewed proposal:
+
+1. Require the exact case key and complete baseline content used by the proposal.
+2. Use the connector-provided baseline content fingerprint; never invent or recompute it from an incomplete summary.
+3. Send only intended changed fields. If steps change, send the complete final ordered list.
+4. The adapter re-reads the complete case immediately before PUT and compares its fingerprint with the proposal baseline.
+5. On mismatch, stop without writing, report a stale-proposal conflict, retrieve the new baseline, and require a refreshed proposal and new explicit apply request.
+6. After success, report the connector-returned key, full URL, and changed fields.
+
+This operation must not change project, folder, lifecycle status, issue links, comments, or versions, and cannot delete or retire a case.
 
 ## Current-session correction exception
 
@@ -94,4 +109,4 @@ The approved Russian Zephyr format in `test-case-standard.md` is the target form
 - Do not silently choose between conflicting requirements.
 - Do not infer unseen fields or reconstruct an unavailable baseline.
 - Label all output as a proposal until the user approves it.
-- Do not use an external write tool for a previously existing, discovered, or prior-session case. Only the explicit current-session correction exception above may be applied externally.
+- Do not use a write tool without a current reviewed proposal and explicit apply request. Never bypass the fingerprint or registry guard.

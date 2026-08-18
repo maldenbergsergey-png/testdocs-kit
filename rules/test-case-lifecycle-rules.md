@@ -12,6 +12,8 @@
 | `Актуализировать` | Product changes require the case to be updated. | Any team member | Treat as needing review before reliable reuse |
 | `Неактуальный` | The behavior changed or was removed and the case is no longer used. | Any team member | No |
 
+`RETIRE_PROPOSAL` is a coverage decision, not an automatic transition. It may recommend `Неактуальный` only with evidence that the behavior disappeared or was fully superseded. The bundled workflow never deletes a case and does not change this status automatically; a human reviews and applies the lifecycle action separately.
+
 ## Restricted statuses
 
 Use only by team agreement or in a separately approved workflow:
