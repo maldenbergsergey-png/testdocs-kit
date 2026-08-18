@@ -69,13 +69,16 @@ async function main() {
 }
 
 main().catch((error) => {
-  if (isAccessDenied(error)) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.startsWith("QA Tools MCP вернул Forbidden и для")) {
+    console.error(message);
+  } else if (isAccessDenied(error)) {
     console.error(
       "QA Tools MCP вернул Forbidden. Проверьте доступ пользователя, действительность токена, " +
       "наличие MCP в лицензии и включённость MCP на этом инстансе."
     );
   } else {
-    console.error(error instanceof Error ? error.message : String(error));
+    console.error(message);
   }
   process.exit(1);
 });

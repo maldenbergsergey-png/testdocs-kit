@@ -215,9 +215,10 @@ async function collectJira(previous = {}) {
   const username = preset.authMode === "bearer"
     ? ""
     : await askReusable("Логин или email Jira", previous.username || "");
+  const previousSecret = previous.profile === preset.profile ? previous.secret || "" : "";
   const secret = await askSecret(
     preset.authMode === "bearer" ? "PAT Jira" : profile === "1" ? "API-токен Jira" : "Пароль Jira",
-    previous.secret || ""
+    previousSecret
   );
   if (!secret) throw new Error("Не заполнены учётные данные Jira.");
 
@@ -260,9 +261,10 @@ async function collectConfluence(previous = {}) {
   const username = authMode === "bearer"
     ? ""
     : await askReusable("Логин или email Confluence", previous.username || "");
+  const previousSecret = previous.profile === profile ? previous.secret || "" : "";
   const secret = await askSecret(
     authMode === "bearer" ? "PAT Confluence" : profile === "1" ? "API-токен Confluence" : "Пароль Confluence",
-    previous.secret || ""
+    previousSecret
   );
   if (!secret) throw new Error("Не заполнены учётные данные Confluence.");
 
@@ -318,7 +320,12 @@ async function collectTms(previousTms = {}, previousQaTools = {}, previousWriteS
   const username = authMode === "password"
     ? await askReusable("Логин QA Tools", previousQaTools.username || "")
     : "";
-  const secret = await askSecret(authMode === "password" ? "Пароль QA Tools" : "Персональный API-токен QA Tools", previousQaTools.secret || "");
+  const previousSecret = previousQaTools.authMode === authMode ? previousQaTools.secret || "" : "";
+  const enteredSecret = await askSecret(
+    authMode === "password" ? "Пароль QA Tools" : "Персональный API-токен QA Tools",
+    previousSecret
+  );
+  const secret = authMode === "api_token" ? enteredSecret.trim() : enteredSecret;
   if (authMode === "password" && !username) throw new Error("Не заполнен логин QA Tools.");
   if (!secret) throw new Error("Не заполнены учётные данные QA Tools.");
   const enableQaToolsWrites = await confirm(
