@@ -549,8 +549,25 @@ async function zephyrGetAllTestCases({ projectId, projectKey, fields }) {
   return result.results || [];
 }
 
+function escapeHtmlText(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function escapeHtmlAttribute(value) {
+  return escapeHtmlText(value).replace(/"/g, "&quot;");
+}
+
 function toTmsRichText(value) {
-  return String(value).replace(/\r\n?/g, "\n").split("\n").join("<br>");
+  return String(value)
+    .replace(/\r\n?/g, "\n")
+    .replace(/\[([^\]\r\n]+)\]\((https?:\/\/[^\s)]+)\)/g, (_match, label, url) =>
+      `<a href="${escapeHtmlAttribute(url)}">${escapeHtmlText(label)}</a>`
+    )
+    .split("\n")
+    .join("<br>");
 }
 
 function isEmptyTestData(value) {

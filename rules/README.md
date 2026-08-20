@@ -5,8 +5,8 @@ This directory is the source of truth for QA test-documentation policy. Skills d
 ## Rule files
 
 - [`test-case-standard.md`](test-case-standard.md) — test-case content and writing standard.
-- [`test-checklist-standard.md`](test-checklist-standard.md) — task-level Jira checklist contract.
-- [`task-testing-rules.md`](task-testing-rules.md) — task-first routing and full-package output contract.
+- [`test-checklist-standard.md`](test-checklist-standard.md) — task- or document-scoped Jira checklist contract.
+- [`task-testing-rules.md`](task-testing-rules.md) — intent routing for checklist, full-package, cases-only, task-scoped, optimization, review, and targeted workflows.
 - [`test-case-type-rules.md`](test-case-type-rules.md) — E2E, overview, block, cross-page, integration, and platform classification.
 - [`test-case-lifecycle-rules.md`](test-case-lifecycle-rules.md) — lifecycle statuses, review readiness, and task linkage.
 - [`reusable-setup-rules.md`](reusable-setup-rules.md) — shared preparation procedures, administration content, dependency outputs, and cleanup.
@@ -17,6 +17,7 @@ This directory is the source of truth for QA test-documentation policy. Skills d
 - [`update-rules.md`](update-rules.md) — safe changes to existing cases.
 - [`review-rules.md`](review-rules.md) — review criteria and finding severity.
 - [`standard-derivation-rules.md`](standard-derivation-rules.md) — evidence and approval rules for deriving shared policy from a documentation corpus.
+- [`project-conventions.md`](project-conventions.md) — explicitly scoped product conventions that must not be generalized to unrelated projects.
 
 ## Placeholder policy
 

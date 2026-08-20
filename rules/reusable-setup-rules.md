@@ -15,6 +15,8 @@ Create a reusable setup procedure when:
 
 Keep preparation inline when it is short, unique to one case, or is itself the action being verified.
 
+When the preparation surface is an administration interface and entity creation/configuration has stable supported behavior, prefer the linked administration creation case under `test-case-standard.md` over an unverified helper. Use a pure setup procedure when only state preparation is supported and administration behavior itself cannot be asserted.
+
 ## Procedure contract
 
 Every reusable setup procedure must define:
@@ -64,11 +66,13 @@ In every dependent case:
 
 1. reference the reusable setup by stable name or TMS identifier;
 2. state which setup output is consumed;
-3. begin the primary steps at the point where the actual tested behavior starts;
+3. place the dependency as the first step or called step, then begin the primary steps at the point where the actual tested behavior starts;
 4. keep its own expected results independent of the setup procedure;
 5. declare cleanup ownership when the setup creates mutable or persistent data.
 
 Do not make a case depend silently on an earlier case or execution order. A setup dependency must be explicit and reproducible on demand.
+
+For an administration-case dependency, use a clickable stable TMS link. State that the call is executed only when a conforming entity is absent; if a suitable entity already exists, deliberately skip the call and identify the selected entity. The conditional skip must not change the functional assertions that follow.
 
 ## Cleanup and reuse
 
@@ -80,8 +84,8 @@ If setup can be safely reused across several cases, state the validity boundary.
 
 - Record the setup as a dependency of the consuming scenarios.
 - Do not count a helper procedure as functional coverage of the administration interface.
-- Create a separate focused case when creation, editing, publication, permissions, or validation in the administration interface is itself a requirement under test.
-- Do not create administration-interface test cases by default when the interface is used only to prepare data for a user-facing case.
+- Create one coherent administration case per supported operation—creation, update, and deletion—for a user-facing configurable entity. Split an operation into numbered stages only when that operation becomes impractical or obscures independently diagnosable stages.
+- Use a helper rather than an administration case when the interface is only a setup surface and authoritative context does not support assertions about its own behavior.
 - When several cases consume one setup, keep their scenario results independent so one shared dependency does not merge their coverage intent.
 
 ## Zephyr mapping

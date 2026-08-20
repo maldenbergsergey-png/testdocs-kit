@@ -55,6 +55,8 @@ Do not create a block for every button, label, or icon. Group elements into mean
 
 Treat a page made of one form as one block. Its structure may include all fields, buttons, error messages, validation, and successful outcome.
 
+Combine small related page elements into the nearest meaningful visual or functional block. Do not create separate matrix scenarios or permanent cases merely for an isolated heading, label, icon, or other element with no independent behavior. If one block contains several substantial behaviors, divide its scenarios into logical functional parts while retaining the common parent block.
+
 ## Shared elements
 
 Keep a separate `Shared elements` area for headers, footers, global notifications, shared modal windows, shared forms, and components reused across pages.
@@ -63,6 +65,8 @@ Keep a separate `Shared elements` area for headers, footers, global notification
 - Record only the varying part in a page when the shared element changes by page.
 - Model a shared form once and record `Open form` scenarios at its entry points.
 - For an E2E case, list every supported entry point in setup when the entry point affects the path.
+- Link one base functional case to every page where an identical shared block appears; do not clone the case per page.
+- When a supported product variant changes only part of the shared block, link the base case plus one delta-only variant case. The variant case calls the base case and contains only the differing assertions.
 
 ## Setup dependencies
 
@@ -72,7 +76,10 @@ When a scenario needs content or state prepared through an administration or sup
 - name the output consumed by the scenario;
 - do not duplicate the setup actions in the matrix;
 - do not count the helper procedure as coverage of the administration interface;
-- model administration creation, editing, publication, permissions, or validation as separate scenarios only when that behavior is itself in scope.
+- model stable administration behavior for a user-facing configurable entity as one scenario per supported operation: creation, update, and deletion;
+- split one operation into numbered stages only when its size or independent workflow stages make one case impractical;
+- make the creation/configuration case or its first stage an explicit first-step dependency of the functional consumer, conditionally skipped when a conforming entity already exists;
+- keep pure preparation helpers distinct when administration behavior is outside the supported scope.
 
 ## Placement by test type
 

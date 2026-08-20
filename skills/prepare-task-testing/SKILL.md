@@ -1,6 +1,6 @@
 ---
 name: prepare-task-testing
-description: Primary task-first entry point for ordinary QA requests such as "prepare testing", "prepare full test documentation", "what should be tested", or "prepare a checklist" for an issue key, URL, or supplied requirement. Automatically choose checklist-only or full-package workflow without requiring skill names.
+description: Primary intent-based entry point for ordinary QA requests such as preparing a checklist, a full documentation package, only test cases, task-only cases outside regression, or a targeted subset from an issue, document, URL, file, or supplied requirement. Automatically choose the workflow without requiring skill names.
 ---
 
 # Prepare task testing
@@ -20,12 +20,17 @@ Before work, read:
 ## Route by intent
 
 - An explicit checklist request selects `CHECKLIST_ONLY`.
-- A generic request to prepare testing/documentation or an explicit full-package request selects `FULL_PACKAGE`.
+- A generic request to prepare testing for a task or an explicit full-documentation request selects `FULL_PACKAGE`.
+- An explicit request for test cases without a checklist selects `CASES_ONLY`.
+- An explicit request for task-only cases or cases outside the regression model selects `TASK_SCOPED_CASES`.
+- A request to optimize or refactor several existing cases selects `OPTIMIZE_EXISTING` and routes to `review-test-cases` for a structural proposal.
+- A request for review only selects `REVIEW_ONLY` and routes to `review-test-cases`.
+- A request limited to a named block, scenario, case type, or task slice applies `TARGETED_SCOPE` to the selected branch.
 - Do not require `$skill-name` or ask the user to choose internal steps.
 
 ## Shared context collection
 
-Use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) with intent `prepare task testing`. With a supplied issue key/link, anchor retrieval there. With manual context, use only supplied sources. Combine Jira, knowledge pages, comments and user context according to their stated authority; do not infer priority from storage location.
+Use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) with the selected intent. With a supplied issue key/link, anchor retrieval there. Treat a supplied Confluence URL, document, file, or chat requirement as a valid standalone scope when no issue is supplied. Combine Jira, knowledge pages, comments and user context according to their stated authority; do not infer priority from storage location.
 
 ## CHECKLIST_ONLY
 
@@ -39,6 +44,14 @@ Route the normalized context to [`../generate-test-checklist/SKILL.md`](../gener
 4. Route permanent scenarios to [`../analyze-test-coverage/SKILL.md`](../analyze-test-coverage/SKILL.md).
 5. Generate complete cases only for supported `CREATE` decisions and complete proposals only for `UPDATE`. Show `RETIRE_PROPOSAL` and `NO_CHANGE` explicitly.
 6. Format the result exactly as required by `task-testing-rules.md`.
+
+## CASES_ONLY and TASK_SCOPED_CASES
+
+Route directly to [`../generate-test-cases/SKILL.md`](../generate-test-cases/SKILL.md) with the exact requested scope. For `CASES_ONLY`, leave regression membership unclassified unless requested. For `TASK_SCOPED_CASES`, explicitly keep the generated cases outside the permanent regression model. Do not add a checklist or broad TMS discovery.
+
+## OPTIMIZE_EXISTING and REVIEW_ONLY
+
+Route the supplied complete cases to [`../review-test-cases/SKILL.md`](../review-test-cases/SKILL.md). Optimization may propose consolidation, shared base cases, delta-only variants, splits, and retirement of duplicates for human review. Review-only remains limited to findings and supported corrections. Neither branch writes externally.
 
 Never write to an external system during preparation. Creation, update, retirement/status changes and publication require a separate explicit request under their specialized skill and integration contract.
 

@@ -25,7 +25,9 @@ Include a case in persistent regression coverage when evidence supports that it 
 - exact duplicates and equivalent cases that add no distinct risk detection;
 - implementation-only checks that are not an approved contract or diagnostic surface.
 
-A reusable setup procedure is a dependency, not a regression scenario by itself. Do not count administration content preparation as administration-interface coverage unless a separate focused case verifies that behavior. Record shared-dependency concentration when failure of one setup procedure would block several otherwise independent cases.
+A reusable setup procedure is a dependency, not a regression scenario by itself. Count linked administration cases as administration-interface coverage only for the creation, update, deletion, validation, and other supported behavior each one actually asserts. Record shared-dependency concentration when failure of one setup procedure or administration creation/configuration case would block several otherwise independent cases.
+
+Represent identical cross-page block logic with one base functional case linked to every applicable page. Represent a supported product-direction difference with a delta-only case that calls the base. Do not count copied base steps, repeated breakpoint cases, or isolated small-element cases as additional regression value.
 
 Never remove or retire an existing case automatically. Record the evidence and propose a human-reviewed action.
 
@@ -42,6 +44,7 @@ Capture each axis when it is supplied or can be mapped without guessing:
 - suite, tier, label, and automation state with their approved meanings;
 - setup, data, environment, integration, and execution-order constraints;
 - reusable preparation procedures and their output and cleanup contracts;
+- base-case, direction-variant, and administration-operation call relationships;
 - current lifecycle status and ownership when available.
 
 Use approved type and platform tags from `test-case-type-rules.md`, lifecycle meanings from `test-case-lifecycle-rules.md`, and the priority rules below. Do not invent automation classification.

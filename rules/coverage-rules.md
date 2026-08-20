@@ -12,6 +12,8 @@ Use this file to decide whether a change affects permanent test coverage. Record
 
 Task-level coverage and permanent regression coverage are different. The task checklist may contain one-time rollout, migration, temporary, exploratory, boundary, negative, UI, API, data, logs, or integration checks that should not become permanent cases. A permanent case needs stable, repeatable, observable behavior, likely future use, and independent diagnostic value.
 
+Generation scope and regression classification are also separate. A direct request to write cases does not by itself claim that those cases belong in the permanent regression model. When the user explicitly requests task-only or non-regression cases, generate supported executable cases for that scope without applying `CREATE`, `UPDATE`, suite, or retirement decisions. Apply the permanent-coverage decision model only for `FULL_PACKAGE`, explicit regression work, or an explicit coverage request.
+
 ## Decision inputs
 
 Base a decision only on supplied evidence about:
@@ -39,6 +41,14 @@ Use `CREATE` when evidence supports all of the following:
 
 Identify the uncovered scenario and why it merits persistent coverage. Do not generate the full case unless separately requested.
 
+Before selecting `CREATE`, compare the scenario with shared blocks and supported variants:
+
+- identical block logic on another page maps to the existing base functional case and does not justify a duplicate;
+- a direction, theme, or object-type difference justifies only a delta case that calls the base case;
+- supported administration creation, update, and deletion for one configurable entity normally map to one coherent case per operation rather than cases per field or subsection;
+- an isolated heading, label, icon, or other small element joins its meaningful parent block unless it has independent behavior and diagnostic value;
+- resolution and breakpoint repetitions remain outside permanent coverage; web UI cases use the primary desktop breakpoint.
+
 ## UPDATE
 
 Use `UPDATE` when a supplied existing case has the same primary verification intent, but its supported preconditions, data, action, or expected result no longer matches the intended contract. Prefer a localized update when unaffected content remains valid.
@@ -48,6 +58,8 @@ Identify the existing case and affected portion. If the case cannot be identifie
 Create a separate case instead when the change introduces an independent path whose setup or outcome would make the existing case ambiguous or difficult to diagnose.
 
 For reusable setup, update the shared procedure when only its preparation actions change and its promised output remains equivalent. Propose consumer updates only when their reference, required input, starting state, cleanup ownership, or tested behavior is affected. Do not classify a helper-procedure change as new functional coverage by itself.
+
+For a shared base case, update it once when common logic changes. Update a delta-only variant only when its reference, supported difference, or expected variant outcome changes. Do not copy the shared modification into every page or direction case.
 
 ## RETIRE_PROPOSAL
 

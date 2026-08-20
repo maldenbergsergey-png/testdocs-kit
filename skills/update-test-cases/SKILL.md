@@ -20,6 +20,7 @@ Before proposing changes, read:
 - [`../../rules/coverage-matrix-rules.md`](../../rules/coverage-matrix-rules.md) when hierarchy or scenario mapping changes
 - [`../../rules/coverage-rules.md`](../../rules/coverage-rules.md) when deciding whether content belongs in this case
 - [`../../rules/regression-model-rules.md`](../../rules/regression-model-rules.md) when the change affects regression-model mappings or dependencies
+- [`../../rules/project-conventions.md`](../../rules/project-conventions.md) when the case belongs to an MR direction or another convention defined there
 - [`../../rules/README.md`](../../rules/README.md) for placeholder handling
 
 ## Require input
@@ -41,15 +42,17 @@ When an external issue or case reference is supplied, use [`../collect-test-cont
 5. Recheck the proposed case for a focused scenario, repeatable setup, observable results, and independence from transient data or execution order.
 6. Recommend a split instead of expanding the baseline when the new behavior forms an independent regression scenario.
 7. Reconcile the proposed version against every in-scope source item and relevant source/design link; do not silently drop fields, constraints, or materials introduced by the correction context.
-8. Present the proposal/diff before the complete proposed version.
-9. Render the complete proposed version directly as Markdown in the exact Russian Zephyr format from `test-case-standard.md`, with separate `Шаг`, `Тестовые данные`, and `Ожидаемый результат` columns. Never wrap it in a fenced code block.
-10. Label every proposal `ПРЕДЛОЖЕНИЕ — НЕ ПРИМЕНЕНО`. Store the connector-provided complete-baseline fingerprint for a possible later apply request, but do not expose internal hashes unless needed to diagnose a conflict.
+8. Recheck shared-block reuse, base/variant call links, one-case-per-administration-operation grouping and the creation/configuration first-step dependency, desktop-only regression scope, and logical block decomposition when applicable.
+9. Draft a concise change comment stating what is added, changed, or removed and the task or requirement that caused it. Keep this comment outside `Цель`.
+10. Present the proposal/diff before the complete proposed version.
+11. Render the complete proposed version directly as Markdown in the exact Russian Zephyr format from `test-case-standard.md`, with separate `Шаг`, `Тестовые данные`, and `Ожидаемый результат` columns. Never wrap it in a fenced code block.
+12. Label every proposal `ПРЕДЛОЖЕНИЕ — НЕ ПРИМЕНЕНО`. Store the connector-provided complete-baseline fingerprint for a possible later apply request, but do not expose internal hashes unless needed to diagnose a conflict.
 
 ## Apply an approved proposal to an existing case
 
 When the user explicitly says to apply/update the exact case, re-read it through `zephyr_update_test_case`, passing the connector-provided baseline fingerprint and only the approved changed fields. If steps change, pass the complete final ordered list. The tool itself must re-read and reject stale content before PUT.
 
-On conflict, do not write. Explain that another change invalidated the proposal, read the current version, and prepare a refreshed proposal for another human review. On success, show the returned key/URL and changed fields. Never use this path for versions, folders, links, comments, lifecycle transitions, retirement, or deletion.
+On conflict, do not write. Explain that another change invalidated the proposal, read the current version, and prepare a refreshed proposal for another human review. On success, show the returned key/URL and changed fields. Add the prepared concise change comment through a separately supported and authorized TMS comment capability. If comments are unavailable, report the missing audit comment separately; never move it into `Цель`. Never use the guarded content-update path itself for versions, folders, links, comments, lifecycle transitions, retirement, or deletion.
 
 ## Apply a correction to a just-created case
 
@@ -68,7 +71,7 @@ If the MCP rejects the session key, use the guarded existing-case path only when
 
 ## Output
 
-For a proposal, start with `Статус: ПРЕДЛОЖЕНИЕ — НЕ ПРИМЕНЕНО`, the source case, reason, and missing information or conflicts. Then show `Предлагаемые изменения` as `ДОБАВИТЬ`, `ИЗМЕНИТЬ`, `УДАЛИТЬ`, and useful `ОСТАВИТЬ` items. Under `Полная предлагаемая версия`, render the actual case directly as Markdown. End with `Граница применения`, stating that no external changes were made.
+For a proposal, start with `Статус: ПРЕДЛОЖЕНИЕ — НЕ ПРИМЕНЕНО`, the source case, reason, and missing information or conflicts. Then show `Предлагаемые изменения` as `ДОБАВИТЬ`, `ИЗМЕНИТЬ`, `УДАЛИТЬ`, and useful `ОСТАВИТЬ` items. Show the concise `Комментарий к изменению` outside the test-case fields. Under `Полная предлагаемая версия`, render the actual case directly as Markdown. End with `Граница применения`, stating that no external changes were made.
 
 For an applied current-session correction, use the same focused diff and full final version, then end with `Применено`, the case key, and the fields changed. Do not claim that omitted fields were verified unless they were read.
 

@@ -1,6 +1,6 @@
 ---
 name: collect-test-context
-description: Collect and normalize QA context from an explicitly supplied Jira issue key or link, related Confluence or knowledge pages, and existing cases in Zephyr Scale, legacy Test Management for Jira, or another TMS. Use before generating, reviewing, updating, or analyzing test cases when external issue or test-management context is referenced. Also handle the no-key path by using only supplied chat or file context. Remain read-only and return a traceable context bundle; do not publish cases.
+description: Collect and normalize QA context from an explicitly supplied Jira issue, standalone Confluence or knowledge page, document, local file, and existing cases in Zephyr Scale, legacy Test Management for Jira, or another TMS. Use before generating, reviewing, updating, optimizing, or analyzing test documentation when external context is referenced. Remain read-only and return a traceable context bundle; do not publish cases.
 ---
 
 # Collect test context
@@ -26,7 +26,7 @@ Accept:
 - a TMS case key, URL, folder, or explicitly scoped search request;
 - plain chat context or local files when no external reference is supplied.
 
-Infer `prepare task testing` for ordinary task-level requests to prepare testing, full documentation, or a checklist. Also recognize generate, analyze coverage, update, review, build a matrix, and build a regression model. Do not make the user choose internal skills when their intent is clear.
+Infer the intent branches from `task-testing-rules.md`: checklist-only, full package, cases-only, task-scoped cases, optimization, review, and targeted scope. Also recognize analyze coverage, update/apply, build a matrix, and build a regression model. Do not make the user choose internal skills when their intent is clear.
 
 ## Discover capabilities
 
@@ -42,23 +42,26 @@ When more than one Jira or company connection could satisfy the same key, stop b
 
 1. Record the request intent, supplied references, and requested scope.
 2. If an issue key or link is supplied, retrieve that issue as the primary anchor. Do not broaden to a project-wide search by default.
-3. Retrieve only relevant parent, child, linked issue, decision comment, attachment, and knowledge-page content needed to understand the requested behavior.
-4. Inventory every URL in the primary issue and scoped knowledge pages. Classify relevant targets such as requirements, designs/mockups, API contracts, attachments, related decisions, and supporting documents; follow them only when they can materially affect the requested QA result. Preserve the exact URL, readable purpose, source location, and retrieval status. Do not claim an inaccessible target was read and do not crawl unrelated navigation.
-5. Before summarizing a structured source, inventory every explicitly named field, control, tab, default, validation, visibility condition, permission, state, and constraint in scope. Preserve the source wording and mark each item retrieved, ambiguous, or unavailable. Do not collapse unprocessed items into “other fields.”
-6. When existing coverage matters, use targeted discovery in this order: directly linked cases; cases explicitly named in sources; cases associated with a relevant parent, epic, or affected function when supported; focused search by stable page, function, block, or scenario terms; a confirmed folder or TMS area. Preserve raw product fields and stable identifiers. If a case key is known, read it directly. Do not use project-wide `get all` by default.
-7. If no key or link is supplied, use only the supplied chat, files, and explicitly scoped sources. Do not search an arbitrary external project.
-8. Separate facts, source conflicts, missing permissions, missing capabilities, and missing behavioral information. Use `PARTIAL_CONTEXT` when a page, attachment, table, field list, or relevant linked target was truncated or only partly retrieved.
-9. Normalize the evidence into the context bundle from `integration-rules.md`.
-10. Route sufficient context to the requested downstream skill:
-   - checklist-only task preparation → `prepare-task-testing` checklist branch;
+3. If a standalone Confluence or knowledge-page URL is supplied without an issue, retrieve that page as the primary knowledge anchor. Follow only its relevant requirement, design, attachment, or decision links. Do not require a Jira issue and do not crawl the whole space.
+4. Retrieve only relevant parent, child, linked issue, decision comment, attachment, and knowledge-page content needed to understand the requested behavior.
+5. Inventory every URL in the primary issue and scoped knowledge pages. Classify relevant targets such as requirements, designs/mockups, API contracts, attachments, related decisions, and supporting documents; follow them only when they can materially affect the requested QA result. Preserve the exact URL, readable purpose, source location, and retrieval status. Do not claim an inaccessible target was read and do not crawl unrelated navigation.
+6. Before summarizing a structured source, inventory every explicitly named field, control, tab, default, validation, visibility condition, permission, state, and constraint in scope. Preserve the source wording and mark each item retrieved, ambiguous, or unavailable. Do not collapse unprocessed items into “other fields.”
+7. When existing coverage matters, use targeted discovery in this order: directly linked cases; cases explicitly named in sources; cases associated with a relevant parent, epic, or affected function when supported; focused search by stable page, function, block, or scenario terms; a confirmed folder or TMS area. Preserve raw product fields and stable identifiers. If a case key is known, read it directly. Do not use project-wide `get all` by default.
+8. If no external URL or key is supplied, use only the supplied chat, files, and explicitly scoped sources. Do not search an arbitrary external project.
+9. Separate facts, source conflicts, missing permissions, missing capabilities, and missing behavioral information. Use `PARTIAL_CONTEXT` when a page, attachment, table, field list, or relevant linked target was truncated or only partly retrieved.
+10. Normalize the evidence into the context bundle from `integration-rules.md`.
+11. Route sufficient context to the requested downstream skill:
+   - checklist-only preparation → `prepare-task-testing` checklist branch;
    - generic/full task preparation → `prepare-task-testing` full branch;
+   - cases-only or task-scoped cases → `prepare-task-testing` corresponding cases branch;
+   - optimization/refactoring → `prepare-task-testing` optimization branch;
    - generation → `generate-test-cases`;
    - coverage or actualization need → `analyze-test-coverage`;
    - approved update proposal → `update-test-cases`;
    - case quality review → `review-test-cases`;
    - coverage structure → `build-coverage-matrix`;
    - regression organization → `build-regression-model`.
-11. Return the bundle and downstream result in chat. Do not call an external write tool.
+12. Return the bundle and downstream result in chat. Do not call an external write tool.
 
 ## Actualization path
 
@@ -86,7 +89,7 @@ Continue with the evidence that is available when it is sufficient for a narrowe
 ```text
 Status: CONTEXT_READY | PARTIAL_CONTEXT | INSUFFICIENT_CONTEXT
 Request intent: ...
-Input mode: ISSUE_ANCHORED | MANUAL_CONTEXT
+Input mode: ISSUE_ANCHORED | KNOWLEDGE_ANCHORED | TMS_ANCHORED | MANUAL_CONTEXT
 Scope anchor: ...
 
 Issue facts: ...

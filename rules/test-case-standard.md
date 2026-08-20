@@ -2,7 +2,7 @@
 
 **Status:** approved organizational standard.
 
-Use this standard to create test cases that can be executed repeatedly and maintained as part of a regression model. A case must preserve the intent of the supplied requirement while avoiding accidental dependence on one project, environment, or implementation.
+Use this standard to create executable test cases from supported requirements. Regression membership is a separate decision: a case may be a permanent regression case, an unclassified requested case, or an explicitly task-scoped case outside the regression model. Every case must preserve the intent of the supplied requirement while avoiding accidental dependence on hidden knowledge or unsupported behavior.
 
 ## Обязательный формат Zephyr
 
@@ -14,7 +14,7 @@ Use this standard to create test cases that can be executed repeatedly and maint
 
 Материалы:
 
-- [назначение ссылки] — [полный URL]
+- [назначение ссылки](https://example.test/source)
 
 **Предусловия:**
 
@@ -36,7 +36,7 @@ Use this standard to create test cases that can be executed repeatedly and maint
 
 Названия `Название`, `Цель`, `Предусловия`, `Путь`, `Шаг`, `Тестовые данные`, `Ожидаемый результат`, `Постусловия`, `Теги`, `Статус` и `Приоритет` обязательны и не переводятся на английский. Порядок разделов обязателен. Отдельного раздела `Тестовые данные` в теле кейса нет: данные указываются только в одноимённой колонке нужного шага. Если данные шага не нужны, оставляй его ячейку `Тестовые данные` пустой — не заполняй её фразами `Не требуются`, `Нет` или `—`. Для ненужных постусловий по-прежнему используй `Не требуются`.
 
-Блок `Материалы` является частью поля `Цель`, а не отдельным полем Zephyr. Добавляй его только при наличии релевантных ссылок; если таких ссылок нет, не выводи пустой заголовок или заглушку.
+Блок `Материалы` является частью поля `Цель`, а не отдельным полем Zephyr. Добавляй его только при наличии релевантных ссылок; если таких ссылок нет, не выводи пустой заголовок или заглушку. Каждую ссылку оформляй как именованную кликабельную ссылку: слева — короткое назначение или название материала, справа — точный прямой URL. В чате используй Markdown `[назначение](полный URL)`. При записи в Zephyr Scale создавай rich-text link эквивалентно действию `Insert link`; не сохраняй URL как некликабельный текст и не используй ссылку без понятной подписи.
 
 В таблице одна строка содержит ровно четыре отдельные колонки: номер, действие, тестовые данные и ожидаемый результат. Не соединяй действие с результатом стрелкой, тире, точкой с запятой или общей фразой в одной колонке. Не выноси ожидаемые результаты или тестовые данные в отдельный список после шагов.
 
@@ -110,7 +110,7 @@ The title must align with the coverage-matrix hierarchy and preserve its parent 
 
 ## Objective and traceability
 
-State what is being verified and the case's boundary. When the supplied Jira issue, Confluence page, or another in-scope requirement contains relevant source or design links, append a compact `Материалы:` list inside `Цель`. Include the primary requirement link and every relevant linked requirement, design/mockup, API contract, or supporting document used to derive the case. Each item must identify its purpose, for example `• Требования: Правила отображения FAQ — https://...` or `• Макет: состояние блока FAQ — https://...`. Preserve the full URL. In chat, the label may be a Markdown link; in a TMS payload, send a readable label followed by the full URL on the same line.
+State only the concise verification purpose and the case boundary. Do not put review remarks, assumptions, coverage analysis, implementation commentary, change history, or a requirement retelling into `Цель`. When the supplied Jira issue, Confluence page, or another in-scope requirement contains relevant source or design links, append a compact `Материалы:` list inside `Цель`. Include the primary requirement link and every relevant linked requirement, design/mockup, API contract, or supporting document used to derive the case. Determine related designs from the supplied task, its linked Confluence pages, and other explicitly scoped sources; do not guess a design from visual similarity. Each item must identify its purpose and be clickable, for example `• [Требования: правила отображения FAQ](https://...)` or `• [Макет: состояние блока FAQ](https://...)`. Preserve the exact direct URL. In a Zephyr payload, represent the same label and URL as an actual rich-text hyperlink created by `Insert link` semantics.
 
 Do not paste every URL found in the source. Exclude navigation, unrelated tasks, login pages, and links that did not influence the case. Do not invent a title or claim that a target was checked when it was unavailable. If the exact target cannot be identified from the source label or retrieved content, list it under `Требуется уточнить` instead of adding an unexplained URL. Dedicated TMS traceability relations may be populated as well, but they do not replace this human-readable materials list when relevant links are available.
 
@@ -153,6 +153,8 @@ Describe cleanup or restoration required after execution, such as removing an en
 Keep one primary verification intent and one coherent path in a case. Split content when scenarios require different initial states, actions, or materially different outcomes, or when combining them would make a failure ambiguous.
 
 Do not split mechanically when several assertions describe the same observable outcome of one action. Do not combine unrelated positive, negative, permissions, and boundary scenarios merely to reduce case count.
+
+For a page implemented as visual or frontend blocks, use those blocks as the first decomposition level. Group small related elements—such as a heading, supporting text, icon, and adjacent control—inside one coherent block case instead of creating one-step cases for each element. When one block contains several substantial and independently diagnosable behaviors, split it into logical functional parts rather than keeping an oversized block case.
 
 ## Steps
 
@@ -206,7 +208,31 @@ Use a reusable setup procedure when the same deterministic preparation is needed
 
 A setup procedure is a dependency, not proof of product coverage. If the administration behavior is itself under test, create a focused administration-interface case instead of treating its verification as invisible setup. Apply `reusable-setup-rules.md` for the setup output, dependency, cleanup, and Zephyr mapping.
 
-Do not generate functional administration-interface cases merely because data is prepared through an administration interface. Generate them only when the user or an authoritative requirement explicitly places creation, editing, validation, publication, permissions, or other administration behavior in the test scope. Otherwise, provide one reusable preparation procedure and keep the primary cases on the user-facing surface.
+When a user-facing entity is configured through an administration interface, model its stable administration behavior with one coherent case per supported operation: one for creation, one for update, and one for deletion. Do not multiply cases by field or subsection inside the same operation. If one operation is too large or has independently diagnosable stages, split only that operation at those stage boundaries. Name split cases as `Админка. [Раздел или сущность]. [Операция]. Этап N. [Сценарий]` and preserve explicit links between the stages.
+
+The user-facing functional case must use the linked administration creation/configuration case as its first step or called step. The step identifies the exact case by clickable TMS link and the output required by the functional scenario. If a suitable entity already exists and satisfies the stated starting conditions, the tester deliberately skips that preparation call and records or selects the existing entity; otherwise the linked administration case is executed. Do not copy its administration actions into every functional case. Update and deletion remain separate linked administration coverage and are not called as preparation when their result would invalidate the consumer's starting state.
+
+Keep a pure helper procedure distinct from administration behavior under test. Use a helper instead of an administration regression case only when the relevant administration operation is outside the approved scope or no supported expected behavior is available. Every administration test case receives the additional `админка` tag.
+
+## Shared blocks and variant cases
+
+When the same block appears on several pages with identical logic, create one base functional `block` case for its shared functional and supported non-functional behavior. Link that case to every applicable page or entry point in the coverage model; do not duplicate its full steps per page.
+
+When a product direction, theme, object type, or other supported variant changes only part of the block:
+
+- retain the base case for common behavior;
+- create a separate variant case only for the defined differences;
+- make the first step or called step a clickable reference to the base functional case;
+- after the call, assert only variant-specific behavior;
+- do not create a variant case when no difference is supported by the source.
+
+Apply any named product directions only through an explicitly scoped project convention such as `project-conventions.md`; do not generalize project names into the shared standard.
+
+## Desktop scope and breakpoint exclusions
+
+For persistent web UI test cases, use the primary desktop breakpoint by default. Do not add steps or separate permanent cases that verify the same content at multiple resolutions, responsive breakpoints, viewport widths, or device-size variants unless a later approved rule or an explicit user request changes this policy.
+
+Breakpoint and resolution checks may remain in a task checklist when they are relevant to the current implementation, but they are not promoted into the regression test cases governed by this standard. Do not infer mobile or adaptive coverage from the desktop case.
 
 ## Regression reusability
 

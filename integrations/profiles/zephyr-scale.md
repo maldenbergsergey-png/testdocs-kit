@@ -21,7 +21,7 @@ Preserve raw field and lifecycle values. Map them to the neutral context bundle 
 
 ## Write capability checklist
 
-Treat create, update, new-version, issue-link, comment, status-change, folder-move, and called-step changes as separate operations. The bundled adapter exposes new-case creation, narrow session correction, and guarded existing-case update. Existing-case update requires an explicit apply request, a fingerprint from a complete baseline read, and a matching immediate pre-write re-read. Keep every other update and destructive operation unavailable.
+Treat create, update, new-version, issue-link, comment, status-change, folder-move, and called-step changes as separate operations. Prepare a concise audit comment for every mutation, but write it only through a separately exposed and authorized comment capability; never hide it in `Цель`. The bundled adapter exposes new-case creation, narrow session correction, and guarded existing-case update. Existing-case update requires an explicit apply request, a fingerprint from a complete baseline read, and a matching immediate pre-write re-read. Keep every other update and destructive operation unavailable.
 
 ## Compatibility
 
@@ -29,4 +29,4 @@ Do not hard-code one Cloud, Server, or Data Center API schema into the QA skills
 
 The bundled Jira MCP reads a complete Server/Data Center or compatible TM4J case through `/rest/atm/1.0/testcase/{key}` when available. It orders `testScript.steps` by `index`. When that endpoint is unavailable, it falls back internally to search and returns `_testdocs.complete: false`; do not treat that metadata-only response as evidence that the steps were checked. Search accepts a project key for the compatible `/rest/atm/1.0/testcase/search` endpoint and can recover a supported endpoint internally, reducing repeated client-visible failures.
 
-For creation, the bundled adapter uses the public Server/Data Center `POST /rest/atm/1.0/testcase` contract with a `STEP_BY_STEP` script. It maps each Markdown row to separate `description`, optional `testData`, and `expectedResult` fields. The target folder must already exist; the adapter does not create or move folders. Complete case reads return `_testdocs.contentHash`; metadata-only fallback does not. Case reads, creation, and permitted updates return `_testdocs.webUrl` when a stable key is available.
+For creation, the bundled adapter uses the public Server/Data Center `POST /rest/atm/1.0/testcase` contract with a `STEP_BY_STEP` script. It maps each Markdown row to separate `description`, optional `testData`, and `expectedResult` fields, and converts `[label](https://...)` in rich-text values into clickable Zephyr links. The target folder must already exist; the adapter does not create or move folders. Complete case reads return `_testdocs.contentHash`; metadata-only fallback does not. Case reads, creation, and permitted updates return `_testdocs.webUrl` when a stable key is available.

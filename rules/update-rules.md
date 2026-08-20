@@ -26,11 +26,13 @@ If the supplied lifecycle policy requires a new version but the connector cannot
 If the team later applies the reviewed update outside this tool:
 
 1. Save the changed steps, expected results, preconditions, test data, requirement links, designs, path, tags, priority, or cleanup as applicable.
-2. Leave a concise comment describing the reason and affected content.
+2. Leave a concise comment describing what was added, changed, or removed and identify the task, requirement, or correction that caused it.
 3. Move the case to `Готов к ревью`.
 4. Check whether related cases are affected by the same product change.
 
 Reading a comment or history does not authorize a write. The bundled existing-case tool changes only supported content fields after a stale-proposal check. Version creation, comments, links, moves, status changes, retirement, and deletion remain disabled.
+
+The change comment is required audit context but is not part of `Цель`, preconditions, or steps. Prepare it with every create or update proposal. Apply it only through an explicitly authorized TMS comment capability. When the content write succeeds but the connector cannot add comments, report the missing audit operation separately and do not claim the full documentation workflow completed.
 
 ## Guarded existing-case update
 

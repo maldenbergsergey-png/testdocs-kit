@@ -38,13 +38,15 @@ Do not crawl the whole project, space, or test library unless the user explicitl
 
 Use the context supplied in chat, files, or other explicitly scoped sources. Do not search an arbitrary Jira project merely because an issue integration is connected. If facts needed for an executable result are missing, request them using the active skill's missing-context behavior.
 
+A standalone Confluence or knowledge-page URL is a valid primary scope anchor even when no Jira issue exists. Retrieve that exact page and only materially relevant linked sources. Do not require an issue key, infer an issue, or broaden to the whole knowledge space.
+
 ## Neutral context bundle
 
 Normalize retrieved material into this tool-independent bundle:
 
 ```text
-Request intent: prepare task testing (checklist-only | full package) | generate | analyze coverage | update | review | build matrix | build regression model
-Input mode: ISSUE_ANCHORED | MANUAL_CONTEXT
+Request intent: prepare testing (checklist-only | full package | cases-only | task-scoped cases | optimize | review; optional targeted scope) | analyze coverage | update | build matrix | build regression model
+Input mode: ISSUE_ANCHORED | KNOWLEDGE_ANCHORED | TMS_ANCHORED | MANUAL_CONTEXT
 Scope anchor: issue key/link or supplied-context description
 Issue facts: summary, behavior, acceptance criteria, status, decisions
 Relevant linked requirements and knowledge: stable ID/link, title, version when available, relevant content
@@ -122,6 +124,10 @@ For a TMS write, confirm the target Jira instance, project, TMS product, existin
 The bundled integration exposes new-case creation, narrow correction of a case created by the running process, and guarded update of a previously existing case. Every update requires an explicit user instruction. Existing-case update additionally requires a content fingerprint captured from the complete baseline read; the adapter re-reads the case immediately before PUT and rejects a stale proposal when the fingerprint differs.
 
 For every update, omitted fields remain unchanged. When changing steps, send the complete final ordered step list: the Server/DC API replaces the script, so a partial list can delete steps. Existing-case update is limited to supported content fields and cannot move, version, comment, link, transition, retire, or delete a case. On a fingerprint conflict, perform no write and require a refreshed proposal. Supplying issue links as part of initial creation remains allowed only when those exact links are in scope.
+
+For every create, update, version, status, relation, or other supported TMS mutation, prepare a concise audit comment that states the affected content and the source task or requirement. A comment is a separate write and requires its own supported capability and authorization. Never store the audit comment in `Цель` as a workaround. If the mutation succeeds but the comment capability is absent or fails, report the two outcomes separately.
+
+When a case objective contains Markdown links in the supported `[label](https://...)` form, the Zephyr adapter must serialize them as actual rich-text hyperlinks equivalent to `Insert link`. Preserve the readable label and exact direct URL; line-break conversion alone is insufficient.
 
 ## Checklist delivery
 

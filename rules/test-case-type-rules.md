@@ -63,6 +63,8 @@ A case is overloaded when it:
 
 If the case contains several independent conditions, split them. The word “and” is a review signal, not an automatic split rule: keep assertions together when they prove one coherent outcome.
 
+Use the visible or frontend block as the normal decomposition level for page coverage. Do not create separate one-step cases for isolated headings, labels, icons, or other small elements that form one coherent block. Split a large block only into meaningful functional parts with independently diagnosable behavior.
+
 ## Platform tags
 
 Every case must also identify its platform or application area with an approved tag:
@@ -72,5 +74,7 @@ Every case must also identify its platform or application area with an approved 
 - `web_mobile` — adaptive mobile website.
 
 Add `админка` when the case verifies behavior of an administration interface itself: its fields, validation, permissions, actions, states, or results. This tag is additional to the required type and platform tags. Do not add `админка` merely because an administration interface is used as a reusable setup surface for a case that verifies another product surface.
+
+Every administration creation, update, or deletion case verifies the administration interface and therefore receives `админка`. A functional consumer that merely calls the creation/configuration case does not receive this tag for that reason alone.
 
 Do not invent a platform tag when the target surface is not supplied. Request the missing classification.
