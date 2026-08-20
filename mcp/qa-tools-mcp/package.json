@@ -2,7 +2,7 @@
   "name": "testdocs-qa-tools-mcp",
   "version": "1.0.0",
   "private": true,
-  "description": "Safe STDIO proxy for the QA Tools / ТестОпс MCP server",
+  "description": "Safe QA Tools proxy and bundled read-only Eva MCP adapter",
   "main": "mcp-stdio.js",
   "scripts": {
     "start": "node mcp-stdio.js",

@@ -313,12 +313,7 @@ async function collectEva(previous = {}, id = "eva-main") {
   const previousSecret = previous.secret || "";
   const secret = (await askSecret("API-токен Eva", previousSecret)).trim();
   if (!secret) throw new Error("Не заполнен API-токен Eva.");
-  const command = await askReusable(
-    "Команда установленного Eva MCP",
-    previous.command || "",
-    "evateamclient-mcp"
-  );
-  return { id, enabled: true, baseUrl, authMode: "api_token", secret, command, insecureTls: false };
+  return { id, enabled: true, baseUrl, authMode: "api_token", secret, insecureTls: false };
 }
 
 async function collectQaReport(previous = {}) {
@@ -436,7 +431,7 @@ function validateAnswers(config) {
     validateUrl(confluence.baseUrl, `Адрес Confluence ${confluence.id}`);
   }
   for (const eva of connectionList(config, "eva")) {
-    if (!eva.baseUrl || !eva.secret || eva.authMode !== "api_token" || !eva.command) {
+    if (!eva.baseUrl || !eva.secret || eva.authMode !== "api_token") {
       throw new Error(`Не полностью настроена Eva ${eva.id}.`);
     }
     validateUrl(eva.baseUrl, `Адрес Eva ${eva.id}`);
@@ -828,12 +823,6 @@ function commandAvailable(command) {
   return spawnSync(command, ["--version"], { stdio: "ignore" }).status === 0;
 }
 
-function executableAvailable(command) {
-  if (path.isAbsolute(command) || command.includes(path.sep)) return fs.existsSync(path.resolve(command));
-  const lookup = spawnSync(process.platform === "win32" ? "where" : "which", [command], { stdio: "ignore" });
-  return lookup.status === 0;
-}
-
 function detectOpenCodeFormat(data, requestedFormat) {
   const explicit = normalizeOpenCodeFormat(
     requestedFormat || process.env.TESTDOCS_OPENCODE_FORMAT
@@ -1050,16 +1039,6 @@ async function main() {
     jira.testCaseUrlTemplate ||= `${jira.url}/secure/Tests.jspa#/testCase/{key}`;
   }
   applyCaFile(config, args.caFile);
-  if (!args.noCli) {
-    for (const eva of connectionList(config, "eva")) {
-      if (!executableAvailable(eva.command)) {
-        throw new Error(
-          `Не найдена команда Eva MCP: ${eva.command}. Установите её командой ` +
-          "go install github.com/raoptimus/evateamclient.go/pkg/evateamclient-mcp@latest или укажите другой путь через npm run configure:eva."
-        );
-      }
-    }
-  }
 
   savePrivateConfig(config);
   installDependencies(args.skipDependencies, config);

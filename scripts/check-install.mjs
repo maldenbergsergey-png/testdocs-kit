@@ -35,7 +35,7 @@ function validatePrivateConfig() {
   }
   for (const eva of connectionList(config, "eva")) {
     assert(/^https?:\/\//.test(eva.baseUrl || ""), `Неполный адрес Eva ${eva.id}.`);
-    assert(eva.secret && eva.command, `Не заполнены API-токен или MCP-команда Eva ${eva.id}.`);
+    assert(eva.secret, `Не заполнен API-токен Eva ${eva.id}.`);
   }
   if (config.qaReport?.enabled) {
     assert(/^https?:\/\//.test(config.qaReport.baseUrl || ""), "Неполные настройки QA Report.");
@@ -148,7 +148,7 @@ async function main() {
     const syntax = spawnSync(process.execPath, ["--check", entry], { encoding: "utf8" });
     assert(syntax.status === 0, `Некорректный Eva MCP proxy: ${syntax.stderr}`);
     if (offlineExternal) {
-      results.push(`Eva ${eva.id}: локальная read-only policy проверена; внешний handshake пропущен`);
+      results.push(`Eva ${eva.id}: встроенный read-only MCP проверен; API-handshake пропущен`);
     } else {
       const tools = await listTools("eva", eva.id, Client, StdioClientTransport);
       assert(tools.includes("eva_task_get"), "Eva MCP не отдал eva_task_get.");

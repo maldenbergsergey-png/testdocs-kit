@@ -28,6 +28,7 @@ export function migrateConfig(input = {}) {
       confluence: withUniqueIds(config.connections.confluence, "confluence"),
       eva: withUniqueIds(config.connections.eva, "eva")
     };
+    for (const eva of config.connections.eva) delete eva.command;
     config.tms ||= { category: "none", provider: "none" };
     return config;
   }

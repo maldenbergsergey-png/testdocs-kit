@@ -341,8 +341,7 @@ try {
         enabled: true,
         baseUrl: "https://eva.example.invalid",
         authMode: "api_token",
-        secret: "dummy-eva-token",
-        command: "evateamclient-mcp"
+        secret: "dummy-eva-token"
       }]
     },
     tms: { category: "zephyr", provider: "zephyr_scale", jiraConnectionId: "jira-two" },
@@ -363,6 +362,7 @@ try {
   const multiPrivateConfig = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
   assert(multiPrivateConfig.connections.jira.length === 2, "Не сохранены две Jira.");
   assert(multiPrivateConfig.connections.eva.length === 1, "Не сохранена Eva.");
+  assert(!Object.hasOwn(multiPrivateConfig.connections.eva[0], "command"), "В Eva-конфиге осталось внешнее поле command.");
   const multiGeneric = JSON.parse(fs.readFileSync(genericConfig, "utf8"));
   assert(multiGeneric.mcpServers.testdocs_jira_jira_one, "Не зарегистрирована первая Jira.");
   assert(multiGeneric.mcpServers.testdocs_jira_jira_two, "Не зарегистрирована вторая Jira.");
@@ -371,7 +371,7 @@ try {
   for (const secret of ["dummy-jira-one-password", "dummy-jira-two-token", "dummy-eva-token"]) {
     assert(!multiPublic.includes(secret), `Секрет ${secret} попал в клиентский конфиг.`);
   }
-  assert(multiResult.stdout.includes("Eva eva-main: локальная read-only policy проверена"), "Не проверена безопасная Eva policy.");
+  assert(multiResult.stdout.includes("Eva eva-main: встроенный read-only MCP проверен"), "Не проверен встроенный Eva MCP.");
 
   const beforeReuse = fs.readFileSync(privateConfig, "utf8");
   const reuseResult = spawnSync(process.execPath, [

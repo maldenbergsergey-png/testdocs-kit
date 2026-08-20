@@ -86,12 +86,11 @@ function buildEnvironment(service, connectionId, config) {
   if (service === "eva") {
     const eva = findConnection(config, "eva", connectionId);
     if (!eva?.enabled) fail("подключение Eva выключено в настройках.");
-    if (!eva.baseUrl || !eva.secret || !eva.command) fail("для Eva не заполнены адрес, API-токен или MCP-команда.");
+    if (!eva.baseUrl || !eva.secret) fail("для Eva не заполнены адрес или API-токен.");
     return {
       ...common,
       EVA_API_URL: eva.baseUrl,
-      EVA_API_TOKEN: eva.secret,
-      EVA_MCP_COMMAND: eva.command
+      EVA_API_TOKEN: eva.secret
     };
   }
 
