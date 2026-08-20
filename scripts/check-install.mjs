@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { getConfigFile, launcherFile, repoRoot } from "./paths.mjs";
+import { connectionList, hasQaTools, migrateConfig, usesZephyr } from "./config-model.mjs";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -14,29 +15,33 @@ function assert(condition, message) {
 function validatePrivateConfig() {
   const configFile = getConfigFile();
   assert(fs.existsSync(configFile), `Не найден ${configFile}. Выполните npm run setup.`);
-  const config = JSON.parse(fs.readFileSync(configFile, "utf8"));
-  assert(config.version === 1, "Неподдерживаемая версия файла настроек.");
+  const config = migrateConfig(JSON.parse(fs.readFileSync(configFile, "utf8")));
+  assert(config.version === 2, "Неподдерживаемая версия файла настроек.");
   if (config.caFile) {
     assert(fs.existsSync(config.caFile), `Не найден дополнительный CA-файл: ${config.caFile}`);
   }
 
-  if (config.jira?.enabled) {
-    assert(config.jira.url && config.jira.authMode, "Неполные настройки Jira.");
-    if (config.jira.authMode !== "browser_session") {
-      assert(config.jira.secret, "Не заполнены учётные данные Jira.");
+  for (const jira of connectionList(config, "jira")) {
+    assert(jira.url && jira.authMode, `Неполные настройки Jira ${jira.id}.`);
+    if (jira.authMode !== "browser_session") {
+      assert(jira.secret, `Не заполнены учётные данные Jira ${jira.id}.`);
     }
   }
-  if (config.confluence?.enabled) {
-    assert(config.confluence.baseUrl && config.confluence.authMode, "Неполные настройки Confluence.");
-    if (config.confluence.authMode !== "browser_session") {
-      assert(config.confluence.secret, "Не заполнены учётные данные Confluence.");
+  for (const confluence of connectionList(config, "confluence")) {
+    assert(confluence.baseUrl && confluence.authMode, `Неполные настройки Confluence ${confluence.id}.`);
+    if (confluence.authMode !== "browser_session") {
+      assert(confluence.secret, `Не заполнены учётные данные Confluence ${confluence.id}.`);
     }
+  }
+  for (const eva of connectionList(config, "eva")) {
+    assert(/^https?:\/\//.test(eva.baseUrl || ""), `Неполный адрес Eva ${eva.id}.`);
+    assert(eva.secret && eva.command, `Не заполнены API-токен или MCP-команда Eva ${eva.id}.`);
   }
   if (config.qaReport?.enabled) {
     assert(/^https?:\/\//.test(config.qaReport.baseUrl || ""), "Неполные настройки QA Report.");
   }
-  assert(["zephyr_scale", "qa_tools"].includes(config.tms?.provider || "zephyr_scale"), "Неизвестный TMS provider.");
-  if (config.tms?.provider === "qa_tools") {
+  assert(["zephyr", "other", "none"].includes(config.tms?.category), "Неизвестная категория TMS.");
+  if (hasQaTools(config)) {
     assert(config.qaTools?.enabled, "QA Tools выключен при выбранной TMS.");
     assert(/^https?:\/\//.test(config.qaTools.baseUrl || ""), "Неполный адрес QA Tools.");
     assert(["api_token", "password"].includes(config.qaTools.authMode), "Неизвестный режим авторизации QA Tools.");
@@ -47,9 +52,9 @@ function validatePrivateConfig() {
 }
 
 async function loadMcpClient(config) {
-  const packageFile = config.tms?.provider === "qa_tools"
+  const packageFile = hasQaTools(config) || connectionList(config, "eva").length
     ? path.join(repoRoot, "mcp", "qa-tools-mcp", "package.json")
-    : config.jira?.enabled || (config.qaReport?.enabled && config.enableQaReportImport === true)
+    : connectionList(config, "jira").length || (config.qaReport?.enabled && config.enableQaReportImport === true)
     ? path.join(repoRoot, "mcp", "jira-mcp", "package.json")
     : path.join(repoRoot, "mcp", "confluence-mcp", "package.json");
   const requireFromService = createRequire(packageFile);
@@ -62,10 +67,10 @@ async function loadMcpClient(config) {
   return { Client, StdioClientTransport };
 }
 
-async function listTools(service, Client, StdioClientTransport) {
+async function listTools(service, connectionId, Client, StdioClientTransport) {
   const transport = new StdioClientTransport({
     command: process.execPath,
-    args: [launcherFile, service],
+    args: [launcherFile, service, ...(connectionId ? [connectionId] : [])],
     env: { ...process.env }
   });
   const client = new Client({ name: "testdocs-kit-check", version: "1.0.0" });
@@ -78,7 +83,7 @@ async function listTools(service, Client, StdioClientTransport) {
 async function main() {
   const offlineExternal = process.argv.includes("--offline-external");
   const config = validatePrivateConfig();
-  if (!config.jira?.enabled && !config.confluence?.enabled && !(config.qaReport?.enabled && config.enableQaReportImport === true) && config.tms?.provider !== "qa_tools") {
+  if (!connectionList(config, "jira").length && !connectionList(config, "confluence").length && !connectionList(config, "eva").length && !(config.qaReport?.enabled && config.enableQaReportImport === true) && !hasQaTools(config)) {
     console.log("MCP-сервисы отключены; проверен только файл настроек.");
     console.log("Проверка установки: OK");
     return;
@@ -86,56 +91,71 @@ async function main() {
   const { Client, StdioClientTransport } = await loadMcpClient(config);
   const results = [];
 
-  if (config.jira?.enabled) {
-    const tools = await listTools("jira", Client, StdioClientTransport);
+  for (const jira of connectionList(config, "jira")) {
+    const tools = await listTools("jira", jira.id, Client, StdioClientTransport);
     assert(tools.includes("get_issue"), "Jira MCP не отдал get_issue.");
     assert(tools.includes("jira_get_bug_create_metadata"), "Jira MCP не отдал read-only metadata создания бага.");
-    if (config.enableBugCreation === true) {
+    if (jira.enableBugCreation === true) {
       assert(tools.includes("jira_create_bug"), "Jira MCP не отдал защищённый инструмент создания бага.");
     } else {
       assert(!tools.includes("jira_create_bug"), "Создание багов включено без разрешения.");
     }
-    if ((config.tms?.provider || "zephyr_scale") === "zephyr_scale" && config.enableTestCaseCreation !== false) {
+    if (usesZephyr(config, jira.id) && config.enableTestCaseCreation !== false) {
       assert(tools.includes("zephyr_create_test_case"), "Jira MCP не отдал инструмент создания кейса Zephyr.");
       assert(tools.includes("zephyr_update_session_test_case"), "Jira MCP не отдал защищённый инструмент исправления кейса текущей сессии.");
       assert(tools.includes("zephyr_update_test_case"), "Jira MCP не отдал защищённый инструмент обновления существующего кейса.");
     }
-    if (config.tms?.provider === "qa_tools") {
+    if (!usesZephyr(config, jira.id)) {
       assert(!tools.some((tool) => tool.startsWith("zephyr_")), "Jira MCP отдал Zephyr tools при выбранном QA Tools.");
     }
     assert(!tools.includes("add_comment"), "Write-инструмент add_comment включён без разрешения.");
     assert(!tools.includes("transition_issue"), "Write-инструмент transition_issue включён без разрешения.");
-    if (config.enableChecklistCommentPublication === true) {
+    if (jira.enableChecklistCommentPublication === true) {
       assert(tools.includes("jira_publish_checklist_comment"), "Jira MCP не отдал защищённую публикацию checklist-комментария.");
     } else {
       assert(!tools.includes("jira_publish_checklist_comment"), "Публикация checklist-комментария включена без разрешения.");
     }
-    results.push(`Jira MCP: ${tools.length} инструментов (чтение + создание и защищённое обновление по явному запросу)`);
+    results.push(`Jira ${jira.id}: ${tools.length} инструментов`);
   }
 
-  if (config.tms?.provider === "qa_tools") {
+  if (hasQaTools(config)) {
     const entry = path.join(repoRoot, "mcp", "qa-tools-mcp", "mcp-stdio.js");
     const syntax = spawnSync(process.execPath, ["--check", entry], { encoding: "utf8" });
     assert(syntax.status === 0, `Некорректный QA Tools MCP proxy: ${syntax.stderr}`);
     if (offlineExternal) {
       results.push("QA Tools MCP proxy: локальный код проверен; удалённый handshake пропущен в offline-режиме");
     } else {
-      const tools = await listTools("qa_tools", Client, StdioClientTransport);
+      const tools = await listTools("qa_tools", null, Client, StdioClientTransport);
       assert(tools.includes("testops_find_testcases"), "QA Tools MCP не отдал инструмент чтения testops_find_testcases.");
       results.push(`QA Tools MCP: удалённое соединение и авторизация проверены, доступно ${tools.length} инструментов`);
     }
   }
 
   if (config.qaReport?.enabled && config.enableQaReportImport === true) {
-    const tools = await listTools("delivery", Client, StdioClientTransport);
+    const tools = await listTools("delivery", null, Client, StdioClientTransport);
     assert(tools.includes("qa_report_import_checklist"), "Delivery MCP не отдал импорт checklist в QA Report.");
     results.push(`QA Report: ${tools.length} инструмент импорта по явному запросу`);
   }
 
-  if (config.confluence?.enabled) {
-    const tools = await listTools("confluence", Client, StdioClientTransport);
+  for (const confluence of connectionList(config, "confluence")) {
+    const tools = await listTools("confluence", confluence.id, Client, StdioClientTransport);
     assert(tools.includes("get_page"), "Confluence MCP не отдал get_page.");
-    results.push(`Confluence MCP: ${tools.length} read-only инструментов`);
+    results.push(`Confluence ${confluence.id}: ${tools.length} read-only инструментов`);
+  }
+
+  for (const eva of connectionList(config, "eva")) {
+    const entry = path.join(repoRoot, "mcp", "qa-tools-mcp", "eva-mcp-stdio.js");
+    const syntax = spawnSync(process.execPath, ["--check", entry], { encoding: "utf8" });
+    assert(syntax.status === 0, `Некорректный Eva MCP proxy: ${syntax.stderr}`);
+    if (offlineExternal) {
+      results.push(`Eva ${eva.id}: локальная read-only policy проверена; внешний handshake пропущен`);
+    } else {
+      const tools = await listTools("eva", eva.id, Client, StdioClientTransport);
+      assert(tools.includes("eva_task_get"), "Eva MCP не отдал eva_task_get.");
+      assert(tools.includes("eva_document_get"), "Eva MCP не отдал eva_document_get.");
+      assert(!tools.some((tool) => /create|update|delete|archive/.test(tool)), "Eva proxy открыл изменяющий tool.");
+      results.push(`Eva ${eva.id}: ${tools.length} read-only инструментов`);
+    }
   }
 
   console.log(results.join("\n") || "MCP-сервисы отключены; проверен только файл настроек.");

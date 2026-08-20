@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import { spawn } from "node:child_process";
 import { getConfigFile, getSessionFile, serviceEntries } from "./paths.mjs";
+import { connectionList, findConnection, hasQaTools, migrateConfig, sessionKey, usesZephyr } from "./config-model.mjs";
 
 function fail(message) {
   process.stderr.write(`Testdocs Kit: ${message}\n`);
@@ -16,13 +17,13 @@ function readConfig() {
   }
 
   try {
-    return JSON.parse(fs.readFileSync(configFile, "utf8"));
+    return migrateConfig(JSON.parse(fs.readFileSync(configFile, "utf8")));
   } catch (error) {
     fail(`не удалось прочитать ${configFile}: ${error.message}`);
   }
 }
 
-function buildEnvironment(service, config) {
+function buildEnvironment(service, connectionId, config) {
   if (config.caFile && !fs.existsSync(config.caFile)) {
     fail(`не найден дополнительный CA-файл ${config.caFile}. Повторите npm run setup.`);
   }
@@ -38,7 +39,7 @@ function buildEnvironment(service, config) {
   };
 
   if (service === "jira") {
-    const jira = config.jira;
+    const jira = findConnection(config, "jira", connectionId);
     if (!jira?.enabled) fail("подключение Jira выключено в настройках.");
     if (!jira.url || !jira.authMode) fail("для Jira не заполнены адрес или режим авторизации.");
     if (jira.authMode !== "browser_session" && !jira.secret) {
@@ -51,18 +52,21 @@ function buildEnvironment(service, config) {
       JIRA_EMAIL: jira.username || "",
       JIRA_TOKEN: jira.secret || "",
       JIRA_AUTH_MODE: jira.authMode || "basic",
-      JIRA_SESSION_FILE: getSessionFile("jira"),
+      JIRA_SESSION_FILE: getSessionFile(sessionKey("jira", jira.id, connectionList(config, "jira").length)),
       JIRA_API_VERSION: String(jira.apiVersion || "2"),
       JIRA_INSECURE_TLS: jira.insecureTls ? "1" : "0",
       JIRA_TEST_CASE_URL_TEMPLATE:
         jira.testCaseUrlTemplate || `${jira.url}/secure/Tests.jspa#/testCase/{key}`,
-      TESTDOCS_TMS_PROVIDER: config.tms?.provider || "zephyr_scale"
+      TESTDOCS_TMS_PROVIDER: usesZephyr(config, jira.id) ? "zephyr_scale" : "none",
+      TESTDOCS_ENABLE_CHECKLIST_COMMENT_PUBLICATION:
+        jira.enableChecklistCommentPublication === true ? "1" : "0",
+      TESTDOCS_ENABLE_BUG_CREATION: jira.enableBugCreation === true ? "1" : "0"
     };
   }
 
   if (service === "qa_tools") {
     const qaTools = config.qaTools;
-    if (config.tms?.provider !== "qa_tools" || !qaTools?.enabled) {
+    if (!hasQaTools(config)) {
       fail("QA Tools (ТестОпс) не выбран как TMS.");
     }
     if (!qaTools.baseUrl || !qaTools.authMode || !qaTools.secret) {
@@ -79,6 +83,18 @@ function buildEnvironment(service, config) {
     };
   }
 
+  if (service === "eva") {
+    const eva = findConnection(config, "eva", connectionId);
+    if (!eva?.enabled) fail("подключение Eva выключено в настройках.");
+    if (!eva.baseUrl || !eva.secret || !eva.command) fail("для Eva не заполнены адрес, API-токен или MCP-команда.");
+    return {
+      ...common,
+      EVA_API_URL: eva.baseUrl,
+      EVA_API_TOKEN: eva.secret,
+      EVA_MCP_COMMAND: eva.command
+    };
+  }
+
   if (service === "delivery") {
     if (!config.qaReport?.enabled || !config.qaReport.baseUrl) {
       fail("подключение QA Report выключено или не настроено.");
@@ -90,7 +106,7 @@ function buildEnvironment(service, config) {
     };
   }
 
-  const confluence = config.confluence;
+  const confluence = findConnection(config, "confluence", connectionId);
   if (!confluence?.enabled) fail("подключение Confluence выключено в настройках.");
   if (!confluence.baseUrl || !confluence.authMode) {
     fail("для Confluence не заполнены адрес или режим авторизации.");
@@ -105,20 +121,21 @@ function buildEnvironment(service, config) {
     CONFLUENCE_USERNAME: confluence.username || "",
     CONFLUENCE_API_TOKEN: confluence.secret || "",
     CONFLUENCE_AUTH_MODE: confluence.authMode || "basic",
-    CONFLUENCE_SESSION_FILE: getSessionFile("confluence"),
+    CONFLUENCE_SESSION_FILE: getSessionFile(sessionKey("confluence", confluence.id, connectionList(config, "confluence").length)),
     CONFLUENCE_INSECURE_TLS: confluence.insecureTls ? "1" : "0"
   };
 }
 
 const service = process.argv[2];
+const connectionId = process.argv[3];
 if (!Object.hasOwn(serviceEntries, service)) {
-  fail("укажите сервис jira, confluence, qa_tools или delivery.");
+  fail("укажите сервис jira, confluence, eva, qa_tools или delivery.");
 }
 
 const config = readConfig();
 const child = spawn(process.execPath, [serviceEntries[service]], {
-  cwd: new URL(`../mcp/${service === "confluence" ? "confluence-mcp" : service === "qa_tools" ? "qa-tools-mcp" : "jira-mcp"}/`, import.meta.url),
-  env: buildEnvironment(service, config),
+  cwd: new URL(`../mcp/${service === "confluence" ? "confluence-mcp" : ["qa_tools", "eva"].includes(service) ? "qa-tools-mcp" : "jira-mcp"}/`, import.meta.url),
+  env: buildEnvironment(service, connectionId, config),
   stdio: "inherit"
 });
 

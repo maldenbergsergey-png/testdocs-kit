@@ -45,14 +45,15 @@ When more than one Jira or company connection could satisfy the same key, stop b
 1. Record the request intent, supplied references, and requested scope.
 2. If an issue key or link is supplied, retrieve that issue as the primary anchor. Do not broaden to a project-wide search by default.
 3. If a standalone Confluence or knowledge-page URL is supplied without an issue, retrieve that page as the primary knowledge anchor. Follow only its relevant requirement, design, attachment, or decision links. Do not require a Jira issue and do not crawl the whole space.
-4. Retrieve only relevant parent, child, linked issue, decision comment, attachment, and knowledge-page content needed to understand the requested behavior.
+4. Retrieve only relevant parent, child, linked issue, comment, attachment, and knowledge-page content needed to understand the requested behavior. In comments, identify decisions, corrections, unresolved questions, and recognizable previous tester checklists or execution notes.
 5. Inventory every URL in the primary issue and scoped knowledge pages. Classify relevant targets such as requirements, designs/mockups, API contracts, attachments, related decisions, and supporting documents; follow them only when they can materially affect the requested QA result. Preserve the exact URL, readable purpose, source location, and retrieval status. Do not claim an inaccessible target was read and do not crawl unrelated navigation.
 6. Before summarizing a structured source, inventory every explicitly named field, control, tab, default, validation, visibility condition, permission, state, and constraint in scope. Preserve the source wording and mark each item retrieved, ambiguous, or unavailable. Do not collapse unprocessed items into “other fields.”
 7. When existing coverage matters, use targeted discovery in this order: directly linked cases; cases explicitly named in sources; cases associated with a relevant parent, epic, or affected function when supported; focused search by stable page, function, block, or scenario terms; a confirmed folder or TMS area. Preserve raw product fields and stable identifiers. If a case key is known, read it directly. Do not use project-wide `get all` by default.
 8. If no external URL or key is supplied, use only the supplied chat, files, and explicitly scoped sources. Do not search an arbitrary external project.
-9. Separate facts, source conflicts, missing permissions, missing capabilities, and missing behavioral information. Use `PARTIAL_CONTEXT` when a page, attachment, table, field list, or relevant linked target was truncated or only partly retrieved.
-10. Normalize the evidence into the context bundle from `integration-rules.md`.
-11. Route sufficient context to the requested downstream skill:
+9. Preserve relevant comment evidence with its link or ID, author, date, and evidence type when available. Keep a previous checklist distinct from approved requirements and permanent TMS coverage; preserve its useful scenario text, but do not promote its expected results or execution status to facts without corroboration.
+10. Separate facts, source conflicts, missing permissions, missing capabilities, and missing behavioral information. Use `PARTIAL_CONTEXT` when a page, attachment, table, field list, comment checklist, or relevant linked target was truncated or only partly retrieved.
+11. Normalize the evidence into the context bundle from `integration-rules.md`.
+12. Route sufficient context to the requested downstream skill:
    - checklist-only preparation → `prepare-task-testing` checklist branch;
    - generic/full task preparation → `prepare-task-testing` full branch;
    - cases-only or task-scoped cases → `prepare-task-testing` corresponding cases branch;
@@ -64,7 +65,7 @@ When more than one Jira or company connection could satisfy the same key, stop b
    - bug-report draft or explicit Jira bug creation → `create-bug-report`;
    - coverage structure → `build-coverage-matrix`;
    - regression organization → `build-regression-model`.
-12. Return the bundle and downstream result in chat. Do not call an external write tool.
+13. Return the bundle and downstream result in chat. Do not call an external write tool.
 
 ## Actualization path
 
@@ -96,6 +97,7 @@ Input mode: ISSUE_ANCHORED | KNOWLEDGE_ANCHORED | TMS_ANCHORED | MANUAL_CONTEXT
 Scope anchor: ...
 
 Issue facts: ...
+Relevant comment evidence: decisions, corrections, unresolved questions, and previous checklist/execution evidence with provenance
 Relevant linked requirements and knowledge: ...
 Relevant source links: ...
 Source field inventory: ...

@@ -6,6 +6,7 @@ Integrations are context transport, not QA logic. This repository works fully wi
 
 - [`codex-mcp-setup.md`](codex-mcp-setup.md) — company-neutral tester onboarding for STDIO or Streamable HTTP MCP servers.
 - [`profiles/jira-confluence.md`](profiles/jira-confluence.md) — issue and knowledge capability expectations.
+- [`profiles/eva.md`](profiles/eva.md) — unified EvaProject/EvaWiki connection and token-based MCP profile.
 - [`profiles/zephyr-scale.md`](profiles/zephyr-scale.md) — modern Zephyr Scale capability profile.
 - [`profiles/tm4j-legacy.md`](profiles/tm4j-legacy.md) — legacy Test Management for Jira, including version 6.9.0.
 - [`profiles/qa-tools.md`](profiles/qa-tools.md) — QA Tools / ТестОпс MCP and authentication profile.
@@ -55,7 +56,7 @@ When no issue key or external link is supplied, do not search an arbitrary proje
 4. Continue the same workflow after the user supplies the content.
 5. Never invent retrieved data or imply that an unavailable system was checked.
 
-Treat Jira issue access, Confluence access, and TMS access as three independent capabilities even when one MCP server exposes all of them. A successful Jira read does not prove that vendor test objects can be read.
+Treat issue access, knowledge access, and TMS access as independent capabilities even when one product or MCP server exposes all of them. For example, EvaProject and EvaWiki can share one base URL and token, while Jira and Confluence may use either the same host or different hosts. A successful issue read does not prove that knowledge pages or vendor test objects can be read.
 
 ## Documentation corpus intake
 

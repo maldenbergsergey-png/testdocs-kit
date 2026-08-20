@@ -19,11 +19,13 @@ Before generating, read:
 
 1. Accept normalized task or document context from chat, files, or `collect-test-context`.
 2. Inventory requirements, criteria, fields, roles, states, errors and supported surfaces before drafting.
-3. Derive one observable check per distinct task scenario without inventing missing behavior.
-4. Group checks by the natural meaning and type of the affected behavior. Choose section names from the actual content; for a small homogeneous checklist use one section. Do not force `Основные проверки` and `Дополнительные проверки`.
-5. Add `Требует уточнения` only for genuine conflicts or missing expected behavior. Omit it entirely when the context is sufficient.
-6. Run the completeness, decomposition, and Jira Wiki self-check from the standard.
-7. Return only a short scope note, the copy-ready checklist in one fenced `text` block, and material limitations.
+3. Classify relevant comments as decisions, clarifications, unresolved questions, or previous tester checklists/execution evidence. Treat previous checklists as practitioner evidence, validate their scenarios against current requirements, and preserve the comment link or ID plus author/date when available.
+4. Derive observable checks without inventing missing behavior. Group small related assertions into one executable row when they share the same setup, action, screen or functional block; split independent roles, states, actions, outcomes, errors, or rerun units.
+5. Group rows by the natural meaning and type of the affected behavior. Choose section names from the actual content; for a small homogeneous checklist use one section. Do not force `Основные проверки` and `Дополнительные проверки`.
+6. For every row materially derived from a previous Jira-comment checklist, fill `Комментарий` with the provenance format required by the standard. Leave actual result and status empty.
+7. Add `Требует уточнения` only for genuine conflicts or missing expected behavior. Omit it entirely when the context is sufficient.
+8. Run the completeness, decomposition, provenance, and Jira Wiki self-check from the standard.
+9. Return only a short scope note, the copy-ready checklist in one fenced `text` block, and material limitations.
 
 If context supports only part of the task, generate that safe part and put unresolved expected behavior in `Требует уточнения`. Do not emit Test Cases or internal orchestration narration.
 

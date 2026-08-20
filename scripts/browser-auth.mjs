@@ -8,11 +8,13 @@ import { spawn, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { getConfigDir, getConfigFile, getSessionFile } from "./paths.mjs";
+import { connectionList, findConnection, migrateConfig, sessionKey } from "./config-model.mjs";
 
 const currentFile = fileURLToPath(import.meta.url);
 const require = createRequire(import.meta.url);
 const { getCookieHeader } = require("../mcp/session-auth.cjs");
 const service = process.argv[2];
+const connectionId = process.argv.slice(3).find((value) => !value.startsWith("--"));
 const force = process.argv.includes("--force");
 const supportedServices = new Set(["jira", "confluence"]);
 
@@ -24,7 +26,7 @@ function fail(message) {
 function readConfig() {
   const configFile = getConfigFile();
   if (!fs.existsSync(configFile)) fail(`не найден ${configFile}. Выполните npm run setup.`);
-  return JSON.parse(fs.readFileSync(configFile, "utf8"));
+  return migrateConfig(JSON.parse(fs.readFileSync(configFile, "utf8")));
 }
 
 function respawnForRuntime(config) {
@@ -49,7 +51,7 @@ function respawnForRuntime(config) {
 }
 
 function configuredService(config) {
-  const entry = config[service];
+  const entry = findConnection(config, service, connectionId);
   if (!entry?.enabled) fail(`${service} отключён в настройках.`);
   if (entry.authMode !== "browser_session") {
     fail(`${service} использует режим ${entry.authMode || "не определён"}, а не вход через браузер.`);
@@ -273,8 +275,8 @@ async function main() {
   if (typeof WebSocket === "undefined") {
     fail("для браузерной авторизации требуется Node.js 20.10+ или актуальная LTS-версия.");
   }
-  const { baseUrl } = configuredService(config);
-  const sessionFile = getSessionFile(service);
+  const { entry, baseUrl } = configuredService(config);
+  const sessionFile = getSessionFile(sessionKey(service, entry.id, connectionList(config, service).length));
   const storedCookies = readStoredCookies(sessionFile, baseUrl);
   if (!force && storedCookies.length && await probe(baseUrl, storedCookies)) {
     console.log(`Сессия ${service} действует. Повторный вход не требуется.`);

@@ -15,6 +15,15 @@ import {
   launcherFile,
   repoRoot
 } from "./paths.mjs";
+import {
+  connectionList,
+  findConnection,
+  hasQaTools,
+  migrateConfig,
+  nextConnectionId,
+  serverName,
+  usesZephyr
+} from "./config-model.mjs";
 
 const SUPPORTED_CLIENTS = new Set(["codex", "claude", "opencode", "generic"]);
 const MANAGED_BEGIN = "# BEGIN testdocs-kit (managed by npm run setup)";
@@ -29,6 +38,9 @@ function parseArgs(argv) {
     noCli: false,
     skipBrowserAuth: false,
     answers: null,
+    reuse: false,
+    configure: null,
+    add: null,
     openCodeFormat: null,
     caFile: null
   };
@@ -36,6 +48,9 @@ function parseArgs(argv) {
     const arg = argv[index];
     if (arg === "--clients") result.clients = argv[++index]?.split(",");
     else if (arg === "--answers") result.answers = argv[++index];
+    else if (arg === "--reuse") result.reuse = true;
+    else if (arg === "--configure") result.configure = argv[++index];
+    else if (arg === "--add") result.add = argv[++index];
     else if (arg === "--opencode-format") result.openCodeFormat = argv[++index];
     else if (arg === "--ca-file") result.caFile = argv[++index];
     else if (arg === "--force") result.force = true;
@@ -54,6 +69,10 @@ function showHelp() {
 Параметры:
   --clients codex,claude,opencode,generic  Настроить указанные клиенты
   --answers /path/to/answers.json          Взять ответы из JSON без вопросов
+  --reuse                                 Применить сохранённые настройки без вопросов
+  --configure jira|confluence|eva|tms|delivery|all
+                                          Перенастроить только выбранную часть
+  --add jira|confluence|eva               Добавить подключение, сохранив существующие
   --opencode-format stable|v2              Явно выбрать формат OpenCode
   --ca-file /path/to/ca-bundle.pem         Дополнительные доверенные CA в формате PEM
   --skip-dependencies                     Не выполнять npm ci; Confluence всё равно пересобирается
@@ -175,9 +194,9 @@ async function chooseClients(args) {
   return mapping[value] || normalizeClients(value.split(","));
 }
 
-async function collectJira(previous = {}) {
+async function collectJira(previous = {}, id = "jira-main") {
   const enabled = await confirm("Подключить Jira", previous.enabled ?? true);
-  if (!enabled) return { ...previous, enabled: false };
+  if (!enabled) return { ...previous, id, enabled: false };
 
   const profile = await ask(
     "Jira: 1 — Cloud, 2 — Server/DC с PAT, 3 — логин и пароль, 4 — вход через браузер/SSO/2FA",
@@ -203,6 +222,7 @@ async function collectJira(previous = {}) {
     : previous.testCaseUrlTemplate;
   if (preset.authMode === "browser_session") {
     return {
+      id,
       enabled: true,
       ...preset,
       url,
@@ -223,6 +243,7 @@ async function collectJira(previous = {}) {
   if (!secret) throw new Error("Не заполнены учётные данные Jira.");
 
   return {
+    id,
     enabled: true,
     ...preset,
     url,
@@ -233,9 +254,9 @@ async function collectJira(previous = {}) {
   };
 }
 
-async function collectConfluence(previous = {}) {
+async function collectConfluence(previous = {}, id = "confluence-main") {
   const enabled = await confirm("Подключить Confluence", previous.enabled ?? true);
-  if (!enabled) return { ...previous, enabled: false };
+  if (!enabled) return { ...previous, id, enabled: false };
 
   const profile = await ask(
     "Confluence: 1 — Cloud, 2 — Server/DC с PAT, 3 — логин и пароль, 4 — вход через браузер/SSO/2FA",
@@ -249,6 +270,7 @@ async function collectConfluence(previous = {}) {
   )).replace(/\/+$/, "");
   if (authMode === "browser_session") {
     return {
+      id,
       enabled: true,
       profile: "4",
       baseUrl,
@@ -269,6 +291,7 @@ async function collectConfluence(previous = {}) {
   if (!secret) throw new Error("Не заполнены учётные данные Confluence.");
 
   return {
+    id,
     enabled: true,
     profile,
     baseUrl,
@@ -277,6 +300,25 @@ async function collectConfluence(previous = {}) {
     authMode,
     insecureTls: false
   };
+}
+
+async function collectEva(previous = {}, id = "eva-main") {
+  const enabled = await confirm("Подключить EvaProject и EvaWiki", previous.enabled ?? false);
+  if (!enabled) return { ...previous, id, enabled: false };
+  const baseUrl = (await askReusable(
+    "Единый адрес Eva без завершающего слеша",
+    previous.baseUrl || "",
+    "https://eva.company.example"
+  )).replace(/\/+$/, "");
+  const previousSecret = previous.secret || "";
+  const secret = (await askSecret("API-токен Eva", previousSecret)).trim();
+  if (!secret) throw new Error("Не заполнен API-токен Eva.");
+  const command = await askReusable(
+    "Команда установленного Eva MCP",
+    previous.command || "",
+    "evateamclient-mcp"
+  );
+  return { id, enabled: true, baseUrl, authMode: "api_token", secret, command, insecureTls: false };
 }
 
 async function collectQaReport(previous = {}) {
@@ -290,18 +332,40 @@ async function collectQaReport(previous = {}) {
   return { enabled: true, baseUrl };
 }
 
-async function collectTms(previousTms = {}, previousQaTools = {}, previousWriteSetting = false) {
-  const fallback = previousTms.provider === "qa_tools" ? "2" : "1";
-  const choice = await ask(
-    "Какая TMS используется: 1 — Zephyr Scale / Test Management for Jira, 2 — QA Tools (ТестОпс)",
+async function collectTms(previousTms = {}, previousQaTools = {}, previousWriteSetting = false, jiraItems = []) {
+  const fallback = previousTms.category === "other" ? "2" : previousTms.category === "none" || !jiraItems.length ? "3" : "1";
+  const categoryChoice = await ask(
+    "TMS: 1 — Zephyr Scale / Test Management for Jira, 2 — другая TMS, 3 — TMS не используется",
     fallback
   );
-  const provider = choice === "2" || choice === "qa_tools"
-    ? "qa_tools"
-    : "zephyr_scale";
-  if (provider === "zephyr_scale") {
+  const category = categoryChoice === "2" ? "other" : categoryChoice === "3" ? "none" : "zephyr";
+  if (category === "none") {
+    return { tms: { category: "none", provider: "none" }, qaTools: { enabled: false }, enableQaToolsWrites: false };
+  }
+  if (category === "zephyr") {
+    if (!jiraItems.length) throw new Error("Для Zephyr / Test Management for Jira сначала подключите Jira.");
+    let jiraConnectionId = previousTms.jiraConnectionId || jiraItems[0].id;
+    if (jiraItems.length > 1) {
+      const options = jiraItems.map((item, index) => `${index + 1} — ${item.id} (${item.url})`).join(", ");
+      const previousIndex = Math.max(0, jiraItems.findIndex((item) => item.id === jiraConnectionId));
+      const selected = await ask(`К какой Jira привязана TMS: ${options}`, String(previousIndex + 1));
+      jiraConnectionId = jiraItems[Number(selected) - 1]?.id || jiraConnectionId;
+    }
     return {
-      tms: { provider },
+      tms: { category: "zephyr", provider: "zephyr_scale", jiraConnectionId },
+      qaTools: { enabled: false },
+      enableQaToolsWrites: false
+    };
+  }
+
+  const providerChoice = await ask(
+    "Другая TMS: 1 — QA Tools (ТестОпс), 2 — другой MCP-провайдер (задел на будущее)",
+    previousTms.provider === "custom" ? "2" : "1"
+  );
+  if (providerChoice === "2") {
+    const name = await askReusable("Название TMS-провайдера", previousTms.name || "", "custom-tms");
+    return {
+      tms: { category: "other", provider: "custom", name, status: "not_configured" },
       qaTools: { enabled: false },
       enableQaToolsWrites: false
     };
@@ -333,7 +397,7 @@ async function collectTms(previousTms = {}, previousQaTools = {}, previousWriteS
     previousWriteSetting === true
   );
   return {
-    tms: { provider },
+    tms: { category: "other", provider: "qa_tools" },
     qaTools: { enabled: true, baseUrl, authMode, username, secret, insecureTls: false },
     enableQaToolsWrites
   };
@@ -341,96 +405,177 @@ async function collectTms(previousTms = {}, previousQaTools = {}, previousWriteS
 
 function validateAnswers(config) {
   if (!config || typeof config !== "object") throw new Error("Файл ответов должен содержать JSON-объект.");
-  for (const service of ["jira", "confluence"]) {
-    const value = config[service];
-    if (!value?.enabled) continue;
-    const url = service === "jira" ? value.url : value.baseUrl;
-    if (!url || !value.authMode || (value.authMode !== "browser_session" && !value.secret)) {
-      throw new Error(`В файле ответов не полностью настроен ${service}.`);
-    }
-  }
-  if (config.jira?.enabled && config.jira.testCaseUrlTemplate) {
-    const template = config.jira.testCaseUrlTemplate;
-    if (typeof template !== "string" || !template.includes("{key}")) {
-      throw new Error("jira.testCaseUrlTemplate должен содержать плейсхолдер {key}.");
-    }
+  config = migrateConfig(config);
+  const validateUrl = (value, label) => {
     try {
-      const parsed = new URL(template.replaceAll("{key}", "DEMO-T1").replaceAll("{projectKey}", "DEMO"));
+      const parsed = new URL(value);
       if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("unsupported protocol");
     } catch {
-      throw new Error("jira.testCaseUrlTemplate должен быть полным HTTP(S)-адресом.");
+      throw new Error(`${label} должен быть полным HTTP(S)-адресом.`);
     }
+  };
+  for (const jira of connectionList(config, "jira")) {
+    if (!jira.url || !jira.authMode || (jira.authMode !== "browser_session" && !jira.secret)) {
+      throw new Error(`Не полностью настроена Jira ${jira.id}.`);
+    }
+    validateUrl(jira.url, `Адрес Jira ${jira.id}`);
+    if (jira.testCaseUrlTemplate) {
+      if (typeof jira.testCaseUrlTemplate !== "string" || !jira.testCaseUrlTemplate.includes("{key}")) {
+        throw new Error(`testCaseUrlTemplate Jira ${jira.id} должен содержать {key}.`);
+      }
+      validateUrl(
+        jira.testCaseUrlTemplate.replaceAll("{key}", "DEMO-T1").replaceAll("{projectKey}", "DEMO"),
+        `testCaseUrlTemplate Jira ${jira.id}`
+      );
+    }
+  }
+  for (const confluence of connectionList(config, "confluence")) {
+    if (!confluence.baseUrl || !confluence.authMode || (confluence.authMode !== "browser_session" && !confluence.secret)) {
+      throw new Error(`Не полностью настроен Confluence ${confluence.id}.`);
+    }
+    validateUrl(confluence.baseUrl, `Адрес Confluence ${confluence.id}`);
+  }
+  for (const eva of connectionList(config, "eva")) {
+    if (!eva.baseUrl || !eva.secret || eva.authMode !== "api_token" || !eva.command) {
+      throw new Error(`Не полностью настроена Eva ${eva.id}.`);
+    }
+    validateUrl(eva.baseUrl, `Адрес Eva ${eva.id}`);
   }
   if (config.qaReport?.enabled) {
-    try {
-      const url = new URL(config.qaReport.baseUrl);
-      if (!["http:", "https:"].includes(url.protocol)) throw new Error("unsupported protocol");
-    } catch {
-      throw new Error("qaReport.baseUrl должен быть полным HTTP(S)-адресом.");
+    validateUrl(config.qaReport.baseUrl, "qaReport.baseUrl");
+  }
+  if (!["zephyr", "other", "none"].includes(config.tms?.category)) {
+    throw new Error("Неизвестная категория TMS.");
+  }
+  if (config.tms.category === "zephyr") {
+    if (!findConnection(config, "jira", config.tms.jiraConnectionId)) {
+      throw new Error("Zephyr должен ссылаться на существующее подключение Jira.");
     }
   }
-  const provider = config.tms?.provider || "zephyr_scale";
-  if (!["zephyr_scale", "qa_tools"].includes(provider)) {
-    throw new Error("tms.provider должен быть zephyr_scale или qa_tools.");
-  }
-  config.tms = { ...(config.tms || {}), provider };
-  if (provider === "qa_tools") {
+  if (hasQaTools(config)) {
     const qaTools = config.qaTools;
     if (!qaTools?.enabled || !qaTools.baseUrl || !qaTools.secret || !["api_token", "password"].includes(qaTools.authMode) || (qaTools.authMode === "password" && !qaTools.username)) {
       throw new Error("В файле ответов не полностью настроен QA Tools (ТестОпс).");
     }
-    try {
-      const url = new URL(qaTools.baseUrl);
-      if (!["http:", "https:"].includes(url.protocol)) throw new Error("unsupported protocol");
-    } catch {
-      throw new Error("qaTools.baseUrl должен быть полным HTTP(S)-адресом.");
-    }
+    validateUrl(qaTools.baseUrl, "qaTools.baseUrl");
   }
   return config;
 }
 
-async function collectConfig(args, clients) {
+async function collectConnectionSet(config, type, collector, mode) {
+  config.connections[type] ||= [];
+  if (mode === "add") {
+    const id = nextConnectionId(config, type);
+    config.connections[type].push(await collector({ enabled: true }, id));
+    return;
+  }
+  const enabled = connectionList(config, type);
+  if (mode === "configure" && enabled.length > 1) {
+    const options = enabled.map((item, index) => `${index + 1} — ${item.id}`).join(", ");
+    const selected = await ask(`Какое подключение изменить: ${options}`, "1");
+    const target = enabled[Number(selected) - 1] || enabled[0];
+    const index = config.connections[type].findIndex((item) => item.id === target.id);
+    config.connections[type][index] = await collector(target, target.id);
+    return;
+  }
+  if (mode === "configure" && enabled.length === 1) {
+    const index = config.connections[type].findIndex((item) => item.id === enabled[0].id);
+    config.connections[type][index] = await collector(enabled[0], enabled[0].id);
+    return;
+  }
+  if (!config.connections[type].length) {
+    const first = await collector({ enabled: true }, `${type}-main`);
+    config.connections[type] = [first];
+  } else {
+    const updated = [];
+    for (const item of config.connections[type]) updated.push(await collector(item, item.id));
+    config.connections[type] = updated;
+  }
+  while (await confirm(`Добавить ещё одно подключение ${type}`, false)) {
+    const id = nextConnectionId(config, type);
+    config.connections[type].push(await collector({}, id));
+  }
+}
+
+async function collectConfig(args, clients, existing = null) {
   if (args.answers) {
     const answers = JSON.parse(fs.readFileSync(path.resolve(args.answers), "utf8"));
     return validateAnswers({ ...answers, clients });
   }
 
-  const previous = readExistingConfig();
+  const previousRaw = existing || readExistingConfig();
+  if (args.reuse) {
+    if (!Object.keys(previousRaw).length) throw new Error("Сохранённые настройки не найдены; выполните обычный npm run setup.");
+    return validateAnswers({ ...migrateConfig(previousRaw), clients });
+  }
+  const previous = migrateConfig(previousRaw);
+  previous.clients = clients;
+  previous.connections ||= { jira: [], confluence: [], eva: [] };
   console.log("\nСекреты вводятся скрыто и сохраняются вне репозитория.\n");
-  const jira = await collectJira(previous.jira);
-  const enableChecklistCommentPublication = jira.enabled
-    ? await confirm(
-      "Разрешить публикацию готового checklist в комментарий Jira по явному запросу",
-      previous.enableChecklistCommentPublication ?? false
-    )
-    : false;
-  const enableBugCreation = jira.enabled
-    ? await confirm(
-      "Разрешить создание багов Jira по явному запросу",
-      previous.enableBugCreation ?? false
-    )
-    : false;
-  const tmsConfig = await collectTms(previous.tms, previous.qaTools, previous.enableQaToolsWrites);
-  const qaReport = await collectQaReport(previous.qaReport);
-  const enableQaReportImport = qaReport.enabled
-    ? await confirm(
-      "Разрешить отправку checklist в QA Report по явному запросу",
-      previous.enableQaReportImport ?? false
-    )
-    : false;
-  return {
-    version: 1,
-    clients,
-    enableWrites: false,
-    enableTestCaseCreation: true,
-    enableChecklistCommentPublication,
-    enableBugCreation,
-    enableQaReportImport,
-    jira,
-    confluence: await collectConfluence(previous.confluence),
-    qaReport,
-    ...tmsConfig
-  };
+  const target = args.add || args.configure || "all";
+  if (args.add && !["jira", "confluence", "eva"].includes(args.add)) {
+    throw new Error("--add поддерживает jira, confluence или eva.");
+  }
+  if (!["jira", "confluence", "eva", "tms", "delivery", "all"].includes(target)) {
+    throw new Error("Неизвестный раздел настройки.");
+  }
+  const mode = args.add ? "add" : args.configure && args.configure !== "all" ? "configure" : "all";
+  const freshFullSetup = target === "all" && !connectionList(previous, "jira").length && !connectionList(previous, "confluence").length && !connectionList(previous, "eva").length;
+  if (freshFullSetup) {
+    const sourceChoice = await ask(
+      "Основная система: 1 — Jira + Confluence, 2 — EvaProject + EvaWiki, 3 — обе, 4 — без интеграций",
+      "1"
+    );
+    if (["1", "3"].includes(sourceChoice)) {
+      previous.connections.jira = [await collectJira({ enabled: true }, "jira-main")];
+      previous.connections.confluence = [await collectConfluence({ enabled: true }, "confluence-main")];
+    }
+    if (["2", "3"].includes(sourceChoice)) {
+      previous.connections.eva = [await collectEva({ enabled: true }, "eva-main")];
+    }
+    if (sourceChoice !== "4") {
+      while (await confirm("Добавить ещё одну Jira", false)) {
+        const id = nextConnectionId(previous, "jira");
+        previous.connections.jira.push(await collectJira({}, id));
+      }
+    }
+  } else {
+    if (["all", "jira"].includes(target)) await collectConnectionSet(previous, "jira", collectJira, mode);
+    if (["all", "eva"].includes(target)) await collectConnectionSet(previous, "eva", collectEva, mode);
+    if (["all", "confluence"].includes(target)) await collectConnectionSet(previous, "confluence", collectConfluence, mode);
+  }
+
+  if (["all", "jira"].includes(target)) {
+    for (const jira of connectionList(previous, "jira")) {
+      jira.enableChecklistCommentPublication = await confirm(
+        `Разрешить публикацию checklist в ${jira.id} по явному запросу`,
+        jira.enableChecklistCommentPublication === true
+      );
+      jira.enableBugCreation = await confirm(
+        `Разрешить создание багов в ${jira.id} по явному запросу`,
+        jira.enableBugCreation === true
+      );
+    }
+  }
+
+  if (["all", "tms"].includes(target)) {
+    Object.assign(previous, await collectTms(
+      previous.tms,
+      previous.qaTools,
+      previous.enableQaToolsWrites,
+      connectionList(previous, "jira")
+    ));
+  }
+  if (["all", "delivery"].includes(target)) {
+    previous.qaReport = await collectQaReport(previous.qaReport);
+    previous.enableQaReportImport = previous.qaReport.enabled
+      ? await confirm("Разрешить отправку checklist в QA Report по явному запросу", previous.enableQaReportImport === true)
+      : false;
+  }
+  previous.version = 2;
+  previous.enableWrites = false;
+  previous.enableTestCaseCreation = true;
+  return validateAnswers(previous);
 }
 
 function applyCaFile(config, value) {
@@ -472,20 +617,20 @@ function installDependencies(skip, config) {
 
   if (skip) {
     console.log("Установка зависимостей пропущена.");
-    if (config.jira?.enabled || (config.qaReport?.enabled && config.enableQaReportImport === true)) {
+    if (connectionList(config, "jira").length || (config.qaReport?.enabled && config.enableQaReportImport === true)) {
       const jiraSdk = path.join(jiraDir, "node_modules", "@modelcontextprotocol", "sdk", "package.json");
       if (!fs.existsSync(jiraSdk)) {
         throw new Error("Зависимости Jira MCP не установлены. Повторите команду без --skip-dependencies.");
       }
     }
-    if (config.confluence?.enabled) {
+    if (connectionList(config, "confluence").length) {
       const confluenceSdk = path.join(confluenceDir, "node_modules", "@modelcontextprotocol", "sdk", "package.json");
       const typescript = path.join(confluenceDir, "node_modules", ".bin", process.platform === "win32" ? "tsc.cmd" : "tsc");
       if (!fs.existsSync(confluenceSdk) || !fs.existsSync(typescript)) {
         throw new Error("Зависимости Confluence MCP не установлены. Повторите команду без --skip-dependencies.");
       }
     }
-    if (config.tms?.provider === "qa_tools") {
+    if (hasQaTools(config) || connectionList(config, "eva").length) {
       const qaToolsSdk = path.join(qaToolsDir, "node_modules", "@modelcontextprotocol", "sdk", "package.json");
       if (!fs.existsSync(qaToolsSdk)) {
         throw new Error("Зависимости QA Tools MCP не установлены. Повторите команду без --skip-dependencies.");
@@ -493,22 +638,22 @@ function installDependencies(skip, config) {
     }
     return;
   }
-  if (config.jira?.enabled || (config.qaReport?.enabled && config.enableQaReportImport === true)) {
+  if (connectionList(config, "jira").length || (config.qaReport?.enabled && config.enableQaReportImport === true)) {
     console.log("\nУстанавливаю зависимости Jira MCP...");
     run(npm, ["ci"], { cwd: jiraDir });
   }
-  if (config.confluence?.enabled) {
+  if (connectionList(config, "confluence").length) {
     console.log("\nУстанавливаю зависимости Confluence MCP...");
     run(npm, ["ci"], { cwd: confluenceDir });
   }
-  if (config.tms?.provider === "qa_tools") {
-    console.log("\nУстанавливаю зависимости QA Tools MCP...");
+  if (hasQaTools(config) || connectionList(config, "eva").length) {
+    console.log("\nУстанавливаю зависимости MCP proxy для QA Tools / Eva...");
     run(npm, ["ci"], { cwd: qaToolsDir });
   }
 }
 
 function buildAdapters(config) {
-  if (!config.confluence?.enabled) return;
+  if (!connectionList(config, "confluence").length) return;
   const npm = process.platform === "win32" ? "npm.cmd" : "npm";
   const confluenceDir = path.join(repoRoot, "mcp", "confluence-mcp");
   console.log("\nПересобираю Confluence MCP из актуальных исходников...");
@@ -573,52 +718,57 @@ function tomlString(value) {
   return JSON.stringify(value);
 }
 
+function configuredServers(config) {
+  const servers = [];
+  const jiraItems = connectionList(config, "jira");
+  for (const jira of jiraItems) {
+    const tools = ["get_issue", "jira_get_bug_create_metadata", "get_transitions", "search_issues"];
+    if (jira.enableBugCreation === true) tools.push("jira_create_bug");
+    if (jira.enableChecklistCommentPublication === true) tools.push("jira_publish_checklist_comment");
+    if (usesZephyr(config, jira.id)) {
+      tools.push(
+        "zephyr_get_projects", "zephyr_get_project", "zephyr_search_test_cases",
+        "zephyr_get_test_plans", "zephyr_get_test_plan", "zephyr_get_iterations",
+        "zephyr_get_test_case", "zephyr_get_all_test_cases", "zephyr_create_test_case",
+        "zephyr_update_session_test_case", "zephyr_update_test_case"
+      );
+    }
+    servers.push({ name: serverName("jira", jira.id, jiraItems.length), service: "jira", id: jira.id, tools });
+  }
+  const confluenceItems = connectionList(config, "confluence");
+  for (const item of confluenceItems) {
+    servers.push({
+      name: serverName("confluence", item.id, confluenceItems.length),
+      service: "confluence",
+      id: item.id,
+      tools: ["search", "get_page", "get_page_as_markdown", "get_space_pages", "get_page_children"]
+    });
+  }
+  const evaItems = connectionList(config, "eva");
+  for (const item of evaItems) {
+    servers.push({ name: serverName("eva", item.id, evaItems.length), service: "eva", id: item.id });
+  }
+  if (hasQaTools(config)) servers.push({ name: "testdocs_qa_tools", service: "qa_tools" });
+  if (config.qaReport?.enabled && config.enableQaReportImport === true) {
+    servers.push({ name: "testdocs_delivery", service: "delivery", tools: ["qa_report_import_checklist"] });
+  }
+  return servers;
+}
+
 function codexBlock(config) {
   const sections = [MANAGED_BEGIN];
-  if (config.jira?.enabled) {
-    const zephyrTools = config.tms?.provider === "qa_tools" ? "" : `,
-  "zephyr_get_projects", "zephyr_get_project", "zephyr_search_test_cases",
-  "zephyr_get_test_plans", "zephyr_get_test_plan", "zephyr_get_iterations",
-  "zephyr_get_test_case", "zephyr_get_all_test_cases",
-  "zephyr_create_test_case", "zephyr_update_session_test_case", "zephyr_update_test_case"`;
+  for (const server of configuredServers(config)) {
+    const args = [launcherFile, server.service, ...(server.id ? [server.id] : [])];
+    const enabledTools = server.tools?.length
+      ? `\nenabled_tools = [${server.tools.map(tomlString).join(", ")}]`
+      : "";
     sections.push(`
-[mcp_servers.testdocs_jira]
+[mcp_servers.${server.name}]
 command = ${tomlString(process.execPath)}
-args = [${tomlString(launcherFile)}, "jira"]
+args = [${args.map(tomlString).join(", ")}]
 enabled = true
 required = false
-enabled_tools = [
-  "get_issue", "jira_get_bug_create_metadata", "get_transitions", "search_issues"${config.enableBugCreation === true ? ', "jira_create_bug"' : ""}${config.enableChecklistCommentPublication === true ? ', "jira_publish_checklist_comment"' : ""}${zephyrTools}
-]
-default_tools_approval_mode = "approve"`);
-  }
-  if (config.tms?.provider === "qa_tools" && config.qaTools?.enabled) {
-    sections.push(`
-[mcp_servers.testdocs_qa_tools]
-command = ${tomlString(process.execPath)}
-args = [${tomlString(launcherFile)}, "qa_tools"]
-enabled = true
-required = false
-default_tools_approval_mode = "approve"`);
-  }
-  if (config.qaReport?.enabled && config.enableQaReportImport === true) {
-    sections.push(`
-[mcp_servers.testdocs_delivery]
-command = ${tomlString(process.execPath)}
-args = [${tomlString(launcherFile)}, "delivery"]
-enabled = true
-required = false
-enabled_tools = ["qa_report_import_checklist"]
-default_tools_approval_mode = "approve"`);
-  }
-  if (config.confluence?.enabled) {
-    sections.push(`
-[mcp_servers.testdocs_confluence]
-command = ${tomlString(process.execPath)}
-args = [${tomlString(launcherFile)}, "confluence"]
-enabled = true
-required = false
-enabled_tools = ["search", "get_page", "get_page_as_markdown", "get_space_pages", "get_page_children"]
+${enabledTools}
 default_tools_approval_mode = "approve"`);
   }
   sections.push(MANAGED_END);
@@ -639,19 +789,19 @@ function writeManagedCodexConfig(config) {
   console.log(`Codex настроен: ${target}`);
 }
 
-function stableMcpServerConfig(service) {
+function stableMcpServerConfig(service, id) {
   return {
     type: "local",
-    command: [process.execPath, launcherFile, service],
+    command: [process.execPath, launcherFile, service, ...(id ? [id] : [])],
     cwd: repoRoot,
     enabled: true
   };
 }
 
-function v2McpServerConfig(service) {
+function v2McpServerConfig(service, id) {
   return {
     type: "local",
-    command: [process.execPath, launcherFile, service],
+    command: [process.execPath, launcherFile, service, ...(id ? [id] : [])],
     cwd: repoRoot,
     disabled: false,
     codemode: false
@@ -661,14 +811,7 @@ function v2McpServerConfig(service) {
 function openCodeSnippet(config, format) {
   const servers = {};
   const buildServer = format === "v2" ? v2McpServerConfig : stableMcpServerConfig;
-  if (config.jira?.enabled) servers.testdocs_jira = buildServer("jira");
-  if (config.confluence?.enabled) servers.testdocs_confluence = buildServer("confluence");
-  if (config.tms?.provider === "qa_tools" && config.qaTools?.enabled) {
-    servers.testdocs_qa_tools = buildServer("qa_tools");
-  }
-  if (config.qaReport?.enabled && config.enableQaReportImport === true) {
-    servers.testdocs_delivery = buildServer("delivery");
-  }
+  for (const server of configuredServers(config)) servers[server.name] = buildServer(server.service, server.id);
   return {
     $schema: "https://opencode.ai/config.json",
     mcp: format === "v2" ? { servers } : servers
@@ -683,6 +826,12 @@ function writeJsonWithBackup(target, value) {
 
 function commandAvailable(command) {
   return spawnSync(command, ["--version"], { stdio: "ignore" }).status === 0;
+}
+
+function executableAvailable(command) {
+  if (path.isAbsolute(command) || command.includes(path.sep)) return fs.existsSync(path.resolve(command));
+  const lookup = spawnSync(process.platform === "win32" ? "where" : "which", [command], { stdio: "ignore" });
+  return lookup.status === 0;
 }
 
 function detectOpenCodeFormat(data, requestedFormat) {
@@ -714,9 +863,9 @@ function removeManagedOpenCodePermissions(data) {
 }
 
 function ensureSafeFormatMigration(data, format) {
-  const managedNames = new Set(["testdocs_jira", "testdocs_confluence", "testdocs_delivery", "testdocs_qa_tools"]);
+  const isManaged = (name) => /^testdocs_(jira|confluence|eva)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name);
   if (format === "stable" && data.mcp?.servers) {
-    const foreignServers = Object.keys(data.mcp.servers).filter((name) => !managedNames.has(name));
+    const foreignServers = Object.keys(data.mcp.servers).filter((name) => !isManaged(name));
     if (foreignServers.length) {
       throw new Error(
         `OpenCode-конфиг содержит V2 MCP-серверы (${foreignServers.join(", ")}). ` +
@@ -727,7 +876,7 @@ function ensureSafeFormatMigration(data, format) {
 
   if (format === "v2" && data.mcp && !data.mcp.servers) {
     const foreignServers = Object.entries(data.mcp)
-      .filter(([name, value]) => !managedNames.has(name) && value && typeof value === "object" && value.type)
+      .filter(([name, value]) => !isManaged(name) && value && typeof value === "object" && value.type)
       .map(([name]) => name);
     if (foreignServers.length) {
       throw new Error(
@@ -774,35 +923,25 @@ function mergeOpenCodeConfig(config, args) {
   ensureSafeFormatMigration(data, format);
   removeManagedOpenCodePermissions(data);
   data.mcp ||= {};
+  const removeManaged = (container) => {
+    if (!container || typeof container !== "object") return;
+    for (const name of Object.keys(container)) {
+      if (/^testdocs_(jira|confluence|eva)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name)) {
+        delete container[name];
+      }
+    }
+  };
+  const configured = configuredServers(config);
 
   if (format === "stable") {
     if (data.mcp.servers) delete data.mcp.servers;
-    delete data.mcp.testdocs_jira;
-    delete data.mcp.testdocs_confluence;
-    delete data.mcp.testdocs_delivery;
-    delete data.mcp.testdocs_qa_tools;
-    if (config.jira?.enabled) data.mcp.testdocs_jira = stableMcpServerConfig("jira");
-    if (config.confluence?.enabled) {
-      data.mcp.testdocs_confluence = stableMcpServerConfig("confluence");
-    }
-    if (config.qaReport?.enabled && config.enableQaReportImport === true) data.mcp.testdocs_delivery = stableMcpServerConfig("delivery");
-    if (config.tms?.provider === "qa_tools" && config.qaTools?.enabled) data.mcp.testdocs_qa_tools = stableMcpServerConfig("qa_tools");
+    removeManaged(data.mcp);
+    for (const server of configured) data.mcp[server.name] = stableMcpServerConfig(server.service, server.id);
   } else {
     data.mcp.servers ||= {};
-    delete data.mcp.testdocs_jira;
-    delete data.mcp.testdocs_confluence;
-    delete data.mcp.testdocs_delivery;
-    delete data.mcp.testdocs_qa_tools;
-    delete data.mcp.servers.testdocs_jira;
-    delete data.mcp.servers.testdocs_confluence;
-    delete data.mcp.servers.testdocs_delivery;
-    delete data.mcp.servers.testdocs_qa_tools;
-    if (config.jira?.enabled) data.mcp.servers.testdocs_jira = v2McpServerConfig("jira");
-    if (config.confluence?.enabled) {
-      data.mcp.servers.testdocs_confluence = v2McpServerConfig("confluence");
-    }
-    if (config.qaReport?.enabled && config.enableQaReportImport === true) data.mcp.servers.testdocs_delivery = v2McpServerConfig("delivery");
-    if (config.tms?.provider === "qa_tools" && config.qaTools?.enabled) data.mcp.servers.testdocs_qa_tools = v2McpServerConfig("qa_tools");
+    removeManaged(data.mcp);
+    removeManaged(data.mcp.servers);
+    for (const server of configured) data.mcp.servers[server.name] = v2McpServerConfig(server.service, server.id);
   }
   writeJsonWithBackup(target, data);
   console.log(`OpenCode настроен (${format}): ${target}`);
@@ -810,20 +949,9 @@ function mergeOpenCodeConfig(config, args) {
 }
 
 function claudeCommands(config) {
-  const commands = [];
-  if (config.jira?.enabled) {
-    commands.push(`claude mcp add --transport stdio --scope user testdocs_jira -- ${JSON.stringify(process.execPath)} ${JSON.stringify(launcherFile)} jira`);
-  }
-  if (config.confluence?.enabled) {
-    commands.push(`claude mcp add --transport stdio --scope user testdocs_confluence -- ${JSON.stringify(process.execPath)} ${JSON.stringify(launcherFile)} confluence`);
-  }
-  if (config.qaReport?.enabled && config.enableQaReportImport === true) {
-    commands.push(`claude mcp add --transport stdio --scope user testdocs_delivery -- ${JSON.stringify(process.execPath)} ${JSON.stringify(launcherFile)} delivery`);
-  }
-  if (config.tms?.provider === "qa_tools" && config.qaTools?.enabled) {
-    commands.push(`claude mcp add --transport stdio --scope user testdocs_qa_tools -- ${JSON.stringify(process.execPath)} ${JSON.stringify(launcherFile)} qa_tools`);
-  }
-  return commands;
+  return configuredServers(config).map((server) =>
+    `claude mcp add --transport stdio --scope user ${server.name} -- ${JSON.stringify(process.execPath)} ${JSON.stringify(launcherFile)} ${server.service}${server.id ? ` ${server.id}` : ""}`
+  );
 }
 
 function configureClaude(config, noCli) {
@@ -836,35 +964,27 @@ function configureClaude(config, noCli) {
     return;
   }
 
-  for (const [service, enabled] of [["jira", config.jira?.enabled], ["confluence", config.confluence?.enabled], ["delivery", config.qaReport?.enabled && config.enableQaReportImport === true], ["qa_tools", config.tms?.provider === "qa_tools" && config.qaTools?.enabled]]) {
-    if (!enabled) continue;
-    const name = `testdocs_${service}`;
-    const current = spawnSync("claude", ["mcp", "get", name], { stdio: "ignore" });
+  for (const server of configuredServers(config)) {
+    const current = spawnSync("claude", ["mcp", "get", server.name], { stdio: "ignore" });
     if (current.status === 0) {
-      console.log(`Claude Code уже содержит ${name}; регистрация пропущена.`);
+      console.log(`Claude Code уже содержит ${server.name}; регистрация пропущена.`);
       continue;
     }
     const added = spawnSync("claude", [
-      "mcp", "add", "--transport", "stdio", "--scope", "user", name,
-      "--", process.execPath, launcherFile, service
+      "mcp", "add", "--transport", "stdio", "--scope", "user", server.name,
+      "--", process.execPath, launcherFile, server.service, ...(server.id ? [server.id] : [])
     ], { stdio: "inherit" });
-    if (added.status !== 0) console.warn(`Не удалось добавить ${name}. Команды сохранены: ${commandsFile}`);
+    if (added.status !== 0) console.warn(`Не удалось добавить ${server.name}. Команды сохранены: ${commandsFile}`);
   }
 }
 
 function writeGenericSnippet(config) {
   const mcpServers = {};
-  if (config.jira?.enabled) {
-    mcpServers.testdocs_jira = { command: process.execPath, args: [launcherFile, "jira"] };
-  }
-  if (config.confluence?.enabled) {
-    mcpServers.testdocs_confluence = { command: process.execPath, args: [launcherFile, "confluence"] };
-  }
-  if (config.qaReport?.enabled && config.enableQaReportImport === true) {
-    mcpServers.testdocs_delivery = { command: process.execPath, args: [launcherFile, "delivery"] };
-  }
-  if (config.tms?.provider === "qa_tools" && config.qaTools?.enabled) {
-    mcpServers.testdocs_qa_tools = { command: process.execPath, args: [launcherFile, "qa_tools"] };
+  for (const server of configuredServers(config)) {
+    mcpServers[server.name] = {
+      command: process.execPath,
+      args: [launcherFile, server.service, ...(server.id ? [server.id] : [])]
+    };
   }
   const target = path.join(getConfigDir(), "client-snippets", "generic-mcp.json");
   writeJsonWithBackup(target, { mcpServers });
@@ -887,18 +1007,20 @@ function verifyInstallation(args) {
 
 function authenticateBrowserSessions(config, args) {
   if (args.noCli || args.skipBrowserAuth) return;
-  const services = ["jira", "confluence"].filter(
-    (service) => config[service]?.enabled && config[service]?.authMode === "browser_session"
+  const entries = ["jira", "confluence"].flatMap((service) =>
+    connectionList(config, service)
+      .filter((entry) => entry.authMode === "browser_session")
+      .map((entry) => ({ service, id: entry.id }))
   );
-  for (const service of services) {
-    console.log(`\nПроверяю браузерную сессию ${service}...`);
-    const result = spawnSync(process.execPath, [browserAuthFile, service], {
+  for (const { service, id } of entries) {
+    console.log(`\nПроверяю браузерную сессию ${service}/${id}...`);
+    const result = spawnSync(process.execPath, [browserAuthFile, service, id], {
       cwd: repoRoot,
       stdio: "inherit"
     });
     if (result.status !== 0) {
       console.warn(
-        `Браузерная авторизация ${service} не завершена. Позже выполните: npm run auth -- ${service}`
+        `Браузерная авторизация ${service}/${id} не завершена. Позже выполните: npm run auth -- ${service} ${id}`
       );
     }
   }
@@ -911,18 +1033,33 @@ async function main() {
   if (major < 20) throw new Error(`Требуется Node.js 20 или новее. Найдена версия ${process.version}.`);
 
   console.log(`Testdocs Kit\nРепозиторий: ${repoRoot}\n`);
-  const clients = await chooseClients(args);
+  const existing = readExistingConfig();
+  const clients = args.clients
+    ? normalizeClients(args.clients)
+    : (args.reuse || args.configure || args.add) && Array.isArray(existing.clients)
+      ? normalizeClients(existing.clients)
+      : await chooseClients(args);
   if (!clients.length) throw new Error("Не выбран ни один клиент.");
-  const config = await collectConfig(args, clients);
-  config.version ||= 1;
+  const config = await collectConfig(args, clients, existing);
+  config.version = 2;
   config.clients = clients;
   config.enableWrites = false;
   config.enableTestCaseCreation = true;
-  config.tms ||= { provider: "zephyr_scale" };
-  if (config.jira?.enabled && !config.jira.testCaseUrlTemplate) {
-    config.jira.testCaseUrlTemplate = `${config.jira.url}/secure/Tests.jspa#/testCase/{key}`;
+  config.tms ||= { category: "none", provider: "none" };
+  for (const jira of connectionList(config, "jira")) {
+    jira.testCaseUrlTemplate ||= `${jira.url}/secure/Tests.jspa#/testCase/{key}`;
   }
   applyCaFile(config, args.caFile);
+  if (!args.noCli) {
+    for (const eva of connectionList(config, "eva")) {
+      if (!executableAvailable(eva.command)) {
+        throw new Error(
+          `Не найдена команда Eva MCP: ${eva.command}. Установите её командой ` +
+          "go install github.com/raoptimus/evateamclient.go/pkg/evateamclient-mcp@latest или укажите другой путь через npm run configure:eva."
+        );
+      }
+    }
+  }
 
   savePrivateConfig(config);
   installDependencies(args.skipDependencies, config);
@@ -933,9 +1070,11 @@ async function main() {
   verifyInstallation(args);
   authenticateBrowserSessions(config, args);
 
-  const tmsSummary = config.tms.provider === "qa_tools"
+  const tmsSummary = hasQaTools(config)
     ? "QA Tools подключён через официальный MCP; изменяющие tools требуют отдельного разрешения и явного запроса, удаление скрыто."
-    : "Создание новых Zephyr/TM4J-кейсов доступно только по явному запросу.\nСуществующий кейс обновляется только по явному запросу после повторного чтения и проверки актуальности proposal.";
+    : config.tms.category === "zephyr"
+      ? "Создание новых Zephyr/TM4J-кейсов доступно только по явному запросу.\nСуществующий кейс обновляется только по явному запросу после повторного чтения и проверки актуальности proposal."
+      : "TMS-интеграция не подключена.";
   console.log(`\nУстановка завершена.
 1. Перезапустите выбранный AI-клиент.
 2. Проверьте MCP-командой клиента.

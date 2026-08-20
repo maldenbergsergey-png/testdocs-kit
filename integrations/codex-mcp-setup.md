@@ -1,6 +1,8 @@
 # Connect company QA systems to Codex through MCP
 
-This is a reusable onboarding guide for testers. Replace placeholders only with values supplied by the company's Jira, Confluence, TMS, or MCP administrator. Never commit credentials or paste them into a test-case prompt.
+This is a reusable onboarding guide for testers. Replace placeholders only with values supplied by the company's Jira, Confluence, Eva, TMS, or MCP administrator. Never commit credentials or paste them into a test-case prompt.
+
+For the bundled Testdocs Kit installer, prefer the automated commands from the root README. They preserve the private settings file, allow more than one Jira/Confluence/Eva connection, and keep previous answers when Enter is pressed. The manual procedure below is for company-provided MCP servers or clients not handled by the installer.
 
 Current Codex MCP configuration behavior is documented in the [official OpenAI MCP guide](https://developers.openai.com/codex/mcp/).
 
@@ -17,6 +19,7 @@ Authentication: OAuth | bearer-token environment variable | local environment va
 Required environment-variable names, without secret values:
 Jira base URL and project scope:
 Confluence base URL and space scope:
+Eva base URL and project/document scope, when used:
 TMS product, version, and deployment: Cloud | Server | Data Center
 Allowed read capabilities:
 Allowed write capabilities:
@@ -24,7 +27,20 @@ Known tool names or capability documentation:
 Support contact:
 ```
 
-If two MCP servers are used, prepare one profile for each. A Jira/Confluence server and a TMS server may be configured independently; the QA skills combine their evidence through the neutral context bundle.
+Prepare one profile for each independent connection. Jira and Confluence may share a host or use different hosts; do not infer one URL from the other. EvaProject and EvaWiki normally use one Eva connection and token unless the approved adapter states otherwise. A tracker/knowledge server and a TMS server may be configured independently; the QA skills combine their evidence through the neutral context bundle.
+
+For an already configured Testdocs Kit installation:
+
+```bash
+npm run update
+npm run reconfigure
+npm run configure:jira
+npm run configure:eva
+npm run configure:tms
+npm run add:jira
+```
+
+Use `npm run update` to pull and apply new instructions without repeating setup. Use a `configure:*` command to change one area and an `add:*` command to retain existing connections while adding another.
 
 ## 2. Add the MCP server
 

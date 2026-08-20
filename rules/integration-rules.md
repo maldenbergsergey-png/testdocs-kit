@@ -29,7 +29,7 @@ Do not assume a capability exists because a server is named Jira, Confluence, Ze
 Treat an explicit issue key or URL as the primary scope anchor. Retrieve the issue and only the related material needed for the requested QA decision:
 
 - summary, description, acceptance criteria, status, and relevant structured fields;
-- comments that contain decisions, corrections, or unresolved questions;
+- comments that contain decisions, corrections, unresolved questions, or previous tester checklists/execution evidence relevant to the current scope;
 - relevant parent, child, linked requirement, bug, or dependency;
 - linked knowledge pages and attachments needed to understand behavior;
 - existing test cases linked to the issue or identified by a supported TMS relation.
@@ -51,6 +51,7 @@ Request intent: prepare testing (checklist-only | full package | cases-only | ta
 Input mode: ISSUE_ANCHORED | KNOWLEDGE_ANCHORED | TMS_ANCHORED | MANUAL_CONTEXT
 Scope anchor: issue key/link or supplied-context description
 Issue facts: summary, behavior, acceptance criteria, status, decisions
+Relevant comment evidence: evidence type, relevant content, exact comment link or ID, author/date when available, and corroboration status for previous checklists
 Relevant linked requirements and knowledge: stable ID/link, title, version when available, relevant content
 Relevant source links: exact URL, readable purpose, source location, retrieval status, and whether it influenced the requested QA result
 Source field inventory: every explicitly defined field, control, tab, default, validation, visibility condition, role, state, and constraint; each marked retrieved, ambiguous, or unavailable
@@ -69,6 +70,7 @@ Keep raw external values alongside any neutral interpretation. Do not silently t
 
 - Treat retrieved content according to its supplied authority, not according to the system that stores it.
 - Do not assume that a Jira description is newer than a linked specification or that the latest comment overrides approved acceptance criteria.
+- Treat a previous tester checklist or execution note in a comment as practitioner evidence: use it to find scenarios and risk areas, but do not treat it as an approved requirement, current expected behavior, or proof of permanent TMS coverage. Preserve its provenance and corroborate reused checks against current sources.
 - Report conflicting behavior or versions and request a decision when the conflict changes coverage or expected results.
 - Retrieve only fields and attachments relevant to the QA task. Avoid collecting credentials, personal data, or unrelated comments.
 - Inventory URLs in the primary issue and every scoped knowledge page. Follow only links that can materially define the requested behavior, especially linked requirements, designs/mockups, API contracts, attachments, and related decision documents. Record the exact URL, visible label or retrieved title, source location, and retrieval status. Do not recursively crawl unrelated navigation or an entire knowledge space.

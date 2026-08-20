@@ -1,6 +1,6 @@
 ---
 name: prepare-task-testing
-description: Primary intent-based entry point for ordinary QA requests such as preparing a checklist, a full documentation package, only test cases, task-only cases outside regression, or a targeted subset from an issue, document, URL, file, or supplied requirement. Automatically choose the workflow without requiring skill names.
+description: Primary intent-based entry point for ordinary QA requests such as preparing a checklist, test cases, a full documentation package, task-only cases outside regression, or a targeted subset from an issue, document, URL, file, or supplied requirement. Return the specifically requested artifact and automatically choose the workflow without requiring skill names.
 ---
 
 # Prepare task testing
@@ -20,8 +20,8 @@ Before work, read:
 ## Route by intent
 
 - An explicit checklist request selects `CHECKLIST_ONLY`.
-- A generic request to prepare testing for a task or an explicit full-documentation request selects `FULL_PACKAGE`.
-- An explicit request for test cases without a checklist selects `CASES_ONLY`.
+- An explicit request for all test documentation or a full package selects `FULL_PACKAGE`. Do not silently expand an otherwise ambiguous “prepare testing” request to every artifact; infer a concrete artifact from the remaining wording or ask one concise result-focused question when it cannot be determined.
+- An explicit request for test cases selects `CASES_ONLY`; do not require phrases such as “без чек-листа” or “только тест-кейсы”.
 - An explicit request for task-only cases or cases outside the regression model selects `TASK_SCOPED_CASES`.
 - A request to optimize or refactor several existing cases selects `OPTIMIZE_EXISTING` and routes to `review-test-cases` for a structural proposal.
 - A request for review only selects `REVIEW_ONLY` and routes to `review-test-cases`.
@@ -30,7 +30,7 @@ Before work, read:
 
 ## Shared context collection
 
-Use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) with the selected intent. With a supplied issue key/link, anchor retrieval there. Treat a supplied Confluence URL, document, file, or chat requirement as a valid standalone scope when no issue is supplied. Combine Jira, knowledge pages, comments and user context according to their stated authority; do not infer priority from storage location.
+Use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) with the selected intent. With a supplied issue key/link, anchor retrieval there. Treat a supplied Confluence URL, document, file, or chat requirement as a valid standalone scope when no issue is supplied. Combine Jira, knowledge pages, comments and user context according to their stated authority; do not infer priority from storage location. Classify previous tester checklists found in comments as practitioner evidence, preserve their provenance, and validate their checks against current requirements before reuse.
 
 ## CHECKLIST_ONLY
 

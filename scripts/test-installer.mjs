@@ -94,13 +94,14 @@ try {
     assert(fs.existsSync(file), `Не создан ${file}`);
   }
   const savedPrivateConfig = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
+  assert(savedPrivateConfig.version === 2, "Старый конфиг не мигрирован в version 2.");
   assert(savedPrivateConfig.caFile?.endsWith("globalsign-gcc-r3-dv-tls-ca-2020.pem"), "Не сохранён CA-файл.");
   assert(savedPrivateConfig.enableTestCaseCreation === true, "Не включены создание и защищённое исправление кейса Zephyr.");
-  assert(savedPrivateConfig.enableBugCreation === true, "Не включено создание багов Jira по явному запросу.");
-  assert(savedPrivateConfig.enableChecklistCommentPublication === true, "Не включена явная публикация checklist в Jira.");
+  assert(savedPrivateConfig.connections.jira[0].enableBugCreation === true, "Не включено создание багов Jira по явному запросу.");
+  assert(savedPrivateConfig.connections.jira[0].enableChecklistCommentPublication === true, "Не включена явная публикация checklist в Jira.");
   assert(savedPrivateConfig.enableQaReportImport === true, "Не включён импорт checklist в QA Report.");
   assert(
-    savedPrivateConfig.jira.testCaseUrlTemplate === "https://jira.example.invalid/secure/Tests.jspa#/testCase/{key}",
+    savedPrivateConfig.connections.jira[0].testCaseUrlTemplate === "https://jira.example.invalid/secure/Tests.jspa#/testCase/{key}",
     "Не сохранён шаблон полной ссылки на кейс Zephyr."
   );
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "generate-test-cases", "SKILL.md")), "Не установлены Agent Skills.");
@@ -232,8 +233,8 @@ try {
     throw new Error("Не установлен режим браузерной сессии без пароля.");
   }
   const browserPrivateConfig = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
-  assert(browserPrivateConfig.jira.authMode === "browser_session", "Не сохранён browser_session для Jira.");
-  assert(browserPrivateConfig.confluence.authMode === "browser_session", "Не сохранён browser_session для Confluence.");
+  assert(browserPrivateConfig.connections.jira[0].authMode === "browser_session", "Не сохранён browser_session для Jira.");
+  assert(browserPrivateConfig.connections.confluence[0].authMode === "browser_session", "Не сохранён browser_session для Confluence.");
 
   // QA Report delivery remains independently usable without Jira or Confluence.
   fs.writeFileSync(answersFile, JSON.stringify({
@@ -292,7 +293,7 @@ try {
     throw new Error("Не установлена QA Tools integration.");
   }
   const qaToolsPrivateConfig = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
-  assert(qaToolsPrivateConfig.tms.provider === "qa_tools", "Не сохранён выбор QA Tools.");
+  assert(qaToolsPrivateConfig.tms.category === "other" && qaToolsPrivateConfig.tms.provider === "qa_tools", "Не сохранён выбор QA Tools.");
   assert(qaToolsPrivateConfig.qaTools.authMode === "password", "Не сохранён режим логин/пароль QA Tools.");
   const qaToolsPublicConfigs = [codexConfig, openCodeConfig, genericConfig].map((file) => fs.readFileSync(file, "utf8")).join("\n");
   assert(qaToolsPublicConfigs.includes("testdocs_qa_tools"), "QA Tools MCP не добавлен в клиентские конфиги.");
@@ -301,6 +302,91 @@ try {
   assert(!qaToolsPublicConfigs.includes("zephyr_get_test_case"), "Zephyr tools остались при выбранном QA Tools.");
   assert(qaToolsResult.stdout.includes("QA Tools MCP proxy"), "Не проверен локальный QA Tools MCP proxy.");
 
+  // Version 2 supports multiple Jira connections and one Eva endpoint for tasks and documents.
+  fs.writeFileSync(answersFile, JSON.stringify({
+    version: 2,
+    enableWrites: false,
+    enableTestCaseCreation: true,
+    clients: ["codex", "generic"],
+    connections: {
+      jira: [
+        {
+          id: "jira-one",
+          enabled: true,
+          profile: "3",
+          url: "https://jira-one.example.invalid",
+          username: "tester-one",
+          secret: "dummy-jira-one-password",
+          authMode: "basic",
+          apiVersion: "2",
+          enableBugCreation: false,
+          enableChecklistCommentPublication: false
+        },
+        {
+          id: "jira-two",
+          enabled: true,
+          profile: "2",
+          url: "https://jira-two.example.invalid",
+          username: "",
+          secret: "dummy-jira-two-token",
+          authMode: "bearer",
+          apiVersion: "2",
+          enableBugCreation: true,
+          enableChecklistCommentPublication: true
+        }
+      ],
+      confluence: [],
+      eva: [{
+        id: "eva-main",
+        enabled: true,
+        baseUrl: "https://eva.example.invalid",
+        authMode: "api_token",
+        secret: "dummy-eva-token",
+        command: "evateamclient-mcp"
+      }]
+    },
+    tms: { category: "zephyr", provider: "zephyr_scale", jiraConnectionId: "jira-two" },
+    qaReport: { enabled: false }
+  }), "utf8");
+  const multiResult = spawnSync(process.execPath, [
+    path.join(scriptsDir, "install.mjs"),
+    "--clients", "codex,generic",
+    "--answers", answersFile,
+    "--skip-dependencies",
+    "--no-cli"
+  ], { cwd: repoRoot, env, encoding: "utf8" });
+  if (multiResult.status !== 0) {
+    process.stdout.write(multiResult.stdout || "");
+    process.stderr.write(multiResult.stderr || "");
+    throw new Error("Не установлены несколько Jira и Eva.");
+  }
+  const multiPrivateConfig = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
+  assert(multiPrivateConfig.connections.jira.length === 2, "Не сохранены две Jira.");
+  assert(multiPrivateConfig.connections.eva.length === 1, "Не сохранена Eva.");
+  const multiGeneric = JSON.parse(fs.readFileSync(genericConfig, "utf8"));
+  assert(multiGeneric.mcpServers.testdocs_jira_jira_one, "Не зарегистрирована первая Jira.");
+  assert(multiGeneric.mcpServers.testdocs_jira_jira_two, "Не зарегистрирована вторая Jira.");
+  assert(multiGeneric.mcpServers.testdocs_eva, "Не зарегистрирована Eva.");
+  const multiPublic = [codexConfig, genericConfig].map((file) => fs.readFileSync(file, "utf8")).join("\n");
+  for (const secret of ["dummy-jira-one-password", "dummy-jira-two-token", "dummy-eva-token"]) {
+    assert(!multiPublic.includes(secret), `Секрет ${secret} попал в клиентский конфиг.`);
+  }
+  assert(multiResult.stdout.includes("Eva eva-main: локальная read-only policy проверена"), "Не проверена безопасная Eva policy.");
+
+  const beforeReuse = fs.readFileSync(privateConfig, "utf8");
+  const reuseResult = spawnSync(process.execPath, [
+    path.join(scriptsDir, "install.mjs"),
+    "--clients", "generic",
+    "--reuse",
+    "--skip-dependencies",
+    "--no-cli"
+  ], { cwd: repoRoot, env, encoding: "utf8" });
+  assert(reuseResult.status === 0, "Не применены сохранённые настройки через --reuse.");
+  const afterReuse = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
+  const beforeReuseParsed = JSON.parse(beforeReuse);
+  assert(JSON.stringify(afterReuse.connections) === JSON.stringify(beforeReuseParsed.connections), "--reuse изменил подключения или секреты.");
+  assert(JSON.stringify(afterReuse.tms) === JSON.stringify(beforeReuseParsed.tms), "--reuse изменил TMS.");
+
   console.log("Изолированная установка Codex/Claude Code/OpenCode/generic: OK");
   console.log("Повторная установка без дублирования: OK");
   console.log("OpenCode stable, миграция ошибочного конфига и V2: OK");
@@ -308,6 +394,7 @@ try {
   console.log("Режим browser-session без пароля: OK");
   console.log("Независимая QA Report integration без Jira/Confluence: OK");
   console.log("Выбор QA Tools, login/password и защищённый MCP proxy: OK");
+  console.log("Несколько Jira, единая Eva и повторное применение настроек: OK");
 } finally {
   fs.rmSync(testRoot, { recursive: true, force: true });
 }

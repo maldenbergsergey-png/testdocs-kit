@@ -58,5 +58,6 @@ export const serviceEntries = {
   jira: path.join(repoRoot, "mcp", "jira-mcp", "mcp-stdio.js"),
   confluence: path.join(repoRoot, "mcp", "confluence-mcp", "dist", "index.js"),
   delivery: path.join(repoRoot, "mcp", "jira-mcp", "mcp-stdio.js"),
-  qa_tools: path.join(repoRoot, "mcp", "qa-tools-mcp", "mcp-stdio.js")
+  qa_tools: path.join(repoRoot, "mcp", "qa-tools-mcp", "mcp-stdio.js"),
+  eva: path.join(repoRoot, "mcp", "qa-tools-mcp", "eva-mcp-stdio.js")
 };
