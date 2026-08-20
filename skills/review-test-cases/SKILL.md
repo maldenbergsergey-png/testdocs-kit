@@ -20,7 +20,7 @@ Before review, read:
 - [`../../rules/coverage-matrix-rules.md`](../../rules/coverage-matrix-rules.md) when a matrix or hierarchy is supplied
 - [`../../rules/coverage-rules.md`](../../rules/coverage-rules.md) when coverage is explicitly in scope or a multi-case optimization may consolidate duplicates
 - [`../../rules/regression-model-rules.md`](../../rules/regression-model-rules.md) only when regression-model suitability or suite structure is explicitly in scope
-- [`../../rules/project-conventions.md`](../../rules/project-conventions.md) when a reviewed case belongs to an MR direction or another convention defined there
+- [`../../rules/project-conventions.md`](../../rules/project-conventions.md) when a reviewed case uses any company- or project-specific convention
 - [`../../rules/README.md`](../../rules/README.md) for placeholder handling
 
 ## Accept input

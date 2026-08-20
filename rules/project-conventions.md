@@ -1,75 +1,42 @@
-# Project-specific test-case conventions
+# Project-convention isolation
 
-**Status:** approved scoped convention supplied by the user. These rules apply only when the tested product context is MR and must not be generalized to unrelated projects.
+**Status:** portable cross-project rule.
 
-## MR directions
+The shared skill pack must remain company-, tenant-, and project-neutral. Project conventions are runtime context, not portable policy.
 
-The known product directions are:
+## Isolation boundary
 
-- `MR Business` — the standard direction;
-- `MR Private`;
-- `MR Premium`;
-- `MR Retail`;
-- `MR Office`;
-- `MR Загород`.
+- Do not store company names, internal domains, Jira project keys, direction or brand names, user identities, component lists, label formats, environment URLs, sprint rules, custom-field IDs, or team routing in shared rules, skills, examples, installer defaults, or client configuration.
+- Obtain project-specific values only from context explicitly supplied for the current request, an anchored source in the connected Jira/knowledge system, live Jira create metadata, or a user-approved private configuration outside the repository.
+- Scope every discovered convention to its exact Jira instance and project. Do not reuse it for another project on the same instance unless the source explicitly defines that wider scope.
+- Reset project-specific assumptions when the target Jira instance, project, or company changes. Similar field names or project structures are not evidence of shared configuration.
+- Do not reveal conventions discovered in one tenant while working in another tenant.
 
-Do not infer that every direction is in scope for every requirement. Use only directions supported by the supplied task, requirement, design, Confluence material, or an explicitly approved coverage model.
+## Runtime convention inventory
 
-## Business-stream meaning
-
-In the supplied project documentation, a business stream is analogous to a brand and is equivalent to the page context. The resolved stream can determine the applicable brand book, object filtering, and other stream-specific behavior defined by the requirements. Therefore, do not treat a stream as only a color theme or visual skin.
-
-Use these documented stream values as aliases for the direction names used in this rule pack:
-
-| Documented stream value | Direction name |
-| --- | --- |
-| `Бизнес` | `MR Business` |
-| `Private` | `MR Private` |
-| `Premium` | `MR Premium` |
-| `Ритейл` | `MR Retail` |
-| `Офисы` | `MR Office` |
-| `Загород` | `MR Загород` |
-
-## Stream resolution
-
-The stream is derived from project attributes and the project's primary real-estate-object type. According to the decision table in the supplied document, conditions are evaluated in this order:
-
-1. `is_private = true` → `MR Private`, regardless of object type, `is_countryside`, or `is_premium`;
-2. otherwise `is_countryside = true` → `MR Загород`, regardless of object type or `is_premium`;
-3. otherwise `is_premium = true` → `MR Premium`;
-4. otherwise primary object type `Офисы` → `MR Office`;
-5. otherwise primary object type `Коммерция` → `MR Retail`;
-6. otherwise primary object type `Квартиры`, `Таунхаусы`, `Коттеджи`, `Паркинги`, or `Кладовые` → `MR Business`.
-
-Source limitation: the prose immediately above the decision table says that object type is checked after `Private` and `Загород`, while the table also checks `is_premium` before object type. The change history says `MR Premium` was added later. Until an approved clarification is supplied, preserve the table order in test context but explicitly report this source conflict whenever Premium precedence affects an expected result.
-
-For test-case generation:
-
-- derive the expected stream from supplied project attributes; do not infer it from the page appearance alone;
-- cover the priority rule with distinct cases only when the requirement places stream resolution itself in scope;
-- for a block whose common logic is already covered, put only stream-dependent brand-book, filtering, content, object-type, or other supported differences in the stream variant case;
-- use a project or entity whose documented flags and primary object type resolve to the intended stream, and link its administration creation/configuration case as the first dependency when setup is required;
-- do not assert unspecified differences merely because two streams exist.
-
-## Direction-specific variants
-
-When a block has the same core behavior across directions but a stream changes brand-book presentation, content, object filtering, object type, color scheme, or another explicitly defined property:
-
-1. keep one base functional case for the shared behavior;
-2. create a separate direction-specific case only for the supported differences;
-3. make the first step of the direction-specific case call or link the base functional case so the common logic is executed first;
-4. after the called base case, describe only the direction-specific assertions;
-5. do not copy the complete base sequence into every direction case;
-6. do not create empty variants for directions with no supported difference.
-
-Name the variant from broad to narrow, preserving the direction, block, and difference, for example:
+When relevant to the request, record only source-backed values for the current scope:
 
 ```text
-MR Private. [Блок]. [Отличие]
+Jira instance and project: ...
+Source and stated scope: ...
+Issue and subtask types: ...
+Required fields and custom-field IDs: ...
+Environment names and exact URLs: ...
+Components, labels, priorities, and allowed values: ...
+Assignment or specialist rules: ...
+Product directions, brands, streams, aliases, and precedence: ...
+Release, parent/subtask, sprint, and escalation rules: ...
+Source conflicts or missing decisions: ...
 ```
 
-The short variant case is valid even when it contains only a few own steps: its scope is the delta from the linked base case, not a duplicate end-to-end script.
+Keep this inventory in the current task context. Do not commit it to the portable repository.
 
-## Scoped source record
+## Portable behavior
 
-- `126168442_d2082a1f29f84c0cbb661d817d067f39-200826-1551-228.pdf`, «Определение бизнес-стрима», sections `2. Общее описание` and `3. Определение стрима проекта`; supplied by the user on 2026-08-20. Approval state and document version are not stated.
+- Keep one base case for behavior shared across supported product directions or variants.
+- Create delta-only cases for source-backed differences and link the common base case first.
+- Use direction, brand, stream, environment, component, and label names exactly as supplied for the current project; never substitute a name learned elsewhere.
+- For bug reports, treat environment categories such as development, staging, and production as portable concepts, but resolve their exact names and URLs from the current project.
+- Read live Jira metadata before creation even when a project instruction supplies field names; the connected Jira schema is authoritative for writable field IDs and allowed values.
+
+If a material convention cannot be resolved from the current scope, omit optional routing or request the missing value before a required write. Never fill the gap from another company's configuration.

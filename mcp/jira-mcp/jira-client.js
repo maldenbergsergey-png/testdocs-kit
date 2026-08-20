@@ -121,6 +121,149 @@ async function getIssue({ key }) {
   return jiraRequest(`/rest/api/${JIRA_API_VERSION}/issue/${key}`);
 }
 
+async function getBugCreateMetadata({ projectKey, issueTypeId }) {
+  if (!projectKey) throw new Error("projectKey is required.");
+  let currentUser;
+  let project;
+  if (String(JIRA_API_VERSION) === "3") {
+    const issueTypesPath = `/rest/api/3/issue/createmeta/${encodeURIComponent(projectKey)}/issuetypes?maxResults=100`;
+    const [user, issueTypesResult] = await Promise.all([
+      jiraRequest("/rest/api/3/myself"),
+      jiraRequest(issueTypesPath)
+    ]);
+    currentUser = user;
+    const issueTypes = issueTypesResult?.issueTypes || issueTypesResult?.values || [];
+    let selectedFields = null;
+    if (issueTypeId) {
+      const fieldsResult = await jiraRequest(
+        `/rest/api/3/issue/createmeta/${encodeURIComponent(projectKey)}/issuetypes/${encodeURIComponent(issueTypeId)}?maxResults=200`
+      );
+      const fields = fieldsResult?.fields || fieldsResult?.values || [];
+      selectedFields = Object.fromEntries(fields.map((field) => [field.fieldId || field.key, field]));
+    }
+    project = {
+      key: projectKey,
+      issuetypes: issueTypes.map((issueType) => ({
+        ...issueType,
+        ...(issueTypeId && String(issueType.id) === String(issueTypeId)
+          ? { fields: selectedFields || {} }
+          : {})
+      }))
+    };
+  } else {
+    const query = new URLSearchParams({
+      projectKeys: projectKey,
+      expand: "projects.issuetypes.fields"
+    });
+    const [user, createMeta] = await Promise.all([
+      jiraRequest(`/rest/api/${JIRA_API_VERSION}/myself`),
+      jiraRequest(`/rest/api/${JIRA_API_VERSION}/issue/createmeta?${query.toString()}`)
+    ]);
+    currentUser = user;
+    project = Array.isArray(createMeta?.projects)
+      ? createMeta.projects.find((item) => String(item?.key || "").toLowerCase() === String(projectKey).toLowerCase())
+      : null;
+  }
+  if (!project) {
+    throw new Error(`Jira create metadata did not return project ${projectKey}.`);
+  }
+  return {
+    currentUser,
+    project,
+    _testdocs: {
+      readOnly: true,
+      projectKey: project.key || projectKey,
+      selectedIssueTypeId: issueTypeId ? String(issueTypeId) : "",
+      issueTypes: (project.issuetypes || []).map((issueType) => ({
+        id: String(issueType.id || ""),
+        name: issueType.name || "",
+        subtask: issueType.subtask === true,
+        fieldCount: Object.keys(issueType.fields || {}).length
+      }))
+    }
+  };
+}
+
+function plainTextToAdf(value) {
+  const content = String(value || "").split(/\r?\n/).map((line) => ({
+    type: "paragraph",
+    content: line ? [{ type: "text", text: line }] : []
+  }));
+  return { type: "doc", version: 1, content };
+}
+
+function jiraCurrentUserReference(currentUser) {
+  if (String(JIRA_API_VERSION) === "3" && currentUser?.accountId) {
+    return { accountId: currentUser.accountId };
+  }
+  if (currentUser?.name) return { name: currentUser.name };
+  if (currentUser?.key) return { key: currentUser.key };
+  return null;
+}
+
+async function createBug({
+  confirmed,
+  projectKey,
+  issueTypeId,
+  issueTypeName,
+  parentKey,
+  summary,
+  description,
+  additionalFields = {},
+  assignToCurrentUser = true
+}) {
+  if (confirmed !== true) {
+    throw new Error("Explicit user intent is required to create a Jira bug.");
+  }
+  if (!projectKey || !summary || (!issueTypeId && !issueTypeName)) {
+    throw new Error("projectKey, summary, and issueTypeId or issueTypeName are required.");
+  }
+  if (!additionalFields || typeof additionalFields !== "object" || Array.isArray(additionalFields)) {
+    throw new Error("additionalFields must be an object keyed by fields from live Jira create metadata.");
+  }
+  const protectedFields = ["project", "issuetype", "parent", "summary", "description", "reporter", "assignee"];
+  const attemptedOverrides = protectedFields.filter((field) => Object.hasOwn(additionalFields, field));
+  if (attemptedOverrides.length) {
+    throw new Error(`additionalFields cannot override protected fields: ${attemptedOverrides.join(", ")}.`);
+  }
+
+  const currentUser = assignToCurrentUser
+    ? await jiraRequest(`/rest/api/${JIRA_API_VERSION}/myself`)
+    : null;
+  const assignee = jiraCurrentUserReference(currentUser);
+  const fields = {
+    ...additionalFields,
+    project: { key: projectKey },
+    issuetype: issueTypeId ? { id: String(issueTypeId) } : { name: issueTypeName },
+    ...(parentKey ? { parent: { key: parentKey } } : {}),
+    summary,
+    ...(description ? {
+      description: String(JIRA_API_VERSION) === "3" ? plainTextToAdf(description) : description
+    } : {}),
+    ...(assignToCurrentUser && assignee ? { assignee } : {})
+  };
+  const result = await jiraRequest(`/rest/api/${JIRA_API_VERSION}/issue`, "POST", { fields });
+  if (!result?.key) {
+    throw new Error("Jira reported success without returning the created issue key.");
+  }
+  return {
+    ...result,
+    _testdocs: {
+      created: true,
+      issueKey: result.key,
+      parentKey: parentKey || "",
+      webUrl: `${JIRA_URL}/browse/${encodeURIComponent(result.key)}`,
+      assignedToCurrentUser: Boolean(assignToCurrentUser && assignee),
+      currentUser: currentUser ? {
+        accountId: currentUser.accountId || "",
+        key: currentUser.key || "",
+        name: currentUser.name || "",
+        displayName: currentUser.displayName || ""
+      } : null
+    }
+  };
+}
+
 async function addComment({ key, comment }) {
   return jiraRequest(`/rest/api/${JIRA_API_VERSION}/issue/${key}/comment`, "POST", {
     body: {
@@ -753,6 +896,8 @@ module.exports = {
   zephyrRequest,
   tools: {
     get_issue: getIssue,
+    jira_get_bug_create_metadata: getBugCreateMetadata,
+    jira_create_bug: createBug,
     add_comment: addComment,
     jira_publish_checklist_comment: publishChecklistComment,
     transition_issue: transitionIssue,
@@ -771,5 +916,6 @@ module.exports = {
      zephyr_update_session_test_case: zephyrUpdateSessionTestCase,
      zephyr_update_test_case: zephyrUpdateTestCase
   },
-  jiraWikiChecklistToAdf
+  jiraWikiChecklistToAdf,
+  plainTextToAdf
 };

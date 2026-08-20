@@ -1,6 +1,6 @@
 ---
 name: collect-test-context
-description: Collect and normalize QA context from an explicitly supplied Jira issue, standalone Confluence or knowledge page, document, local file, and existing cases in Zephyr Scale, legacy Test Management for Jira, or another TMS. Use before generating, reviewing, updating, optimizing, or analyzing test documentation when external context is referenced. Remain read-only and return a traceable context bundle; do not publish cases.
+description: Collect and normalize QA context from an explicitly supplied Jira issue, standalone Confluence or knowledge page, document, local file, and existing cases in Zephyr Scale, legacy Test Management for Jira, or another TMS. Use before drafting a source-anchored bug report or generating, reviewing, updating, optimizing, or analyzing test documentation when external context is referenced. Remain read-only and return a traceable context bundle; do not create issues or publish cases.
 ---
 
 # Collect test context
@@ -27,6 +27,8 @@ Accept:
 - plain chat context or local files when no external reference is supplied.
 
 Infer the intent branches from `task-testing-rules.md`: checklist-only, full package, cases-only, task-scoped cases, optimization, review, and targeted scope. Also recognize analyze coverage, update/apply, build a matrix, and build a regression model. Do not make the user choose internal skills when their intent is clear.
+
+Also recognize bug-report draft and Jira bug-create intent from `bug-report-standard.md`. Read that rule when this branch is selected.
 
 ## Discover capabilities
 
@@ -59,6 +61,7 @@ When more than one Jira or company connection could satisfy the same key, stop b
    - coverage or actualization need → `analyze-test-coverage`;
    - approved update proposal → `update-test-cases`;
    - case quality review → `review-test-cases`;
+   - bug-report draft or explicit Jira bug creation → `create-bug-report`;
    - coverage structure → `build-coverage-matrix`;
    - regression organization → `build-regression-model`.
 12. Return the bundle and downstream result in chat. Do not call an external write tool.
@@ -116,4 +119,4 @@ This bundle is internal. In an ordinary task workflow, expose only source-backed
 
 ## Write boundary
 
-Keep this skill read-only. It may route an explicit new-case creation request to `generate-test-cases`, which must validate the target and complete content. It may route an explicit correction/apply request to `update-test-cases`, but only that skill and the MCP registry or fingerprint guard can authorize an update. Context collection never authorizes updates, versions, moves, comments, status changes, or deletion.
+Keep this skill read-only. It may route an explicit bug-create request to `create-bug-report`, which must inspect live create metadata and validate the exact target and payload. It may route an explicit new-case creation request to `generate-test-cases`, which must validate the target and complete content. It may route an explicit correction/apply request to `update-test-cases`, but only that skill and the MCP registry or fingerprint guard can authorize an update. Context collection never authorizes updates, versions, moves, comments, status changes, or deletion.

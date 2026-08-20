@@ -19,6 +19,76 @@ function response(status, value, contentType = "application/json") {
   };
 }
 
+test("jira_get_bug_create_metadata returns the current user and exact project fields", async (t) => {
+  const calls = [];
+  t.mock.method(global, "fetch", async (url) => {
+    calls.push(String(url));
+    if (String(url).endsWith("/myself")) {
+      return response(200, { name: "tester", displayName: "QA Tester" });
+    }
+    return response(200, {
+      projects: [{
+        key: "DEMO",
+        issuetypes: [{
+          id: "1",
+          name: "Bug",
+          fields: {
+            summary: { name: "Summary", required: true, schema: { type: "string" } },
+            customfield_10001: { name: "Expected result", required: false, schema: { type: "string" } }
+          }
+        }]
+      }]
+    });
+  });
+
+  const result = await tools.jira_get_bug_create_metadata({ projectKey: "DEMO" });
+
+  assert.equal(calls.length, 2);
+  assert(calls.some((url) => url.includes("/issue/createmeta?")));
+  assert.equal(result.currentUser.name, "tester");
+  assert.equal(result.project.issuetypes[0].fields.customfield_10001.name, "Expected result");
+  assert.equal(result._testdocs.issueTypes[0].fieldCount, 2);
+});
+
+test("jira_create_bug creates one issue and assigns it to the authenticated user", async (t) => {
+  const requests = [];
+  t.mock.method(global, "fetch", async (url, options) => {
+    requests.push({ url: String(url), options });
+    if (String(url).endsWith("/myself")) {
+      return response(200, { name: "tester", displayName: "QA Tester" });
+    }
+    return response(201, { id: "10001", key: "DEMO-42" });
+  });
+
+  const result = await tools.jira_create_bug({
+    confirmed: true,
+    projectKey: "DEMO",
+    issueTypeId: "1",
+    parentKey: "DEMO-10",
+    summary: "Checkout — total is not recalculated",
+    description: "Steps:\n1. Open checkout",
+    additionalFields: { customfield_10001: "Total is recalculated" }
+  });
+
+  assert.equal(requests.length, 2);
+  const payload = JSON.parse(requests[1].options.body);
+  assert.deepEqual(payload.fields.assignee, { name: "tester" });
+  assert.deepEqual(payload.fields.parent, { key: "DEMO-10" });
+  assert.equal(payload.fields.customfield_10001, "Total is recalculated");
+  assert.equal(payload.fields.reporter, undefined);
+  assert.equal(result._testdocs.webUrl, "https://jira.example.test/browse/DEMO-42");
+  assert.equal(result._testdocs.parentKey, "DEMO-10");
+});
+
+test("jira_create_bug rejects creation without explicit intent", async (t) => {
+  const fetchMock = t.mock.method(global, "fetch", async () => response(201, { key: "DEMO-43" }));
+  await assert.rejects(
+    tools.jira_create_bug({ projectKey: "DEMO", issueTypeName: "Bug", summary: "Do not create" }),
+    /Explicit user intent/
+  );
+  assert.equal(fetchMock.mock.callCount(), 0);
+});
+
 test("zephyr_get_test_case returns the complete ATM case with ordered steps", async (t) => {
   const calls = [];
   t.mock.method(global, "fetch", async (url) => {

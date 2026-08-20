@@ -20,7 +20,7 @@ Before proposing changes, read:
 - [`../../rules/coverage-matrix-rules.md`](../../rules/coverage-matrix-rules.md) when hierarchy or scenario mapping changes
 - [`../../rules/coverage-rules.md`](../../rules/coverage-rules.md) when deciding whether content belongs in this case
 - [`../../rules/regression-model-rules.md`](../../rules/regression-model-rules.md) when the change affects regression-model mappings or dependencies
-- [`../../rules/project-conventions.md`](../../rules/project-conventions.md) when the case belongs to an MR direction or another convention defined there
+- [`../../rules/project-conventions.md`](../../rules/project-conventions.md) when the case uses any company- or project-specific convention
 - [`../../rules/README.md`](../../rules/README.md) for placeholder handling
 
 ## Require input

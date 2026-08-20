@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Bug Report"
+  short_description: "Draft and create adaptable Jira bug reports"
+  default_prompt: "Use $create-bug-report to turn my notes into a Jira bug report and create it when I explicitly ask."

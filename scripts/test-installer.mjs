@@ -14,6 +14,7 @@ const answersFile = path.join(testRoot, "answers.json");
 const answers = {
   version: 1,
   enableWrites: false,
+  enableBugCreation: true,
   enableChecklistCommentPublication: true,
   enableQaReportImport: true,
   tms: { provider: "zephyr_scale" },
@@ -95,6 +96,7 @@ try {
   const savedPrivateConfig = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
   assert(savedPrivateConfig.caFile?.endsWith("globalsign-gcc-r3-dv-tls-ca-2020.pem"), "Не сохранён CA-файл.");
   assert(savedPrivateConfig.enableTestCaseCreation === true, "Не включены создание и защищённое исправление кейса Zephyr.");
+  assert(savedPrivateConfig.enableBugCreation === true, "Не включено создание багов Jira по явному запросу.");
   assert(savedPrivateConfig.enableChecklistCommentPublication === true, "Не включена явная публикация checklist в Jira.");
   assert(savedPrivateConfig.enableQaReportImport === true, "Не включён импорт checklist в QA Report.");
   assert(
@@ -104,6 +106,7 @@ try {
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "generate-test-cases", "SKILL.md")), "Не установлены Agent Skills.");
   assert(fs.existsSync(path.join(testRoot, ".claude", "skills", "generate-test-cases", "SKILL.md")), "Не установлены Claude Skills.");
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "prepare-task-testing", "SKILL.md")), "Не установлен task-first skill.");
+  assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "create-bug-report", "SKILL.md")), "Не установлен skill создания баг-репортов.");
   assert(fs.existsSync(path.join(testRoot, ".claude", "skills", "generate-test-checklist", "SKILL.md")), "Не установлен checklist skill для Claude.");
 
   const publicConfigs = [codexConfig, openCodeConfig, genericConfig].map((file) => fs.readFileSync(file, "utf8")).join("\n");
@@ -114,6 +117,7 @@ try {
     "Повторный запуск продублировал Codex-конфигурацию."
   );
   assert(fs.readFileSync(codexConfig, "utf8").includes("jira_publish_checklist_comment"), "Codex не получил разрешённый checklist-comment tool.");
+  assert(fs.readFileSync(codexConfig, "utf8").includes("jira_create_bug"), "Codex не получил разрешённый tool создания багов.");
   assert(fs.readFileSync(codexConfig, "utf8").includes("testdocs_delivery"), "Codex не получил QA Report MCP.");
   assert(JSON.parse(fs.readFileSync(genericConfig, "utf8")).mcpServers?.testdocs_delivery, "Generic client не получил QA Report MCP.");
 

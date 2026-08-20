@@ -4,6 +4,17 @@ Use this profile for any MCP server that exposes Jira issues and optional Conflu
 
 ## Minimum useful capabilities
 
+### Jira bug creation
+
+For an explicitly requested bug creation, require two separate capabilities:
+
+- create-metadata read for the exact project, including the authenticated current user, available issue types, field IDs/names/schemas, required flags, defaults, allowed values, and operations;
+- guarded creation of one defect issue from a validated payload after explicit user intent.
+
+Do not reuse custom-field IDs between Jira instances or projects. Return the created stable key and full issue URL. Treat assignment, comments, attachments, links, transitions, and later edits as separate operations.
+
+When a defect may be a subtask, metadata must expose the available subtask issue type and parent field. Do not create a subtask without an exact source-backed parent key. If only standalone creation is supported, report that limitation instead of changing the intended relationship silently.
+
 ### Jira issue read
 
 Given an explicit issue key or URL, retrieve when available:

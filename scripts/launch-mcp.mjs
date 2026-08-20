@@ -32,6 +32,7 @@ function buildEnvironment(service, config) {
     TESTDOCS_ENABLE_TEST_CASE_CREATION: config.enableTestCaseCreation === false ? "0" : "1",
     TESTDOCS_ENABLE_CHECKLIST_COMMENT_PUBLICATION:
       config.enableChecklistCommentPublication === true ? "1" : "0",
+    TESTDOCS_ENABLE_BUG_CREATION: config.enableBugCreation === true ? "1" : "0",
     TESTDOCS_ENABLE_QA_REPORT_IMPORT: config.enableQaReportImport === true ? "1" : "0",
     ...(config.caFile ? { NODE_EXTRA_CA_CERTS: config.caFile } : {})
   };

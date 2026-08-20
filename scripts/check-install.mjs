@@ -89,6 +89,12 @@ async function main() {
   if (config.jira?.enabled) {
     const tools = await listTools("jira", Client, StdioClientTransport);
     assert(tools.includes("get_issue"), "Jira MCP не отдал get_issue.");
+    assert(tools.includes("jira_get_bug_create_metadata"), "Jira MCP не отдал read-only metadata создания бага.");
+    if (config.enableBugCreation === true) {
+      assert(tools.includes("jira_create_bug"), "Jira MCP не отдал защищённый инструмент создания бага.");
+    } else {
+      assert(!tools.includes("jira_create_bug"), "Создание багов включено без разрешения.");
+    }
     if ((config.tms?.provider || "zephyr_scale") === "zephyr_scale" && config.enableTestCaseCreation !== false) {
       assert(tools.includes("zephyr_create_test_case"), "Jira MCP не отдал инструмент создания кейса Zephyr.");
       assert(tools.includes("zephyr_update_session_test_case"), "Jira MCP не отдал защищённый инструмент исправления кейса текущей сессии.");

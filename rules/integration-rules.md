@@ -16,6 +16,8 @@ Identify integrations by capability rather than product name or MCP tool name:
 | TMS read | Find and read existing cases, versions, links, folders, and lifecycle metadata | Optional |
 | TMS write | Create, update, link, comment on, version, or change status of reviewed cases | Optional and approval-gated |
 | Jira checklist comment | Publish finalized Jira Wiki checklist to the anchored issue as the authenticated user | Optional and approval-gated |
+| Jira create metadata | Read the authenticated user and exact project/type field schema needed for a bug draft | Only for Jira bug creation |
+| Jira bug create | Create one validated defect issue and return its key and URL | Optional and approval-gated |
 | QA Report import | Send finalized Jira Wiki checklist and receive a short-lived editor URL | Optional and approval-gated |
 
 Do not assume a capability exists because a server is named Jira, Confluence, Zephyr, or TMS. Inspect the tools exposed by the current connection. Preserve separate error states for unavailable capability, permission denied, not found, ambiguous instance, and empty result.
@@ -45,7 +47,7 @@ A standalone Confluence or knowledge-page URL is a valid primary scope anchor ev
 Normalize retrieved material into this tool-independent bundle:
 
 ```text
-Request intent: prepare testing (checklist-only | full package | cases-only | task-scoped cases | optimize | review; optional targeted scope) | analyze coverage | update | build matrix | build regression model
+Request intent: prepare testing (checklist-only | full package | cases-only | task-scoped cases | optimize | review; optional targeted scope) | prepare bug report (draft | create) | analyze coverage | update | build matrix | build regression model
 Input mode: ISSUE_ANCHORED | KNOWLEDGE_ANCHORED | TMS_ANCHORED | MANUAL_CONTEXT
 Scope anchor: issue key/link or supplied-context description
 Issue facts: summary, behavior, acceptance criteria, status, decisions
@@ -106,6 +108,8 @@ For QA Tools, prefer the vendor's version-matched `testops_*` MCP tools over har
 ## Read and write boundary
 
 Read-only retrieval is allowed when the user places the source in scope. Every workflow shows its result in chat by default. A user request that explicitly says to create or publish new cases may authorize creation in the same turn after the payload and exact target pass validation; no second confirmation is required. A request only to draft, generate, show, analyze, review, or check does not authorize a write.
+
+The same intent rule applies to a Jira bug: an explicit request to create/file/register a bug in an identified project authorizes one creation after live create metadata and required fields are validated. A request only to draft, compose, format, or show a bug report does not authorize creation. Bug creation does not authorize comments, attachments, links, transitions, edits, or reassignment.
 
 Treat these as separate write operations. New-case creation requires either an explicit same-request create/publication instruction or a later confirmation of a reviewed draft. All other operations require a separate explicit request after review:
 

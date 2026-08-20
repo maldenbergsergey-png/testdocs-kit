@@ -226,7 +226,7 @@ When a product direction, theme, object type, or other supported variant changes
 - after the call, assert only variant-specific behavior;
 - do not create a variant case when no difference is supported by the source.
 
-Apply any named product directions only through an explicitly scoped project convention such as `project-conventions.md`; do not generalize project names into the shared standard.
+Apply named product directions only from explicitly scoped current-project context under `project-conventions.md`; do not store or generalize project names in the shared standard.
 
 ## Desktop scope and breakpoint exclusions
 

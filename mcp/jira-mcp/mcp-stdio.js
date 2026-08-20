@@ -20,6 +20,7 @@ function toTextResult(data) {
 async function main() {
   const writesEnabled = process.env.TESTDOCS_ENABLE_WRITES === "1";
   const checklistCommentsEnabled = process.env.TESTDOCS_ENABLE_CHECKLIST_COMMENT_PUBLICATION === "1";
+  const bugCreationEnabled = process.env.TESTDOCS_ENABLE_BUG_CREATION === "1";
   const qaReportImportEnabled = process.env.TESTDOCS_ENABLE_QA_REPORT_IMPORT === "1";
   const deliveryOnly = process.env.TESTDOCS_DELIVERY_ONLY === "1";
   const createsEnabled = process.env.TESTDOCS_ENABLE_TEST_CASE_CREATION !== "0";
@@ -61,6 +62,41 @@ async function main() {
     },
     async ({ key }) => toTextResult(await tools.get_issue({ key }))
   );
+
+  server.registerTool(
+    "jira_get_bug_create_metadata",
+    {
+      description: "Read the authenticated Jira user and exact create-field metadata for one project before drafting or creating a bug. This is read-only. Use field IDs, schemas, required flags, defaults, and allowed values from this response; never reuse custom-field mappings from another project or Jira instance.",
+      inputSchema: z.object({
+        projectKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/),
+        issueTypeId: z.string().min(1).optional().describe("For Jira Cloud, omit first to list project issue types, then repeat with the selected defect issue type ID to retrieve its exact fields. Jira Server/DC returns expanded fields in one call.")
+      })
+    },
+    async (input) => toTextResult(await tools.jira_get_bug_create_metadata(input))
+  );
+
+  if (bugCreationEnabled) {
+    server.registerTool(
+      "jira_create_bug",
+      {
+        description: "Create exactly one standalone Jira bug or defect subtask after explicit user intent and live create-metadata validation. A subtask requires an exact source-backed parentKey. Reporter/author remains the authenticated Jira user; assignee defaults to that same user when Jira exposes a usable identity. Does not comment, attach, link, transition, edit, or reassign after creation.",
+        inputSchema: z.object({
+          confirmed: z.literal(true),
+          projectKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/),
+          issueTypeId: z.string().min(1).optional(),
+          issueTypeName: z.string().min(1).optional(),
+          parentKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*-\d+$/).optional(),
+          summary: z.string().min(1).max(500),
+          description: z.string().optional(),
+          additionalFields: z.record(z.string(), z.unknown()).optional(),
+          assignToCurrentUser: z.boolean().optional().default(true)
+        }).refine((input) => Boolean(input.issueTypeId || input.issueTypeName), {
+          message: "issueTypeId or issueTypeName from live create metadata is required."
+        })
+      },
+      async (input) => toTextResult(await tools.jira_create_bug(input))
+    );
+  }
 
   if (writesEnabled) {
     server.registerTool(

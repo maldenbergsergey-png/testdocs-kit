@@ -404,6 +404,12 @@ async function collectConfig(args, clients) {
       previous.enableChecklistCommentPublication ?? false
     )
     : false;
+  const enableBugCreation = jira.enabled
+    ? await confirm(
+      "Разрешить создание багов Jira по явному запросу",
+      previous.enableBugCreation ?? false
+    )
+    : false;
   const tmsConfig = await collectTms(previous.tms, previous.qaTools, previous.enableQaToolsWrites);
   const qaReport = await collectQaReport(previous.qaReport);
   const enableQaReportImport = qaReport.enabled
@@ -418,6 +424,7 @@ async function collectConfig(args, clients) {
     enableWrites: false,
     enableTestCaseCreation: true,
     enableChecklistCommentPublication,
+    enableBugCreation,
     enableQaReportImport,
     jira,
     confluence: await collectConfluence(previous.confluence),
@@ -581,7 +588,7 @@ args = [${tomlString(launcherFile)}, "jira"]
 enabled = true
 required = false
 enabled_tools = [
-  "get_issue", "get_transitions", "search_issues"${config.enableChecklistCommentPublication === true ? ', "jira_publish_checklist_comment"' : ""}${zephyrTools}
+  "get_issue", "jira_get_bug_create_metadata", "get_transitions", "search_issues"${config.enableBugCreation === true ? ', "jira_create_bug"' : ""}${config.enableChecklistCommentPublication === true ? ', "jira_publish_checklist_comment"' : ""}${zephyrTools}
 ]
 default_tools_approval_mode = "approve"`);
   }
