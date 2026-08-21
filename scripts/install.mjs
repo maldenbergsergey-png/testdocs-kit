@@ -5,6 +5,7 @@ import path from "node:path";
 import process from "node:process";
 import readline from "node:readline/promises";
 import { spawnSync } from "node:child_process";
+import { requiresShell } from "./command-shell.mjs";
 import {
   getCodexConfigFile,
   getConfigDir,
@@ -599,7 +600,11 @@ function savePrivateConfig(config) {
 }
 
 function run(command, commandArgs, options = {}) {
-  const result = spawnSync(command, commandArgs, { stdio: "inherit", ...options });
+  // Windows batch launchers such as npm.cmd must run through cmd.exe. Calling
+  // them directly with spawnSync can fail with EINVAL on supported Node.js
+  // versions, regardless of whether setup was started from Git Bash or PowerShell.
+  const shell = requiresShell(command);
+  const result = spawnSync(command, commandArgs, { stdio: "inherit", shell, ...options });
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(`Команда завершилась с кодом ${result.status}: ${command}`);
 }

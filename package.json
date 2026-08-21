@@ -19,6 +19,7 @@
     "auth": "node scripts/browser-auth.mjs",
     "check": "npm run test:checklist && node scripts/check-install.mjs",
     "test:bootstrap": "node scripts/test-bootstrap.mjs",
+    "test:command-shell": "node --test scripts/command-shell.test.mjs",
     "test:installer": "node scripts/test-installer.mjs",
     "test:mcp": "npm --prefix mcp/jira-mcp test",
     "test:qa-tools-mcp": "npm --prefix mcp/qa-tools-mcp test",
@@ -26,7 +27,7 @@
     "test:session-auth": "node --test mcp/session-auth.test.cjs",
     "test:format": "node scripts/validate-test-case-format.mjs",
     "test:checklist": "node scripts/validate-checklist-format.mjs",
-    "test": "npm run test:format && npm run test:checklist && npm run test:bootstrap && npm run test:browser-auth && npm run test:session-auth && npm run test:mcp && npm run test:qa-tools-mcp && npm run test:installer"
+    "test": "npm run test:format && npm run test:checklist && npm run test:bootstrap && npm run test:command-shell && npm run test:browser-auth && npm run test:session-auth && npm run test:mcp && npm run test:qa-tools-mcp && npm run test:installer"
   },
   "engines": {
     "node": ">=20"

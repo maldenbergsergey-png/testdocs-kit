@@ -695,6 +695,16 @@ npm --version
 
 Требуется Node.js 20 или новее.
 
+Если Windows PowerShell блокирует `npm.ps1` из-за политики выполнения сценариев,
+запустите тот же npm launcher напрямую:
+
+```powershell
+npm.cmd run setup
+```
+
+Если настройки уже были сохранены предыдущей попыткой, используйте
+`npm.cmd run setup -- --reuse`, чтобы не вводить их повторно.
+
 ### OpenCode сообщает `Unrecognized key: permissions`
 
 Эту ошибку создавала версия Testdocs Kit 0.2.0 при установке в стабильный OpenCode. Обновите репозиторий и повторите настройку:
