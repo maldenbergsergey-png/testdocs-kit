@@ -387,6 +387,27 @@ try {
   assert(JSON.stringify(afterReuse.connections) === JSON.stringify(beforeReuseParsed.connections), "--reuse изменил подключения или секреты.");
   assert(JSON.stringify(afterReuse.tms) === JSON.stringify(beforeReuseParsed.tms), "--reuse изменил TMS.");
 
+  const enableWritesResult = spawnSync(process.execPath, [
+    path.join(scriptsDir, "install.mjs"),
+    "--clients", "generic",
+    "--reuse",
+    "--skip-dependencies",
+    "--no-cli"
+  ], {
+    cwd: repoRoot,
+    env: { ...env, TESTDOCS_ENABLE_JIRA_WRITES: "1" },
+    encoding: "utf8"
+  });
+  assert(enableWritesResult.status === 0, "Не включены защищённые Jira write-инструменты через --reuse.");
+  const afterEnableWrites = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
+  assert(
+    afterEnableWrites.connections.jira.every((jira) =>
+      jira.enableBugCreation === true && jira.enableChecklistCommentPublication === true
+    ),
+    "TESTDOCS_ENABLE_JIRA_WRITES не включил создание Bug и публикацию checklist для всех Jira-подключений."
+  );
+  assert(afterEnableWrites.enableWrites === false, "TESTDOCS_ENABLE_JIRA_WRITES включил общие небезопасные Jira-записи.");
+
   console.log("Изолированная установка Codex/Claude Code/OpenCode/generic: OK");
   console.log("Повторная установка без дублирования: OK");
   console.log("OpenCode stable, миграция ошибочного конфига и V2: OK");
@@ -395,6 +416,7 @@ try {
   console.log("Независимая QA Report integration без Jira/Confluence: OK");
   console.log("Выбор QA Tools, login/password и защищённый MCP proxy: OK");
   console.log("Несколько Jira, единая Eva и повторное применение настроек: OK");
+  console.log("Явное включение защищённых Jira write-инструментов при обновлении: OK");
 } finally {
   fs.rmSync(testRoot, { recursive: true, force: true });
 }

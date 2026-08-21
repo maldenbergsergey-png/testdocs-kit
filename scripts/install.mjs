@@ -43,7 +43,8 @@ function parseArgs(argv) {
     configure: null,
     add: null,
     openCodeFormat: null,
-    caFile: null
+    caFile: null,
+    enableJiraWrites: process.env.TESTDOCS_ENABLE_JIRA_WRITES === "1"
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -54,6 +55,7 @@ function parseArgs(argv) {
     else if (arg === "--add") result.add = argv[++index];
     else if (arg === "--opencode-format") result.openCodeFormat = argv[++index];
     else if (arg === "--ca-file") result.caFile = argv[++index];
+    else if (arg === "--enable-jira-writes") result.enableJiraWrites = true;
     else if (arg === "--force") result.force = true;
     else if (arg === "--skip-dependencies") result.skipDependencies = true;
     else if (arg === "--no-cli") result.noCli = true;
@@ -76,6 +78,8 @@ function showHelp() {
   --add jira|confluence|eva               Добавить подключение, сохранив существующие
   --opencode-format stable|v2              Явно выбрать формат OpenCode
   --ca-file /path/to/ca-bundle.pem         Дополнительные доверенные CA в формате PEM
+  --enable-jira-writes                     Разрешить создание Bug и публикацию checklist
+                                          для сохранённых Jira-подключений
   --skip-dependencies                     Не выполнять npm ci; Confluence всё равно пересобирается
   --no-cli                                Не вызывать CLI клиентов
   --skip-browser-auth                     Не открывать браузер для session-входа
@@ -1039,6 +1043,17 @@ async function main() {
   config.clients = clients;
   config.enableWrites = false;
   config.enableTestCaseCreation = true;
+  if (args.enableJiraWrites) {
+    const jiraConnections = connectionList(config, "jira");
+    if (!jiraConnections.length) {
+      throw new Error("Нельзя включить Jira write-инструменты: сохранённые Jira-подключения не найдены.");
+    }
+    for (const jira of jiraConnections) {
+      jira.enableBugCreation = true;
+      jira.enableChecklistCommentPublication = true;
+    }
+    console.log("Разрешены защищённые Jira-инструменты создания Bug и публикации checklist по явному запросу.");
+  }
   config.tms ||= { category: "none", provider: "none" };
   for (const jira of connectionList(config, "jira")) {
     jira.testCaseUrlTemplate ||= `${jira.url}/secure/Tests.jspa#/testCase/{key}`;
