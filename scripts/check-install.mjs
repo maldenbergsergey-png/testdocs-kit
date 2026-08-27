@@ -95,15 +95,29 @@ async function main() {
     const tools = await listTools("jira", jira.id, Client, StdioClientTransport);
     assert(tools.includes("get_issue"), "Jira MCP не отдал get_issue.");
     assert(tools.includes("jira_get_bug_create_metadata"), "Jira MCP не отдал read-only metadata создания бага.");
+    assert(tools.includes("jira_get_work_item_create_metadata"), "Jira MCP не отдал read-only metadata создания QA-задачи.");
+    assert(tools.includes("jira_find_assignable_users"), "Jira MCP не отдал поиск назначаемых тестировщиков.");
     if (jira.enableBugCreation === true) {
       assert(tools.includes("jira_create_bug"), "Jira MCP не отдал защищённый инструмент создания бага.");
     } else {
       assert(!tools.includes("jira_create_bug"), "Создание багов включено без разрешения.");
     }
+    if (usesZephyr(config, jira.id)) {
+      assert(tools.includes("zephyr_get_issue_test_cases"), "Jira MCP не отдал чтение кейсов, связанных с задачей.");
+    }
     if (usesZephyr(config, jira.id) && config.enableTestCaseCreation !== false) {
       assert(tools.includes("zephyr_create_test_case"), "Jira MCP не отдал инструмент создания кейса Zephyr.");
       assert(tools.includes("zephyr_update_session_test_case"), "Jira MCP не отдал защищённый инструмент исправления кейса текущей сессии.");
       assert(tools.includes("zephyr_update_test_case"), "Jira MCP не отдал защищённый инструмент обновления существующего кейса.");
+    }
+    if (jira.enableReleaseTestRunCreation === true) {
+      assert(tools.includes("jira_create_qa_work_item"), "Jira MCP не отдал защищённое создание QA-задачи Test Run.");
+      if (usesZephyr(config, jira.id)) {
+        assert(tools.includes("zephyr_create_test_run"), "Jira MCP не отдал защищённое создание Test Run Zephyr.");
+      }
+    } else {
+      assert(!tools.includes("jira_create_qa_work_item"), "Создание QA-задачи Test Run включено без разрешения.");
+      assert(!tools.includes("zephyr_create_test_run"), "Создание Test Run включено без разрешения.");
     }
     if (!usesZephyr(config, jira.id)) {
       assert(!tools.some((tool) => tool.startsWith("zephyr_")), "Jira MCP отдал Zephyr tools при выбранном QA Tools.");

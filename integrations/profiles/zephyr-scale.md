@@ -35,7 +35,9 @@ For a release Test Run/Test Cycle workflow, confirm separately that the connecto
 - create executions and assign each one to an exact user;
 - expose a stable Test Run value accepted by the Jira project's semantic test-coverage field or relation.
 
-Do not treat test-case creation capability as Test Run capability. Do not assume a cycle-create endpoint performs case attachment, issue linking, execution creation, or assignment unless the connector response confirms those results.
+The bundled Server/DC adapter uses the official public `POST /rest/atm/1.0/testrun` operation with the complete `items` list. Each item carries its test-case key and resolved Jira `userKey`; release tasks are supplied in `issueLinks`. The public API does not provide a supported update of run composition, so preflight the full deduplicated set and all assignments before the single create call. Do not create an empty run, add or remove cases later, or delete/recreate a run automatically.
+
+Do not treat test-case creation capability as Test Run capability. Resolve testers through Jira assignable-user search and use the connector-returned user key rather than a display name or email address.
 
 ## Compatibility
 

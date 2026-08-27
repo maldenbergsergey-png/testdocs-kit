@@ -16,6 +16,7 @@ const answers = {
   enableWrites: false,
   enableBugCreation: true,
   enableChecklistCommentPublication: true,
+  enableReleaseTestRunCreation: true,
   enableQaReportImport: true,
   tms: { provider: "zephyr_scale" },
   jira: {
@@ -99,6 +100,7 @@ try {
   assert(savedPrivateConfig.enableTestCaseCreation === true, "Не включены создание и защищённое исправление кейса Zephyr.");
   assert(savedPrivateConfig.connections.jira[0].enableBugCreation === true, "Не включено создание багов Jira по явному запросу.");
   assert(savedPrivateConfig.connections.jira[0].enableChecklistCommentPublication === true, "Не включена явная публикация checklist в Jira.");
+  assert(savedPrivateConfig.connections.jira[0].enableReleaseTestRunCreation === true, "Не включено защищённое создание Test Run и связанной QA-задачи.");
   assert(savedPrivateConfig.enableQaReportImport === true, "Не включён импорт checklist в QA Report.");
   assert(
     savedPrivateConfig.connections.jira[0].testCaseUrlTemplate === "https://jira.example.invalid/secure/Tests.jspa#/testCase/{key}",
@@ -120,6 +122,8 @@ try {
   );
   assert(fs.readFileSync(codexConfig, "utf8").includes("jira_publish_checklist_comment"), "Codex не получил разрешённый checklist-comment tool.");
   assert(fs.readFileSync(codexConfig, "utf8").includes("jira_create_bug"), "Codex не получил разрешённый tool создания багов.");
+  assert(fs.readFileSync(codexConfig, "utf8").includes("zephyr_create_test_run"), "Codex не получил разрешённый tool создания Test Run.");
+  assert(fs.readFileSync(codexConfig, "utf8").includes("jira_create_qa_work_item"), "Codex не получил разрешённый tool создания связанной QA-задачи.");
   assert(fs.readFileSync(codexConfig, "utf8").includes("testdocs_delivery"), "Codex не получил QA Report MCP.");
   assert(JSON.parse(fs.readFileSync(genericConfig, "utf8")).mcpServers?.testdocs_delivery, "Generic client не получил QA Report MCP.");
 
@@ -321,7 +325,8 @@ try {
           authMode: "basic",
           apiVersion: "2",
           enableBugCreation: false,
-          enableChecklistCommentPublication: false
+          enableChecklistCommentPublication: false,
+          enableReleaseTestRunCreation: false
         },
         {
           id: "jira-two",
@@ -333,7 +338,8 @@ try {
           authMode: "bearer",
           apiVersion: "2",
           enableBugCreation: true,
-          enableChecklistCommentPublication: true
+          enableChecklistCommentPublication: true,
+          enableReleaseTestRunCreation: true
         }
       ],
       confluence: [],
@@ -403,9 +409,11 @@ try {
   const afterEnableWrites = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
   assert(
     afterEnableWrites.connections.jira.every((jira) =>
-      jira.enableBugCreation === true && jira.enableChecklistCommentPublication === true
+      jira.enableBugCreation === true &&
+      jira.enableChecklistCommentPublication === true &&
+      jira.enableReleaseTestRunCreation === true
     ),
-    "TESTDOCS_ENABLE_JIRA_WRITES не включил создание Bug и публикацию checklist для всех Jira-подключений."
+    "TESTDOCS_ENABLE_JIRA_WRITES не включил создание Bug, публикацию checklist, Test Run и QA-задачи для всех Jira-подключений."
   );
   assert(afterEnableWrites.enableWrites === false, "TESTDOCS_ENABLE_JIRA_WRITES включил общие небезопасные Jira-записи.");
 

@@ -21,6 +21,7 @@ async function main() {
   const writesEnabled = process.env.TESTDOCS_ENABLE_WRITES === "1";
   const checklistCommentsEnabled = process.env.TESTDOCS_ENABLE_CHECKLIST_COMMENT_PUBLICATION === "1";
   const bugCreationEnabled = process.env.TESTDOCS_ENABLE_BUG_CREATION === "1";
+  const releaseTestRunCreationEnabled = process.env.TESTDOCS_ENABLE_RELEASE_TEST_RUN_CREATION === "1";
   const qaReportImportEnabled = process.env.TESTDOCS_ENABLE_QA_REPORT_IMPORT === "1";
   const deliveryOnly = process.env.TESTDOCS_DELIVERY_ONLY === "1";
   const createsEnabled = process.env.TESTDOCS_ENABLE_TEST_CASE_CREATION !== "0";
@@ -75,6 +76,31 @@ async function main() {
     async (input) => toTextResult(await tools.jira_get_bug_create_metadata(input))
   );
 
+  server.registerTool(
+    "jira_get_work_item_create_metadata",
+    {
+      description: "Read the authenticated Jira user and exact create-field metadata for a project before creating the linked non-defect QA work item for a Test Run. This is read-only. Select the exact project-backed issue type and map only live field IDs and allowed values.",
+      inputSchema: z.object({
+        projectKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/),
+        issueTypeId: z.string().min(1).optional().describe("For Jira Cloud, omit first to list project issue types, then repeat with the selected QA work-item type ID to retrieve its exact fields.")
+      })
+    },
+    async (input) => toTextResult(await tools.jira_get_work_item_create_metadata(input))
+  );
+
+  server.registerTool(
+    "jira_find_assignable_users",
+    {
+      description: "Resolve a tester name or login to active Jira users assignable in the exact project. Use the returned _testdocs.userKey for Zephyr Test Run item assignment; do not guess user keys from display names or email addresses.",
+      inputSchema: z.object({
+        projectKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/),
+        query: z.string().min(1),
+        maxResults: z.number().int().positive().max(100).optional().default(50)
+      })
+    },
+    async (input) => toTextResult(await tools.jira_find_assignable_users(input))
+  );
+
   if (bugCreationEnabled) {
     server.registerTool(
       "jira_create_bug",
@@ -95,6 +121,28 @@ async function main() {
         })
       },
       async (input) => toTextResult(await tools.jira_create_bug(input))
+    );
+  }
+
+  if (releaseTestRunCreationEnabled) {
+    server.registerTool(
+      "jira_create_qa_work_item",
+      {
+        description: "Create exactly one linked non-defect Jira QA work item after an explicit user request and live create-metadata validation. Use additionalFields for the exact release, QA component/routing, specialist, and created Test Run coverage value from live metadata. Reporter remains the authenticated user and assignee defaults to that same user. Does not comment, transition, edit, delete, or create another issue.",
+        inputSchema: z.object({
+          confirmed: z.literal(true),
+          projectKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/),
+          issueTypeId: z.string().min(1).optional(),
+          issueTypeName: z.string().min(1).optional(),
+          summary: z.string().min(1).max(500),
+          description: z.string().optional(),
+          additionalFields: z.record(z.string(), z.unknown()).optional(),
+          assignToCurrentUser: z.boolean().optional().default(true)
+        }).refine((input) => Boolean(input.issueTypeId || input.issueTypeName), {
+          message: "issueTypeId or issueTypeName from live create metadata is required."
+        })
+      },
+      async (input) => toTextResult(await tools.jira_create_qa_work_item(input))
     );
   }
 
@@ -268,6 +316,46 @@ async function main() {
      },
      async ({ projectId, projectKey, fields }) => toTextResult(await tools.zephyr_get_all_test_cases({ projectId, projectKey, fields }))
    );
+
+  server.registerTool(
+    "zephyr_get_issue_test_cases",
+    {
+      description: "Read the Zephyr test cases directly linked to one exact Jira release issue through the public Server/DC issue-link endpoint. The response is relation discovery; read each returned key with zephyr_get_test_case before judging complete case content.",
+      inputSchema: z.object({
+        issueKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*-\d+$/)
+      })
+    },
+    async (input) => toTextResult(await tools.zephyr_get_issue_test_cases(input))
+  );
+
+  if (releaseTestRunCreationEnabled) {
+    server.registerTool(
+      "zephyr_create_test_run",
+      {
+        description: "Create exactly one immutable Zephyr Scale Server/DC Test Run/Test Cycle through the public POST /rest/atm/1.0/testrun API after an explicit user request. Send the complete deduplicated case list, exact release issue links, and resolved Jira userKey for every item in this one call: the public API cannot add, remove, rename, or reassign the run composition afterward. Does not delete or recreate a run on failure.",
+        inputSchema: z.object({
+          confirmed: z.literal(true),
+          projectKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/),
+          name: z.string().min(1).max(255),
+          folder: z.string().min(1).regex(/^\//).optional().describe("Existing Test Run folder path, not the test-case search folder unless they are confirmed identical."),
+          version: z.string().min(1).describe("Exact Zephyr release version name."),
+          testPlanKey: z.string().min(1).optional(),
+          iteration: z.string().min(1).optional(),
+          owner: z.string().min(1).optional().describe("Resolved Jira user key for the Test Run owner."),
+          plannedStartDate: z.string().min(1).optional().describe("ISO 8601 date/time accepted by the connected Zephyr instance."),
+          plannedEndDate: z.string().min(1).optional().describe("ISO 8601 date/time accepted by the connected Zephyr instance."),
+          issueLinks: z.array(z.string().regex(/^[A-Za-z][A-Za-z0-9_]*-\d+$/)).min(1),
+          customFields: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+          items: z.array(z.object({
+            testCaseKey: z.string().min(1),
+            userKey: z.string().min(1).describe("Exact value returned as _testdocs.userKey by jira_find_assignable_users."),
+            environment: z.string().min(1).optional()
+          })).min(1)
+        })
+      },
+      async (input) => toTextResult(await tools.zephyr_create_test_run(input))
+    );
+  }
 
   if (createsEnabled) {
     server.registerTool(

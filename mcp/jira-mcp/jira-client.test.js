@@ -89,6 +89,61 @@ test("jira_create_bug rejects creation without explicit intent", async (t) => {
   assert.equal(fetchMock.mock.callCount(), 0);
 });
 
+test("jira work-item metadata and assignable-user search expose exact runtime identities", async (t) => {
+  const calls = [];
+  t.mock.method(global, "fetch", async (url) => {
+    calls.push(String(url));
+    if (String(url).includes("/user/assignable/search?")) {
+      return response(200, [{ key: "JIRAUSER10000", name: "qa.one", displayName: "QA One", active: true }]);
+    }
+    if (String(url).endsWith("/myself")) {
+      return response(200, { key: "JIRAUSER999", name: "author", displayName: "QA Author" });
+    }
+    return response(200, {
+      projects: [{
+        key: "DEMO",
+        issuetypes: [{ id: "7", name: "QA work", fields: { summary: { required: true } } }]
+      }]
+    });
+  });
+
+  const metadata = await tools.jira_get_work_item_create_metadata({ projectKey: "DEMO" });
+  const users = await tools.jira_find_assignable_users({ projectKey: "DEMO", query: "QA One" });
+
+  assert.equal(metadata._testdocs.purpose, "qa_work_item");
+  assert.equal(metadata.currentUser.name, "author");
+  assert.match(calls.find((url) => url.includes("/user/assignable/search?")), /username=QA\+One/);
+  assert.equal(users[0]._testdocs.userKey, "JIRAUSER10000");
+});
+
+test("jira_create_qa_work_item creates one live-metadata-backed issue on the authenticated user", async (t) => {
+  const requests = [];
+  t.mock.method(global, "fetch", async (url, options) => {
+    requests.push({ url: String(url), options });
+    if (String(url).endsWith("/myself")) return response(200, { name: "tester" });
+    return response(201, { id: "10044", key: "DEMO-44" });
+  });
+
+  const result = await tools.jira_create_qa_work_item({
+    confirmed: true,
+    projectKey: "DEMO",
+    issueTypeId: "7",
+    summary: "QA. Release regression 2.14.0 (WEB)",
+    description: "Run the release regression.",
+    additionalFields: {
+      fixVersions: [{ id: "21400" }],
+      customfield_12000: "DEMO-R12"
+    }
+  });
+
+  const payload = JSON.parse(requests[1].options.body);
+  assert.deepEqual(payload.fields.assignee, { name: "tester" });
+  assert.deepEqual(payload.fields.fixVersions, [{ id: "21400" }]);
+  assert.equal(payload.fields.customfield_12000, "DEMO-R12");
+  assert.equal(result._testdocs.issueKind, "QA work item");
+  assert.equal(result._testdocs.webUrl, "https://jira.example.test/browse/DEMO-44");
+});
+
 test("zephyr_get_test_case returns the complete ATM case with ordered steps", async (t) => {
   const calls = [];
   t.mock.method(global, "fetch", async (url) => {
@@ -187,6 +242,21 @@ test("zephyr_get_test_case does not hide permission errors", async (t) => {
   assert.equal(fetchMock.mock.callCount(), 1);
 });
 
+test("zephyr_get_issue_test_cases reads direct Jira-to-case relations without claiming full content", async (t) => {
+  let requestedUrl;
+  t.mock.method(global, "fetch", async (url) => {
+    requestedUrl = String(url);
+    return response(200, [{ key: "DEMO-T3", name: "Linked case" }]);
+  });
+
+  const result = await tools.zephyr_get_issue_test_cases({ issueKey: "DEMO-101" });
+
+  assert.equal(requestedUrl, "https://jira.example.test/rest/atm/1.0/issuelink/DEMO-101/testcases");
+  assert.equal(result.testCases[0].key, "DEMO-T3");
+  assert.equal(result.testCases[0]._testdocs.webUrl, "https://jira.example.test/secure/Tests.jspa#/testCase/DEMO-T3");
+  assert.equal(result._testdocs.completeCaseContent, false);
+});
+
 test("zephyr_create_test_case sends step-level test data to the public Server API", async (t) => {
   let request;
   t.mock.method(global, "fetch", async (url, options) => {
@@ -269,6 +339,86 @@ test("zephyr_create_test_case rejects incomplete steps before any request", asyn
       steps: [{ description: "Действие без результата" }]
     }),
     /Every test step requires/
+  );
+  assert.equal(fetchMock.mock.callCount(), 0);
+});
+
+test("zephyr_create_test_run sends the complete linked and assigned composition in one public API call", async (t) => {
+  let request;
+  t.mock.method(global, "fetch", async (url, options) => {
+    request = { url: String(url), options };
+    return response(201, { key: "DEMO-R12" });
+  });
+
+  const result = await tools.zephyr_create_test_run({
+    confirmed: true,
+    projectKey: "DEMO",
+    name: "Release regression 2.14.0 WEB",
+    folder: "/Runs/WEB",
+    version: "2.14.0",
+    owner: "JIRAUSER999",
+    issueLinks: ["DEMO-101", "DEMO-102", "DEMO-101"],
+    items: [
+      { testCaseKey: "DEMO-T1", userKey: "JIRAUSER10000" },
+      { testCaseKey: "DEMO-T2", userKey: "JIRAUSER10001", environment: "Stage" }
+    ]
+  });
+
+  assert.equal(request.url, "https://jira.example.test/rest/atm/1.0/testrun");
+  assert.equal(request.options.method, "POST");
+  assert.deepEqual(JSON.parse(request.options.body), {
+    projectKey: "DEMO",
+    name: "Release regression 2.14.0 WEB",
+    issueLinks: ["DEMO-101", "DEMO-102"],
+    items: [
+      { testCaseKey: "DEMO-T1", userKey: "JIRAUSER10000" },
+      { testCaseKey: "DEMO-T2", userKey: "JIRAUSER10001", environment: "Stage" }
+    ],
+    folder: "/Runs/WEB",
+    version: "2.14.0",
+    owner: "JIRAUSER999"
+  });
+  assert.equal(result._testdocs.itemCount, 2);
+  assert.equal(result._testdocs.assignedItemCount, 2);
+  assert.equal(result._testdocs.issueLinkCount, 2);
+  assert.equal(result._testdocs.webUrl, "https://jira.example.test/secure/Tests.jspa#/testCycle/DEMO-R12");
+});
+
+test("zephyr_create_test_run rejects silent, unassigned, or duplicate composition before any request", async (t) => {
+  const fetchMock = t.mock.method(global, "fetch", async () => response(201, { key: "UNEXPECTED-R1" }));
+  await assert.rejects(
+    tools.zephyr_create_test_run({
+      projectKey: "DEMO",
+      name: "Do not create",
+      issueLinks: ["DEMO-1"],
+      items: [{ testCaseKey: "DEMO-T1", userKey: "JIRAUSER1" }]
+    }),
+    /Explicit user confirmation/
+  );
+  await assert.rejects(
+    tools.zephyr_create_test_run({
+      confirmed: true,
+      projectKey: "DEMO",
+      name: "Unassigned",
+      version: "2.14.0",
+      issueLinks: ["DEMO-1"],
+      items: [{ testCaseKey: "DEMO-T1" }]
+    }),
+    /requires testCaseKey and the resolved Jira userKey/
+  );
+  await assert.rejects(
+    tools.zephyr_create_test_run({
+      confirmed: true,
+      projectKey: "DEMO",
+      name: "Duplicate",
+      version: "2.14.0",
+      issueLinks: ["DEMO-1"],
+      items: [
+        { testCaseKey: "DEMO-T1", userKey: "JIRAUSER1" },
+        { testCaseKey: "DEMO-T1", userKey: "JIRAUSER2" }
+      ]
+    }),
+    /duplicate testCaseKey/
   );
   assert.equal(fetchMock.mock.callCount(), 0);
 });

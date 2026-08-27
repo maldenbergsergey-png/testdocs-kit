@@ -9,6 +9,7 @@ const { PORT = 3333 } = process.env;
 const writesEnabled = process.env.TESTDOCS_ENABLE_WRITES === "1";
 const checklistCommentsEnabled = process.env.TESTDOCS_ENABLE_CHECKLIST_COMMENT_PUBLICATION === "1";
 const bugCreationEnabled = process.env.TESTDOCS_ENABLE_BUG_CREATION === "1";
+const releaseTestRunCreationEnabled = process.env.TESTDOCS_ENABLE_RELEASE_TEST_RUN_CREATION === "1";
 const writeTools = new Set(["add_comment", "transition_issue"]);
 const createsEnabled = process.env.TESTDOCS_ENABLE_TEST_CASE_CREATION !== "0";
 const createTools = new Set(["zephyr_create_test_case", "zephyr_update_session_test_case", "zephyr_update_test_case"]);
@@ -48,6 +49,12 @@ app.post("/mcp", async (req, res) => {
     if (tool === "jira_create_bug" && !bugCreationEnabled) {
       return res.status(403).json({
         error: "Jira bug creation is disabled."
+      });
+    }
+
+    if (["zephyr_create_test_run", "jira_create_qa_work_item"].includes(tool) && !releaseTestRunCreationEnabled) {
+      return res.status(403).json({
+        error: "Release Test Run and linked QA work-item creation are disabled."
       });
     }
 

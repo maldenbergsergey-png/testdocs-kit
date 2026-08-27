@@ -57,10 +57,14 @@ function buildEnvironment(service, connectionId, config) {
       JIRA_INSECURE_TLS: jira.insecureTls ? "1" : "0",
       JIRA_TEST_CASE_URL_TEMPLATE:
         jira.testCaseUrlTemplate || `${jira.url}/secure/Tests.jspa#/testCase/{key}`,
+      JIRA_TEST_RUN_URL_TEMPLATE:
+        jira.testRunUrlTemplate || `${jira.url}/secure/Tests.jspa#/testCycle/{key}`,
       TESTDOCS_TMS_PROVIDER: usesZephyr(config, jira.id) ? "zephyr_scale" : "none",
       TESTDOCS_ENABLE_CHECKLIST_COMMENT_PUBLICATION:
         jira.enableChecklistCommentPublication === true ? "1" : "0",
-      TESTDOCS_ENABLE_BUG_CREATION: jira.enableBugCreation === true ? "1" : "0"
+      TESTDOCS_ENABLE_BUG_CREATION: jira.enableBugCreation === true ? "1" : "0",
+      TESTDOCS_ENABLE_RELEASE_TEST_RUN_CREATION:
+        jira.enableReleaseTestRunCreation === true ? "1" : "0"
     };
   }
 

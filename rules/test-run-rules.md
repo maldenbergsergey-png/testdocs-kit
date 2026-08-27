@@ -129,7 +129,7 @@ For sanity, hotfix, `web_mobile`, or another mode not covered by a project-backe
 
 A proposal request does not authorize external writes. An explicit request to create the Test Run and linked Jira work item authorizes only those named creations after the full payload and targets pass validation.
 
-Treat Test Run creation, case attachment, task linking, execution assignment, Jira issue creation, and Test Run-to-issue linking as distinct connector operations even when one adapter combines some of them. Preflight every required value before the first mutation. Create the Test Run before the Jira work item so the returned stable run reference can populate test coverage.
+Treat Test Run creation, case attachment, task linking, execution assignment, Jira issue creation, and Test Run-to-issue linking as distinct results that all require validation, even when one adapter combines the Test Run results in one call. The public Server/DC adapter creates the run with its complete case, task-link, and assignment composition in a single immutable `POST /rest/atm/1.0/testrun` request. Preflight every required value before that mutation. Create the Test Run before the Jira work item so the returned stable run reference can populate test coverage.
 
 If a later operation fails, do not delete or duplicate the created run or issue automatically. Return the successful object identifiers and URLs, failed operations, and the safest supported recovery. Never claim a case, task, user, version, or Test Run was linked without a successful connector response.
 

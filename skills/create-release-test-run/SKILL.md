@@ -44,8 +44,9 @@ Do not guess a version, platform, folder, tester, title convention, project, or 
 6. Apply the lifecycle, required-field, platform, type, priority, launch-kind, and coverage-depth rules from `test-run-rules.md`.
 7. Deduplicate by stable case identifier and flag conflicting versions. Keep one execution per case unless the user explicitly requires materially different environments or configurations.
 8. Assign every included execution to one named tester using the deterministic balancing rules in `test-run-rules.md`. Validate that no execution is unassigned and no unknown tester was introduced.
-9. Prepare the exact Test Run payload, task links, execution assignments, and the linked Jira QA work-item payload. Read live create metadata before preparing any Jira write.
-10. Return the complete proposal and material limitations. Do not generate new permanent test cases as part of this workflow.
+9. Resolve every tester through `jira_find_assignable_users`; use only an unambiguous returned `_testdocs.userKey`. Never derive a Zephyr `userKey` from a display name or email address.
+10. Prepare the exact immutable Test Run payload, task links, execution assignments, and linked Jira QA work-item payload. Read live create metadata through `jira_get_work_item_create_metadata` before preparing the Jira write.
+11. Return the complete proposal and material limitations. Do not generate new permanent test cases as part of this workflow.
 
 ## Creation boundary
 
@@ -59,7 +60,9 @@ Before creation, verify that the connected tools separately support:
 - Jira create metadata and creation for the exact non-defect work-item type;
 - linking the created Test Run through the project's test-coverage field or relation.
 
-Create the Test Run first, then create the Jira QA work item referencing the returned stable run URL or identifier. Treat every connector call as a separate external write. On a partial failure, do not delete or silently retry mutations; report exactly what exists, what failed, and the safe manual or supported next action.
+Call `zephyr_create_test_run` once with the complete deduplicated `items` list, exact release issue links, and resolved assignee `userKey` for every item. The public Server/DC API makes the run composition immutable, so do not create an empty run or plan to attach or reassign cases later. After the run returns a stable key, call `jira_create_qa_work_item` with the exact live-metadata fields and that run key or URL in the semantic test-coverage field.
+
+If either protected create-tool is absent, report that creation is not enabled for this connection and give the recovery command `TESTDOCS_ENABLE_JIRA_WRITES=1 npm run update`; do not describe the workflow itself as forbidden. On a partial failure, do not delete, recreate, or silently retry mutations; report exactly what exists, what failed, and the safe manual or supported next action.
 
 ## Output
 

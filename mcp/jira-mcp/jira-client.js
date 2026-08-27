@@ -15,7 +15,8 @@ const {
   JIRA_API_VERSION = "3",
   JIRA_INSECURE_TLS = "0",
   JIRA_SESSION_FILE,
-  JIRA_TEST_CASE_URL_TEMPLATE
+  JIRA_TEST_CASE_URL_TEMPLATE,
+  JIRA_TEST_RUN_URL_TEMPLATE
 } = process.env;
 
 if (JIRA_INSECURE_TLS === "1") {
@@ -121,7 +122,7 @@ async function getIssue({ key }) {
   return jiraRequest(`/rest/api/${JIRA_API_VERSION}/issue/${key}`);
 }
 
-async function getBugCreateMetadata({ projectKey, issueTypeId }) {
+async function getIssueCreateMetadata({ projectKey, issueTypeId }) {
   if (!projectKey) throw new Error("projectKey is required.");
   let currentUser;
   let project;
@@ -184,6 +185,21 @@ async function getBugCreateMetadata({ projectKey, issueTypeId }) {
   };
 }
 
+async function getBugCreateMetadata(input) {
+  return getIssueCreateMetadata(input);
+}
+
+async function getWorkItemCreateMetadata(input) {
+  const result = await getIssueCreateMetadata(input);
+  return {
+    ...result,
+    _testdocs: {
+      ...result._testdocs,
+      purpose: "qa_work_item"
+    }
+  };
+}
+
 function plainTextToAdf(value) {
   const content = String(value || "").split(/\r?\n/).map((line) => ({
     type: "paragraph",
@@ -201,7 +217,7 @@ function jiraCurrentUserReference(currentUser) {
   return null;
 }
 
-async function createBug({
+async function createJiraIssue({
   confirmed,
   projectKey,
   issueTypeId,
@@ -211,9 +227,9 @@ async function createBug({
   description,
   additionalFields = {},
   assignToCurrentUser = true
-}) {
+}, issueKind) {
   if (confirmed !== true) {
-    throw new Error("Explicit user intent is required to create a Jira bug.");
+    throw new Error(`Explicit user intent is required to create a Jira ${issueKind}.`);
   }
   if (!projectKey || !summary || (!issueTypeId && !issueTypeName)) {
     throw new Error("projectKey, summary, and issueTypeId or issueTypeName are required.");
@@ -250,6 +266,7 @@ async function createBug({
     ...result,
     _testdocs: {
       created: true,
+      issueKind,
       issueKey: result.key,
       parentKey: parentKey || "",
       webUrl: `${JIRA_URL}/browse/${encodeURIComponent(result.key)}`,
@@ -262,6 +279,39 @@ async function createBug({
       } : null
     }
   };
+}
+
+async function createBug(input) {
+  return createJiraIssue(input, "bug");
+}
+
+async function createQaWorkItem(input) {
+  return createJiraIssue(input, "QA work item");
+}
+
+async function findAssignableUsers({ projectKey, query, maxResults = 50 }) {
+  if (!projectKey || !query) throw new Error("projectKey and query are required.");
+  const params = new URLSearchParams({
+    project: projectKey,
+    maxResults: String(Math.min(Math.max(Number(maxResults) || 50, 1), 100))
+  });
+  params.set(String(JIRA_API_VERSION) === "3" ? "query" : "username", query);
+  const users = await jiraRequest(
+    `/rest/api/${JIRA_API_VERSION}/user/assignable/search?${params.toString()}`
+  );
+  if (!Array.isArray(users)) {
+    throw new Error("Jira assignable-user search returned an unexpected response.");
+  }
+  return users.map((user) => ({
+    accountId: user.accountId || "",
+    key: user.key || "",
+    name: user.name || "",
+    displayName: user.displayName || "",
+    active: user.active !== false,
+    _testdocs: {
+      userKey: user.key || user.accountId || user.name || ""
+    }
+  }));
 }
 
 async function addComment({ key, comment }) {
@@ -484,6 +534,13 @@ function buildTestCaseWebUrl(testCaseKey) {
     .replaceAll("{projectKey}", encodeURIComponent(projectKey));
 }
 
+function buildTestRunWebUrl(testRunKey) {
+  if (!testRunKey || !JIRA_URL) return null;
+  const template = JIRA_TEST_RUN_URL_TEMPLATE || `${JIRA_URL}/secure/Tests.jspa#/testCycle/{key}`;
+  if (!template.includes("{key}")) return null;
+  return template.replaceAll("{key}", encodeURIComponent(testRunKey));
+}
+
 function withTestCaseWebUrl(testCase, fallbackKey) {
   if (!testCase || typeof testCase !== "object") return testCase;
   const key = testCase.key || testCase.testCaseKey || fallbackKey;
@@ -692,6 +749,31 @@ async function zephyrGetAllTestCases({ projectId, projectKey, fields }) {
   return result.results || [];
 }
 
+async function zephyrGetIssueTestCases({ issueKey }) {
+  if (!issueKey || !/^[A-Za-z][A-Za-z0-9_]*-\d+$/.test(issueKey)) {
+    throw new Error("An exact Jira issueKey is required.");
+  }
+  const result = await zephyrRequest(
+    `/rest/atm/1.0/issuelink/${encodeURIComponent(issueKey)}/testcases`
+  );
+  const cases = Array.isArray(result)
+    ? result
+    : Array.isArray(result?.values)
+      ? result.values
+      : Array.isArray(result?.results)
+        ? result.results
+        : [];
+  return {
+    issueKey,
+    testCases: cases.map((testCase) => withTestCaseWebUrl(testCase)),
+    _testdocs: {
+      completeCaseContent: false,
+      directRelationCount: cases.length,
+      note: "Read every returned key through zephyr_get_test_case before evaluating complete content."
+    }
+  };
+}
+
 function escapeHtmlText(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -771,6 +853,81 @@ async function zephyrCreateTestCase({
 
   const result = await zephyrRequest("/rest/atm/1.0/testcase", "POST", payload);
   return withTestCaseWebUrl(result);
+}
+
+async function zephyrCreateTestRun({
+  confirmed,
+  projectKey,
+  name,
+  folder,
+  version,
+  testPlanKey,
+  iteration,
+  owner,
+  plannedStartDate,
+  plannedEndDate,
+  issueLinks,
+  customFields,
+  items
+}) {
+  if (confirmed !== true) {
+    throw new Error("Explicit user confirmation is required to create a Test Run.");
+  }
+  if (!projectKey || !name || !version || !Array.isArray(issueLinks) || !issueLinks.length || !Array.isArray(items) || !items.length) {
+    throw new Error("projectKey, name, exact release version, at least one release issue link, and the complete non-empty items list are required.");
+  }
+  if (folder && !folder.startsWith("/")) {
+    throw new Error("folder must be an existing absolute Zephyr folder path beginning with '/'.");
+  }
+  if (items.some((item) => !item?.testCaseKey || !item?.userKey)) {
+    throw new Error("Every Test Run item requires testCaseKey and the resolved Jira userKey assignee.");
+  }
+  const itemKeys = items.map((item) => item.testCaseKey);
+  if (new Set(itemKeys).size !== itemKeys.length) {
+    throw new Error("The complete Test Run items list contains duplicate testCaseKey values.");
+  }
+  const uniqueIssueLinks = [...new Set(issueLinks)];
+  if (uniqueIssueLinks.some((key) => !/^[A-Za-z][A-Za-z0-9_]*-\d+$/.test(key))) {
+    throw new Error("Every issueLinks value must be an exact Jira issue key.");
+  }
+
+  const payload = {
+    projectKey,
+    name,
+    issueLinks: uniqueIssueLinks,
+    items: items.map(({ testCaseKey, userKey, environment }) => ({
+      testCaseKey,
+      userKey,
+      ...(environment ? { environment } : {})
+    })),
+    ...(folder ? { folder } : {}),
+    version,
+    ...(testPlanKey ? { testPlanKey } : {}),
+    ...(iteration ? { iteration } : {}),
+    ...(owner ? { owner } : {}),
+    ...(plannedStartDate ? { plannedStartDate } : {}),
+    ...(plannedEndDate ? { plannedEndDate } : {}),
+    ...(customFields && Object.keys(customFields).length ? { customFields } : {})
+  };
+
+  const result = await zephyrRequest("/rest/atm/1.0/testrun", "POST", payload);
+  const key = result?.key || result?.testRunKey;
+  if (!key) {
+    throw new Error("Zephyr reported Test Run creation without returning a stable key.");
+  }
+  return {
+    ...result,
+    key,
+    _testdocs: {
+      created: true,
+      immutableComposition: true,
+      testRunKey: key,
+      webUrl: buildTestRunWebUrl(key),
+      itemCount: items.length,
+      assignedItemCount: items.length,
+      issueLinkCount: uniqueIssueLinks.length
+    }
+  };
 }
 
 function hasOwn(input, field) {
@@ -897,7 +1054,10 @@ module.exports = {
   tools: {
     get_issue: getIssue,
     jira_get_bug_create_metadata: getBugCreateMetadata,
+    jira_get_work_item_create_metadata: getWorkItemCreateMetadata,
     jira_create_bug: createBug,
+    jira_create_qa_work_item: createQaWorkItem,
+    jira_find_assignable_users: findAssignableUsers,
     add_comment: addComment,
     jira_publish_checklist_comment: publishChecklistComment,
     transition_issue: transitionIssue,
@@ -912,6 +1072,8 @@ module.exports = {
      zephyr_get_iterations: zephyrGetIterations,
      zephyr_get_test_case: zephyrGetTestCase,
      zephyr_get_all_test_cases: zephyrGetAllTestCases,
+     zephyr_get_issue_test_cases: zephyrGetIssueTestCases,
+     zephyr_create_test_run: zephyrCreateTestRun,
      zephyr_create_test_case: zephyrCreateTestCase,
      zephyr_update_session_test_case: zephyrUpdateSessionTestCase,
      zephyr_update_test_case: zephyrUpdateTestCase

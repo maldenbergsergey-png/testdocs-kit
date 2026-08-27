@@ -29,6 +29,9 @@ export function migrateConfig(input = {}) {
       eva: withUniqueIds(config.connections.eva, "eva")
     };
     for (const eva of config.connections.eva) delete eva.command;
+    for (const jira of config.connections.jira) {
+      jira.enableReleaseTestRunCreation = jira.enableReleaseTestRunCreation === true;
+    }
     config.tms ||= { category: "none", provider: "none" };
     return config;
   }
@@ -38,7 +41,8 @@ export function migrateConfig(input = {}) {
         ...input.jira,
         id: "jira-main",
         enableBugCreation: input.enableBugCreation === true,
-        enableChecklistCommentPublication: input.enableChecklistCommentPublication === true
+        enableChecklistCommentPublication: input.enableChecklistCommentPublication === true,
+        enableReleaseTestRunCreation: input.enableReleaseTestRunCreation === true
       }]
     : [];
   const confluence = input.confluence?.enabled
@@ -61,6 +65,7 @@ export function migrateConfig(input = {}) {
   delete config.confluence;
   delete config.enableBugCreation;
   delete config.enableChecklistCommentPublication;
+  delete config.enableReleaseTestRunCreation;
   return config;
 }
 

@@ -78,7 +78,8 @@ function showHelp() {
   --add jira|confluence|eva               Добавить подключение, сохранив существующие
   --opencode-format stable|v2              Явно выбрать формат OpenCode
   --ca-file /path/to/ca-bundle.pem         Дополнительные доверенные CA в формате PEM
-  --enable-jira-writes                     Разрешить создание Bug и публикацию checklist
+  --enable-jira-writes                     Разрешить создание Bug, публикацию checklist,
+                                          Test Run и связанной QA-задачи
                                           для сохранённых Jira-подключений
   --skip-dependencies                     Не выполнять npm ci; Confluence всё равно пересобирается
   --no-cli                                Не вызывать CLI клиентов
@@ -428,6 +429,15 @@ function validateAnswers(config) {
         `testCaseUrlTemplate Jira ${jira.id}`
       );
     }
+    if (jira.testRunUrlTemplate) {
+      if (typeof jira.testRunUrlTemplate !== "string" || !jira.testRunUrlTemplate.includes("{key}")) {
+        throw new Error(`testRunUrlTemplate Jira ${jira.id} должен содержать {key}.`);
+      }
+      validateUrl(
+        jira.testRunUrlTemplate.replaceAll("{key}", "DEMO-R1"),
+        `testRunUrlTemplate Jira ${jira.id}`
+      );
+    }
   }
   for (const confluence of connectionList(config, "confluence")) {
     if (!confluence.baseUrl || !confluence.authMode || (confluence.authMode !== "browser_session" && !confluence.secret)) {
@@ -554,6 +564,10 @@ async function collectConfig(args, clients, existing = null) {
       jira.enableBugCreation = await confirm(
         `Разрешить создание багов в ${jira.id} по явному запросу`,
         jira.enableBugCreation === true
+      );
+      jira.enableReleaseTestRunCreation = await confirm(
+        `Разрешить создание Test Run и связанной QA-задачи в ${jira.id} по явному запросу`,
+        jira.enableReleaseTestRunCreation === true
       );
     }
   }
@@ -726,16 +740,21 @@ function configuredServers(config) {
   const servers = [];
   const jiraItems = connectionList(config, "jira");
   for (const jira of jiraItems) {
-    const tools = ["get_issue", "jira_get_bug_create_metadata", "get_transitions", "search_issues"];
+    const tools = [
+      "get_issue", "jira_get_bug_create_metadata", "jira_get_work_item_create_metadata",
+      "jira_find_assignable_users", "get_transitions", "search_issues"
+    ];
     if (jira.enableBugCreation === true) tools.push("jira_create_bug");
     if (jira.enableChecklistCommentPublication === true) tools.push("jira_publish_checklist_comment");
+    if (jira.enableReleaseTestRunCreation === true) tools.push("jira_create_qa_work_item");
     if (usesZephyr(config, jira.id)) {
       tools.push(
         "zephyr_get_projects", "zephyr_get_project", "zephyr_search_test_cases",
         "zephyr_get_test_plans", "zephyr_get_test_plan", "zephyr_get_iterations",
-        "zephyr_get_test_case", "zephyr_get_all_test_cases", "zephyr_create_test_case",
+        "zephyr_get_test_case", "zephyr_get_all_test_cases", "zephyr_get_issue_test_cases", "zephyr_create_test_case",
         "zephyr_update_session_test_case", "zephyr_update_test_case"
       );
+      if (jira.enableReleaseTestRunCreation === true) tools.push("zephyr_create_test_run");
     }
     servers.push({ name: serverName("jira", jira.id, jiraItems.length), service: "jira", id: jira.id, tools });
   }
@@ -1051,12 +1070,14 @@ async function main() {
     for (const jira of jiraConnections) {
       jira.enableBugCreation = true;
       jira.enableChecklistCommentPublication = true;
+      jira.enableReleaseTestRunCreation = true;
     }
-    console.log("Разрешены защищённые Jira-инструменты создания Bug и публикации checklist по явному запросу.");
+    console.log("Разрешены защищённые Jira-инструменты создания Bug, публикации checklist, Test Run и связанной QA-задачи по явному запросу.");
   }
   config.tms ||= { category: "none", provider: "none" };
   for (const jira of connectionList(config, "jira")) {
     jira.testCaseUrlTemplate ||= `${jira.url}/secure/Tests.jspa#/testCase/{key}`;
+    jira.testRunUrlTemplate ||= `${jira.url}/secure/Tests.jspa#/testCycle/{key}`;
   }
   applyCaFile(config, args.caFile);
 
