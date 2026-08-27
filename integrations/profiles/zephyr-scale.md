@@ -34,9 +34,10 @@ For a release Test Run/Test Cycle workflow, confirm separately that the connecto
 - create a Test Run/Test Cycle with a stable returned key and URL;
 - attach the selected cases and release issues;
 - create executions and assign each one to an exact user;
+- read a created Test Run back, verify every saved assignment, and apply the public item-level `assignedTo` correction once when creation ignored it;
 - expose a stable Test Run value accepted by the Jira project's semantic test-coverage field or relation.
 
-The bundled Server/DC adapter uses the official public `POST /rest/atm/1.0/testrun` operation with the complete `items` list. Each item carries its test-case key and resolved Jira `userKey`; release tasks are supplied in `issueLinks`. The public API does not provide a supported update of run composition, so preflight the full deduplicated set and all assignments before the single create call. Do not create an empty run, add or remove cases later, or delete/recreate a run automatically.
+The bundled Server/DC adapter uses the official public `POST /rest/atm/1.0/testrun` operation with the complete `items` list. Each item carries its test-case key and resolved Jira `userKey`; release tasks are supplied in `issueLinks`. Case composition cannot be updated through the public API, so preflight the full deduplicated set before creation. Item assignment can be corrected through the documented Test Result `assignedTo` field: the adapter does so only after a read-back mismatch, once per affected item, and verifies again. Do not create an empty run, add or remove cases later, or delete/recreate a run automatically.
 
 Do not treat test-case creation capability as Test Run capability. Resolve testers through Jira assignable-user search and use the connector-returned user key rather than a display name or email address.
 

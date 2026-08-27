@@ -52,7 +52,7 @@ app.post("/mcp", async (req, res) => {
       });
     }
 
-    if (["zephyr_create_test_run", "jira_create_qa_work_item"].includes(tool) && !releaseTestRunCreationEnabled) {
+    if (["zephyr_create_test_run", "zephyr_assign_test_run_item", "jira_create_qa_work_item"].includes(tool) && !releaseTestRunCreationEnabled) {
       return res.status(403).json({
         error: "Release Test Run and linked QA work-item creation are disabled."
       });

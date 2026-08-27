@@ -104,6 +104,7 @@ async function main() {
     }
     if (usesZephyr(config, jira.id)) {
       assert(tools.includes("zephyr_get_issue_test_cases"), "Jira MCP не отдал чтение кейсов, связанных с задачей.");
+      assert(tools.includes("zephyr_get_test_run"), "Jira MCP не отдал проверочное чтение Test Run и назначений.");
       assert(tools.includes("zephyr_list_test_run_folders"), "Jira MCP не отдал поиск папок Test Run.");
     }
     if (usesZephyr(config, jira.id) && config.enableTestCaseCreation !== false) {
@@ -115,10 +116,12 @@ async function main() {
       assert(tools.includes("jira_create_qa_work_item"), "Jira MCP не отдал защищённое создание QA-задачи Test Run.");
       if (usesZephyr(config, jira.id)) {
         assert(tools.includes("zephyr_create_test_run"), "Jira MCP не отдал защищённое создание Test Run Zephyr.");
+        assert(tools.includes("zephyr_assign_test_run_item"), "Jira MCP не отдал защищённое назначение существующего исполнения Test Run.");
       }
     } else {
       assert(!tools.includes("jira_create_qa_work_item"), "Создание QA-задачи Test Run включено без разрешения.");
       assert(!tools.includes("zephyr_create_test_run"), "Создание Test Run включено без разрешения.");
+      assert(!tools.includes("zephyr_assign_test_run_item"), "Назначение существующего исполнения Test Run включено без разрешения.");
     }
     if (!usesZephyr(config, jira.id)) {
       assert(!tools.some((tool) => tool.startsWith("zephyr_")), "Jira MCP отдал Zephyr tools при выбранном QA Tools.");

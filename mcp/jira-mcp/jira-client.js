@@ -286,6 +286,9 @@ async function createBug(input) {
 }
 
 async function createQaWorkItem(input) {
+  if (!input?.description || !String(input.description).trim()) {
+    throw new Error("A source-backed QA work-item description is required.");
+  }
   return createJiraIssue(input, "QA work item");
 }
 
@@ -539,6 +542,124 @@ function buildTestRunWebUrl(testRunKey) {
   const template = JIRA_TEST_RUN_URL_TEMPLATE || `${JIRA_URL}/secure/Tests.jspa#/testCycle/{key}`;
   if (!template.includes("{key}")) return null;
   return template.replaceAll("{key}", encodeURIComponent(testRunKey));
+}
+
+async function zephyrGetTestRun({ testRunKey }) {
+  if (!testRunKey || !/^[A-Za-z][A-Za-z0-9_]*-[A-Za-z]\d+$/.test(testRunKey)) {
+    throw new Error("An exact Test Run key is required.");
+  }
+  const params = new URLSearchParams({
+    fields: "key,projectKey,name,status,folder,version,issueLinks,items"
+  });
+  const result = await zephyrRequest(
+    `/rest/atm/1.0/testrun/${encodeURIComponent(testRunKey)}?${params.toString()}`
+  );
+  const items = Array.isArray(result?.items) ? result.items : [];
+  return {
+    ...result,
+    _testdocs: {
+      ...(result?._testdocs || {}),
+      readOnly: true,
+      testRunKey: result?.key || testRunKey,
+      webUrl: buildTestRunWebUrl(result?.key || testRunKey),
+      itemCount: items.length,
+      assignedItemCount: items.filter((item) => Boolean(item?.assignedTo || item?.userKey)).length
+    }
+  };
+}
+
+function compareTestRunAssignments(savedRun, expectedItems) {
+  const savedItems = Array.isArray(savedRun?.items) ? savedRun.items : [];
+  const savedByCase = new Map(savedItems.map((item) => [item?.testCaseKey, item]));
+  const mismatches = expectedItems.flatMap((expected) => {
+    const actual = savedByCase.get(expected.testCaseKey);
+    if (!actual) {
+      return [{
+        testCaseKey: expected.testCaseKey,
+        expectedUserKey: expected.userKey,
+        actualUserKey: null,
+        reason: "MISSING_ITEM"
+      }];
+    }
+    const actualUserKey = actual.assignedTo || actual.userKey || null;
+    if (actualUserKey !== expected.userKey) {
+      return [{
+        testCaseKey: expected.testCaseKey,
+        expectedUserKey: expected.userKey,
+        actualUserKey,
+        reason: "ASSIGNMENT_MISMATCH"
+      }];
+    }
+    return [];
+  });
+  return {
+    status: mismatches.length ? "FAILED" : "VERIFIED",
+    verifiedAssignedItemCount: expectedItems.length - mismatches.length,
+    mismatches
+  };
+}
+
+async function zephyrAssignTestRunItem({ confirmed, testRunKey, testCaseKey, userKey }) {
+  if (confirmed !== true) {
+    throw new Error("Explicit user intent is required to assign an existing Test Run item.");
+  }
+  if (!testCaseKey || !userKey) {
+    throw new Error("testCaseKey and an exact resolved userKey are required.");
+  }
+  const before = await zephyrGetTestRun({ testRunKey });
+  const item = (before.items || []).find((candidate) => candidate?.testCaseKey === testCaseKey);
+  if (!item) {
+    throw new Error(`Test Run ${testRunKey} does not contain ${testCaseKey}.`);
+  }
+  const beforeUserKey = item.assignedTo || item.userKey || null;
+  if (beforeUserKey === userKey) {
+    return {
+      testRunKey,
+      testCaseKey,
+      userKey,
+      _testdocs: {
+        changed: false,
+        assignmentVerified: true,
+        webUrl: buildTestRunWebUrl(testRunKey)
+      }
+    };
+  }
+
+  await zephyrRequest(
+    `/rest/atm/1.0/testrun/${encodeURIComponent(testRunKey)}/testcase/${encodeURIComponent(testCaseKey)}/testresult`,
+    "PUT",
+    { assignedTo: userKey }
+  );
+  try {
+    const after = await zephyrGetTestRun({ testRunKey });
+    const saved = (after.items || []).find((candidate) => candidate?.testCaseKey === testCaseKey);
+    const actualUserKey = saved?.assignedTo || saved?.userKey || null;
+    return {
+      testRunKey,
+      testCaseKey,
+      userKey,
+      actualUserKey,
+      _testdocs: {
+        changed: true,
+        assignmentVerified: actualUserKey === userKey,
+        verificationStatus: actualUserKey === userKey ? "VERIFIED" : "FAILED",
+        webUrl: buildTestRunWebUrl(testRunKey)
+      }
+    };
+  } catch {
+    return {
+      testRunKey,
+      testCaseKey,
+      userKey,
+      _testdocs: {
+        changed: true,
+        assignmentVerified: false,
+        verificationStatus: "UNAVAILABLE",
+        webUrl: buildTestRunWebUrl(testRunKey),
+        message: "The assignment update was accepted, but the saved item could not be read back."
+      }
+    };
+  }
 }
 
 function withTestCaseWebUrl(testCase, fallbackKey) {
@@ -987,6 +1108,42 @@ async function zephyrCreateTestRun({
   if (!key) {
     throw new Error("Zephyr reported Test Run creation without returning a stable key.");
   }
+  let assignmentVerification;
+  try {
+    assignmentVerification = compareTestRunAssignments(
+      await zephyrGetTestRun({ testRunKey: key }),
+      items
+    );
+    const repairAttempts = [];
+    for (const mismatch of assignmentVerification.mismatches) {
+      if (mismatch.reason !== "ASSIGNMENT_MISMATCH") continue;
+      try {
+        await zephyrRequest(
+          `/rest/atm/1.0/testrun/${encodeURIComponent(key)}/testcase/${encodeURIComponent(mismatch.testCaseKey)}/testresult`,
+          "PUT",
+          { assignedTo: mismatch.expectedUserKey }
+        );
+        repairAttempts.push({ testCaseKey: mismatch.testCaseKey, status: "REQUEST_ACCEPTED" });
+      } catch {
+        repairAttempts.push({ testCaseKey: mismatch.testCaseKey, status: "REQUEST_FAILED" });
+      }
+    }
+    if (repairAttempts.length) {
+      assignmentVerification = {
+        ...compareTestRunAssignments(await zephyrGetTestRun({ testRunKey: key }), items),
+        repairAttempts
+      };
+    }
+  } catch (error) {
+    assignmentVerification = {
+      status: "UNAVAILABLE",
+      verifiedAssignedItemCount: 0,
+      mismatches: [],
+      repairAttempts: [],
+      message: "The Test Run was created, but its saved assignments could not be read back through the public API."
+    };
+  }
+
   return {
     ...result,
     key,
@@ -996,7 +1153,9 @@ async function zephyrCreateTestRun({
       testRunKey: key,
       webUrl: buildTestRunWebUrl(key),
       itemCount: items.length,
-      assignedItemCount: items.length,
+      requestedAssignedItemCount: items.length,
+      assignedItemCount: assignmentVerification.verifiedAssignedItemCount,
+      assignmentVerification,
       issueLinkCount: uniqueIssueLinks.length
     }
   };
@@ -1145,7 +1304,9 @@ module.exports = {
      zephyr_get_test_case: zephyrGetTestCase,
      zephyr_get_all_test_cases: zephyrGetAllTestCases,
      zephyr_get_issue_test_cases: zephyrGetIssueTestCases,
+     zephyr_get_test_run: zephyrGetTestRun,
      zephyr_list_test_run_folders: zephyrListTestRunFolders,
+     zephyr_assign_test_run_item: zephyrAssignTestRunItem,
      zephyr_create_test_run: zephyrCreateTestRun,
      zephyr_create_test_case: zephyrCreateTestCase,
      zephyr_update_session_test_case: zephyrUpdateSessionTestCase,

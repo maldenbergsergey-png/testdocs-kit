@@ -111,6 +111,8 @@ Do not assume that test cases are Jira issues. Some products store them as separ
 
 Do not assume that a Test Run/Test Cycle is a Jira issue or that creating the container also attaches cases, links release tasks, creates executions, or assigns testers. Inspect and validate each supported operation and return the stable run identifier and URL supplied by the connector.
 
+Do not treat request echo fields or a create-response count as proof of item assignment. Read the created Test Run back and compare its saved item assignees with the preflight mapping. A connector may use the public Test Result `assignedTo` update once for a mismatched existing item, but it must verify the saved result afterward and preserve a partial-failure state when any mismatch remains.
+
 Treat Test Run folders separately from test-case folders. For Zephyr Server/DC, use the public Test Run search endpoint to discover exact paths represented by existing runs. The public API exposes folder create/update but no folder-tree read, so do not claim that an empty folder was checked. Root Test Run creation omits the `folder` field; it does not send `/`.
 
 Do not assume modern Zephyr Scale endpoints, cloud field names, versioning, or call-step behavior for a legacy Test Management for Jira installation. Confirm the deployment, product version, and actual MCP tool schema first.

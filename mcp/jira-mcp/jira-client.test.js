@@ -144,6 +144,20 @@ test("jira_create_qa_work_item creates one live-metadata-backed issue on the aut
   assert.equal(result._testdocs.webUrl, "https://jira.example.test/browse/DEMO-44");
 });
 
+test("jira_create_qa_work_item rejects an empty organizational description", async (t) => {
+  const fetchMock = t.mock.method(global, "fetch", async () => response(201, { key: "UNEXPECTED-1" }));
+  await assert.rejects(
+    tools.jira_create_qa_work_item({
+      confirmed: true,
+      projectKey: "DEMO",
+      issueTypeId: "7",
+      summary: "QA. Release regression 2.14.0 (WEB)"
+    }),
+    /description is required/
+  );
+  assert.equal(fetchMock.mock.callCount(), 0);
+});
+
 test("zephyr_get_test_case returns the complete ATM case with ordered steps", async (t) => {
   const calls = [];
   t.mock.method(global, "fetch", async (url) => {
@@ -283,6 +297,70 @@ test("zephyr_list_test_run_folders discovers exact non-root paths and documents 
   assert.match(result._testdocs.limitation, /Empty Test Run folders cannot be discovered/);
 });
 
+test("zephyr_get_test_run reads saved item assignments through the public API", async (t) => {
+  let requestedUrl;
+  t.mock.method(global, "fetch", async (url) => {
+    requestedUrl = String(url);
+    return response(200, {
+      key: "DEMO-R12",
+      name: "Релиз 2.14.0 Regress (WEB)",
+      items: [
+        { testCaseKey: "DEMO-T1", userKey: "JIRAUSER10000" },
+        { testCaseKey: "DEMO-T2" }
+      ]
+    });
+  });
+
+  const result = await tools.zephyr_get_test_run({ testRunKey: "DEMO-R12" });
+  const parsed = new URL(requestedUrl);
+  assert.equal(parsed.pathname, "/rest/atm/1.0/testrun/DEMO-R12");
+  assert.match(parsed.searchParams.get("fields"), /items/);
+  assert.equal(result._testdocs.itemCount, 2);
+  assert.equal(result._testdocs.assignedItemCount, 1);
+  assert.equal(result._testdocs.webUrl, "https://jira.example.test/secure/Tests.jspa#/testCycle/DEMO-R12");
+});
+
+test("zephyr_assign_test_run_item updates one existing assignment and verifies it", async (t) => {
+  const requests = [];
+  let assigned = false;
+  t.mock.method(global, "fetch", async (url, options) => {
+    requests.push({ url: String(url), options });
+    if (options?.method === "PUT") {
+      assigned = true;
+      return response(200, { id: "9002" });
+    }
+    return response(200, {
+      key: "DEMO-R12",
+      items: [{ testCaseKey: "DEMO-T1", ...(assigned ? { assignedTo: "JIRAUSER1" } : {}) }]
+    });
+  });
+
+  const result = await tools.zephyr_assign_test_run_item({
+    confirmed: true,
+    testRunKey: "DEMO-R12",
+    testCaseKey: "DEMO-T1",
+    userKey: "JIRAUSER1"
+  });
+
+  assert.equal(requests.filter((request) => request.options?.method === "PUT").length, 1);
+  assert.equal(result.actualUserKey, "JIRAUSER1");
+  assert.equal(result._testdocs.assignmentVerified, true);
+  assert.equal(result._testdocs.verificationStatus, "VERIFIED");
+});
+
+test("zephyr_assign_test_run_item requires explicit intent before reading or writing", async (t) => {
+  const fetchMock = t.mock.method(global, "fetch", async () => response(200, {}));
+  await assert.rejects(
+    tools.zephyr_assign_test_run_item({
+      testRunKey: "DEMO-R12",
+      testCaseKey: "DEMO-T1",
+      userKey: "JIRAUSER1"
+    }),
+    /Explicit user intent/
+  );
+  assert.equal(fetchMock.mock.callCount(), 0);
+});
+
 test("zephyr_create_test_case sends step-level test data to the public Server API", async (t) => {
   let request;
   t.mock.method(global, "fetch", async (url, options) => {
@@ -370,10 +448,17 @@ test("zephyr_create_test_case rejects incomplete steps before any request", asyn
 });
 
 test("zephyr_create_test_run sends the complete linked and assigned composition in one public API call", async (t) => {
-  let request;
+  const requests = [];
   t.mock.method(global, "fetch", async (url, options) => {
-    request = { url: String(url), options };
-    return response(201, { key: "DEMO-R12" });
+    requests.push({ url: String(url), options });
+    if (options?.method === "POST") return response(201, { key: "DEMO-R12" });
+    return response(200, {
+      key: "DEMO-R12",
+      items: [
+        { testCaseKey: "DEMO-T1", userKey: "JIRAUSER10000" },
+        { testCaseKey: "DEMO-T2", userKey: "JIRAUSER10001", environment: "Stage" }
+      ]
+    });
   });
 
   const result = await tools.zephyr_create_test_run({
@@ -390,9 +475,9 @@ test("zephyr_create_test_run sends the complete linked and assigned composition 
     ]
   });
 
-  assert.equal(request.url, "https://jira.example.test/rest/atm/1.0/testrun");
-  assert.equal(request.options.method, "POST");
-  assert.deepEqual(JSON.parse(request.options.body), {
+  assert.equal(requests[0].url, "https://jira.example.test/rest/atm/1.0/testrun");
+  assert.equal(requests[0].options.method, "POST");
+  assert.deepEqual(JSON.parse(requests[0].options.body), {
     projectKey: "DEMO",
     name: "Release regression 2.14.0 WEB",
     issueLinks: ["DEMO-101", "DEMO-102"],
@@ -406,8 +491,48 @@ test("zephyr_create_test_run sends the complete linked and assigned composition 
   });
   assert.equal(result._testdocs.itemCount, 2);
   assert.equal(result._testdocs.assignedItemCount, 2);
+  assert.equal(result._testdocs.requestedAssignedItemCount, 2);
+  assert.equal(result._testdocs.assignmentVerification.status, "VERIFIED");
   assert.equal(result._testdocs.issueLinkCount, 2);
   assert.equal(result._testdocs.webUrl, "https://jira.example.test/secure/Tests.jspa#/testCycle/DEMO-R12");
+});
+
+test("zephyr_create_test_run repairs and verifies assignments ignored during creation", async (t) => {
+  const requests = [];
+  let repaired = false;
+  t.mock.method(global, "fetch", async (url, options) => {
+    requests.push({ url: String(url), options });
+    if (options?.method === "POST") return response(201, { key: "DEMO-R13" });
+    if (options?.method === "PUT") {
+      repaired = true;
+      return response(200, { id: "9001" });
+    }
+    return response(200, {
+      key: "DEMO-R13",
+      items: [{ testCaseKey: "DEMO-T1", ...(repaired ? { assignedTo: "JIRAUSER1" } : {}) }]
+    });
+  });
+
+  const result = await tools.zephyr_create_test_run({
+    confirmed: true,
+    projectKey: "DEMO",
+    name: "Релиз 2.14.0 Regress (WEB)",
+    version: "2.14.0",
+    issueLinks: ["DEMO-1"],
+    items: [{ testCaseKey: "DEMO-T1", userKey: "JIRAUSER1" }]
+  });
+
+  assert.equal(result.key, "DEMO-R13");
+  assert.equal(result._testdocs.assignedItemCount, 1);
+  assert.equal(result._testdocs.assignmentVerification.status, "VERIFIED");
+  assert.deepEqual(result._testdocs.assignmentVerification.mismatches, []);
+  assert.deepEqual(result._testdocs.assignmentVerification.repairAttempts, [{
+    testCaseKey: "DEMO-T1",
+    status: "REQUEST_ACCEPTED"
+  }]);
+  const put = requests.find((request) => request.options?.method === "PUT");
+  assert.equal(put.url, "https://jira.example.test/rest/atm/1.0/testrun/DEMO-R13/testcase/DEMO-T1/testresult");
+  assert.deepEqual(JSON.parse(put.options.body), { assignedTo: "JIRAUSER1" });
 });
 
 test("zephyr_create_test_run rejects silent, unassigned, or duplicate composition before any request", async (t) => {

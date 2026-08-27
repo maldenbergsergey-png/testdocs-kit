@@ -30,7 +30,7 @@ Record the exact:
 - coverage depth: `MINIMAL`, `RECOMMENDED`, or `EXTENDED`, when applicable;
 - platform and existing Zephyr folder or other explicit library boundary;
 - testers eligible for assignment;
-- project-backed Test Run title convention and Jira project.
+- project-backed Test Run title convention, linked Jira QA summary and full description conventions, and Jira project.
 
 Do not guess a version, platform, folder, tester, title convention, project, or required field. Resolve missing project values from an anchored instruction or live metadata. Ask only for values that remain material after available reads. `FULL_REGRESSION` means all eligible cases in the scoped folder and platform; if the user also requests a reduced depth, surface the conflict instead of silently redefining full regression.
 
@@ -46,7 +46,8 @@ Do not guess a version, platform, folder, tester, title convention, project, or 
 8. Assign every included execution to one named tester using the deterministic balancing rules in `test-run-rules.md`. Validate that no execution is unassigned and no unknown tester was introduced.
 9. Resolve every tester through `jira_find_assignable_users`; use only an unambiguous returned `_testdocs.userKey`. Never derive a Zephyr `userKey` from a display name or email address.
 10. Prepare the exact immutable Test Run payload, task links, execution assignments, and linked Jira QA work-item payload. Read live create metadata through `jira_get_work_item_create_metadata` before preparing the Jira write.
-11. Return the complete proposal and material limitations. Do not generate new permanent test cases as part of this workflow.
+11. When the supplied `Задачи для QA` instruction governs the current project, apply its exact release/platform templates and complete launch-specific Jira description as specified in `test-run-rules.md`; a generic title or time-tracking description is not acceptable.
+12. Return the complete proposal and material limitations. Do not generate new permanent test cases as part of this workflow.
 
 ## Creation boundary
 
@@ -62,9 +63,11 @@ Before creation, verify that the connected tools separately support:
 
 For a non-root target, call `zephyr_list_test_run_folders` before creation and use only an exact returned Test Run folder path. Do not infer it from the test-case folder tree or retry guessed variants. The public API discovers paths from existing Test Runs and cannot reveal an empty folder; when that limitation applies, request the exact path. For root creation, omit `folder` completely—never send `/`.
 
-Call `zephyr_create_test_run` once with the complete deduplicated `items` list, exact release issue links, and resolved assignee `userKey` for every item. The public Server/DC API makes the run composition immutable, so do not create an empty run or plan to attach or reassign cases later. After the run returns a stable key, call `jira_create_qa_work_item` with the exact live-metadata fields and that run key or URL in the semantic test-coverage field.
+Call `zephyr_create_test_run` with the complete deduplicated `items` list, exact release issue links, and resolved assignee `userKey` for every item. The adapter reads the created run back, makes at most one documented assignment correction per mismatched existing item, and reads it again. Treat assignments as successful only when `_testdocs.assignmentVerification.status` is `VERIFIED`; `requestedAssignedItemCount` is not evidence. If verification fails or is unavailable, preserve and report the created run and stop before Jira work-item creation. Otherwise call `jira_create_qa_work_item` with the exact instruction-backed summary and full description, live-metadata fields, and that run key or URL in the semantic test-coverage field.
 
 If either protected create-tool is absent, report that creation is not enabled for the Zephyr-linked Jira connection and give the narrow recovery command `npm run update -- --enable-release-test-run-writes`; do not describe the workflow itself as forbidden. This opt-in must not enable Bug creation, checklist publication, generic Jira writes, or Test Run writes for other Jira connections. On a partial failure, do not delete, recreate, or silently retry mutations; report exactly what exists, what failed, and the safe manual or supported next action.
+
+For an explicitly requested repair of a previously created run, read it with `zephyr_get_test_run`, preserve the user-approved tester-to-case mapping, resolve each tester again, and call `zephyr_assign_test_run_item` only for mismatched items. Require `_testdocs.assignmentVerified: true` for every changed item and report any unverifiable partial result.
 
 ## Output
 
@@ -91,4 +94,4 @@ Capabilities and limitations: ...
 External writes performed: none
 ```
 
-After creation, return the stable Test Run key/URL and Jira issue key/URL supplied by the connectors, attached-case and assignment counts, and any partial failures. Never invent a URL or claim that a relation or assignment exists without a successful connector response.
+After creation, return the stable Test Run key/URL and Jira issue key/URL supplied by the connectors, attached-case count, verified assignment count and balance by tester, final Test Run name, Jira summary and description convention used, and any partial failures. Never invent a URL or claim that a relation or assignment exists without a successful read-back verification.

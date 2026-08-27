@@ -128,14 +128,14 @@ async function main() {
     server.registerTool(
       "jira_create_qa_work_item",
       {
-        description: "Create exactly one linked non-defect Jira QA work item after an explicit user request and live create-metadata validation. Use additionalFields for the exact release, QA component/routing, specialist, and created Test Run coverage value from live metadata. Reporter remains the authenticated user and assignee defaults to that same user. Does not comment, transition, edit, delete, or create another issue.",
+        description: "Create exactly one linked non-defect Jira QA work item after an explicit user request and live create-metadata validation. Summary and description are mandatory and must reproduce the exact templates from the project-backed instruction for the selected launch kind, release, and platform. Use additionalFields for the exact release, QA component/routing, specialist, and created Test Run coverage value from live metadata. Reporter remains the authenticated user and assignee defaults to that same user. Does not comment, transition, edit, delete, or create another issue.",
         inputSchema: z.object({
           confirmed: z.literal(true),
           projectKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/),
           issueTypeId: z.string().min(1).optional(),
           issueTypeName: z.string().min(1).optional(),
           summary: z.string().min(1).max(500),
-          description: z.string().optional(),
+          description: z.string().min(1),
           additionalFields: z.record(z.string(), z.unknown()).optional(),
           assignToCurrentUser: z.boolean().optional().default(true)
         }).refine((input) => Boolean(input.issueTypeId || input.issueTypeName), {
@@ -341,11 +341,36 @@ async function main() {
     async (input) => toTextResult(await tools.zephyr_list_test_run_folders(input))
   );
 
+  server.registerTool(
+    "zephyr_get_test_run",
+    {
+      description: "Read one exact Zephyr Server/DC Test Run through the public API, including its saved items and item-level userKey assignments. Use after creation or when auditing whether named testers were actually assigned; do not infer success from the create request alone.",
+      inputSchema: z.object({
+        testRunKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*-[A-Za-z]\d+$/)
+      })
+    },
+    async (input) => toTextResult(await tools.zephyr_get_test_run(input))
+  );
+
   if (releaseTestRunCreationEnabled) {
+    server.registerTool(
+      "zephyr_assign_test_run_item",
+      {
+        description: "Assign one existing Test Run item to one exact Jira user through the public Test Result assignedTo field after explicit user intent. Reads the run before writing, skips an already-correct assignment, performs at most one PUT, and reads the saved item back. Use for a user-approved repair of an existing run; do not bulk-guess mappings or report success without assignmentVerified.",
+        inputSchema: z.object({
+          confirmed: z.literal(true),
+          testRunKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*-[A-Za-z]\d+$/),
+          testCaseKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*-T\d+$/),
+          userKey: z.string().min(1).describe("Exact value returned by jira_find_assignable_users for the named tester.")
+        })
+      },
+      async (input) => toTextResult(await tools.zephyr_assign_test_run_item(input))
+    );
+
     server.registerTool(
       "zephyr_create_test_run",
       {
-        description: "Create exactly one immutable Zephyr Scale Server/DC Test Run/Test Cycle through the public POST /rest/atm/1.0/testrun API after an explicit user request. Send the complete deduplicated case list, exact release issue links, and resolved Jira userKey for every item in this one call: the public API cannot add, remove, rename, or reassign the run composition afterward. For root creation omit folder completely; never send '/'. For a non-root target, first resolve an exact path with zephyr_list_test_run_folders instead of guessing. Does not delete or recreate a run on failure.",
+        description: "Create exactly one Zephyr Scale Server/DC Test Run/Test Cycle through the public API, read it back, and verify every saved testCaseKey-to-userKey assignment. If creation ignored an item assignment, the tool makes one documented PUT assignedTo attempt for that exact Test Run item and verifies again. Send the complete deduplicated case list, exact release issue links, and resolved Jira userKey for every item; case composition itself remains immutable. Name must follow the exact project-backed Test Run title convention. The public schema has no Test Run description field; the required organizational description belongs to the linked Jira QA work item. For root creation omit folder completely; never send '/'. For a non-root target, first resolve an exact path with zephyr_list_test_run_folders instead of guessing. Does not delete or recreate a run on failure and never reports unverified assignments as successful.",
         inputSchema: z.object({
           confirmed: z.literal(true),
           projectKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/),

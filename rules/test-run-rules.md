@@ -112,6 +112,17 @@ Every included execution must have exactly one assignee from the tester list sup
 
 Use the exact project-backed Test Run title format. Do not derive it from an example in another project.
 
+When the supplied organizational instruction `Задачи для QA` governs the current Jira project, apply its launch-specific templates exactly after substituting the exact release and uppercase platform:
+
+- release regression Test Run: `Релиз <версия> Regress (<WEB|APP>)`;
+- release smoke Test Run: `Релиз <версия> Smoke (<WEB|APP>)`;
+- regression Jira summary: `QA. Регрессионное тестирование <версия> (<WEB|APP>)`;
+- smoke Jira summary: `QA. Smoke-тестирование <версия> (<WEB|APP>)`.
+
+The linked Jira QA work-item description is mandatory. Copy the complete launch-specific description from the governing instruction, including its defect-link relation, requirement to attach the revealing test case, and exact source-defined regression or smoke label convention. Do not shorten it to a generic time-tracking sentence. Use the instruction-defined non-defect issue type, release, QA component, Test Run coverage relation, and authenticated-user ownership after validating them against live Jira metadata. If the instruction does not define the selected launch kind, request the missing convention instead of adapting regression or smoke wording.
+
+The public Zephyr Server/DC Test Run create schema has a `name` but no description field. Apply the Test Run naming convention to Zephyr and the required organizational description to the linked Jira QA work item; do not claim that a Test Run description was written through an unsupported field.
+
 Treat the Test Run folder tree as distinct from the test-case library tree. Before creating in a non-root folder, resolve an exact existing Test Run folder path through the connected read capability; do not construct or retry candidate paths from test-case folders, project names, or release names. The public Zephyr Server/DC API can discover folder paths only from existing Test Runs because it has no folder-tree read endpoint, so an empty folder may require an exact user-supplied path. For the Test Run root, omit the `folder` field completely; `/` is not a root value for Test Run creation.
 
 When the request explicitly includes creation of the related QA work item:
@@ -132,6 +143,10 @@ For sanity, hotfix, `web_mobile`, or another mode not covered by a project-backe
 A proposal request does not authorize external writes. An explicit request to create the Test Run and linked Jira work item authorizes only those named creations after the full payload and targets pass validation.
 
 Treat Test Run creation, case attachment, task linking, execution assignment, Jira issue creation, and Test Run-to-issue linking as distinct results that all require validation, even when one adapter combines the Test Run results in one call. The public Server/DC adapter creates the run with its complete case, task-link, and assignment composition in a single immutable `POST /rest/atm/1.0/testrun` request. Preflight every required value before that mutation. Create the Test Run before the Jira work item so the returned stable run reference can populate test coverage.
+
+After creation, read the Test Run back and compare every requested `testCaseKey → userKey` assignment with the saved item. A requested or connector-reported count is not proof of assignment. When an item exists but its assignment was ignored, the bundled adapter may make one documented `PUT assignedTo` attempt for that exact Test Run item and then read the run again. Count only verified saved assignments. Do not continue to Jira work-item creation while an item or assignment mismatch remains; preserve the created Test Run key and report the partial result without deleting or recreating it.
+
+Repairing assignments in a previously created Test Run is a separate external write. Perform it only after an explicit user request naming the run and approved tester-to-case mapping. Resolve every tester to an exact Jira `userKey`, call the guarded item-assignment capability once per changed case, and require read-back verification. Skip already-correct assignments and never alter execution status, evidence, or case composition as a side effect.
 
 For a non-root target, call the folder-discovery capability once and use only an exact returned path. Do not retry a failed create with guessed folder variants. A `400` folder error means the requested run was not created; report the rejected exact value and return to read-only discovery or request the exact path when the folder may be empty.
 
