@@ -339,7 +339,7 @@ try {
           apiVersion: "2",
           enableBugCreation: true,
           enableChecklistCommentPublication: true,
-          enableReleaseTestRunCreation: true
+          enableReleaseTestRunCreation: false
         }
       ],
       confluence: [],
@@ -394,6 +394,23 @@ try {
   assert(JSON.stringify(afterReuse.connections) === JSON.stringify(beforeReuseParsed.connections), "--reuse изменил подключения или секреты.");
   assert(JSON.stringify(afterReuse.tms) === JSON.stringify(beforeReuseParsed.tms), "--reuse изменил TMS.");
 
+  const enableReleaseRunResult = spawnSync(process.execPath, [
+    path.join(scriptsDir, "install.mjs"),
+    "--clients", "generic",
+    "--reuse",
+    "--enable-release-test-run-writes",
+    "--skip-dependencies",
+    "--no-cli"
+  ], { cwd: repoRoot, env, encoding: "utf8" });
+  assert(enableReleaseRunResult.status === 0, "Не включены узкие Test Run write-инструменты.");
+  const afterEnableReleaseRun = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
+  const firstJira = afterEnableReleaseRun.connections.jira.find((jira) => jira.id === "jira-one");
+  const zephyrJira = afterEnableReleaseRun.connections.jira.find((jira) => jira.id === "jira-two");
+  assert(firstJira.enableReleaseTestRunCreation === false, "Узкий opt-in включил Test Run для посторонней Jira.");
+  assert(zephyrJira.enableReleaseTestRunCreation === true, "Узкий opt-in не включил Test Run для выбранной Zephyr Jira.");
+  assert(firstJira.enableBugCreation === false && firstJira.enableChecklistCommentPublication === false, "Узкий opt-in включил посторонние Jira writes.");
+  assert(enableReleaseRunResult.stdout.includes("Разрешены только Test Run и связанная QA-задача для jira-two"), "Узкий opt-in не сообщил точное подключение.");
+
   const enableWritesResult = spawnSync(process.execPath, [
     path.join(scriptsDir, "install.mjs"),
     "--clients", "generic",
@@ -425,6 +442,7 @@ try {
   console.log("Независимая QA Report integration без Jira/Confluence: OK");
   console.log("Выбор QA Tools, login/password и защищённый MCP proxy: OK");
   console.log("Несколько Jira, единая Eva и повторное применение настроек: OK");
+  console.log("Узкий opt-in Test Run только для выбранной Zephyr Jira: OK");
   console.log("Явное включение защищённых Jira write-инструментов при обновлении: OK");
 } finally {
   fs.rmSync(testRoot, { recursive: true, force: true });

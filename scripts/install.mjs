@@ -44,7 +44,8 @@ function parseArgs(argv) {
     add: null,
     openCodeFormat: null,
     caFile: null,
-    enableJiraWrites: process.env.TESTDOCS_ENABLE_JIRA_WRITES === "1"
+    enableJiraWrites: process.env.TESTDOCS_ENABLE_JIRA_WRITES === "1",
+    enableReleaseTestRunWrites: process.env.TESTDOCS_ENABLE_RELEASE_TEST_RUN_WRITES === "1"
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -56,6 +57,7 @@ function parseArgs(argv) {
     else if (arg === "--opencode-format") result.openCodeFormat = argv[++index];
     else if (arg === "--ca-file") result.caFile = argv[++index];
     else if (arg === "--enable-jira-writes") result.enableJiraWrites = true;
+    else if (arg === "--enable-release-test-run-writes") result.enableReleaseTestRunWrites = true;
     else if (arg === "--force") result.force = true;
     else if (arg === "--skip-dependencies") result.skipDependencies = true;
     else if (arg === "--no-cli") result.noCli = true;
@@ -81,6 +83,8 @@ function showHelp() {
   --enable-jira-writes                     Разрешить создание Bug, публикацию checklist,
                                           Test Run и связанной QA-задачи
                                           для сохранённых Jira-подключений
+  --enable-release-test-run-writes         Разрешить только Test Run и связанную QA-задачу
+                                          для Jira, выбранной текущим Zephyr
   --skip-dependencies                     Не выполнять npm ci; Confluence всё равно пересобирается
   --no-cli                                Не вызывать CLI клиентов
   --skip-browser-auth                     Не открывать браузер для session-входа
@@ -1075,6 +1079,17 @@ async function main() {
     console.log("Разрешены защищённые Jira-инструменты создания Bug, публикации checklist, Test Run и связанной QA-задачи по явному запросу.");
   }
   config.tms ||= { category: "none", provider: "none" };
+  if (args.enableReleaseTestRunWrites) {
+    if (config.tms.category !== "zephyr" || !config.tms.jiraConnectionId) {
+      throw new Error("Нельзя включить Test Run write-tools: Zephyr не выбран или не привязан к Jira.");
+    }
+    const jira = findConnection(config, "jira", config.tms.jiraConnectionId);
+    if (!jira) {
+      throw new Error("Нельзя включить Test Run write-tools: выбранное Zephyr Jira-подключение не найдено.");
+    }
+    jira.enableReleaseTestRunCreation = true;
+    console.log(`Разрешены только Test Run и связанная QA-задача для ${jira.id} по явному запросу.`);
+  }
   for (const jira of connectionList(config, "jira")) {
     jira.testCaseUrlTemplate ||= `${jira.url}/secure/Tests.jspa#/testCase/{key}`;
     jira.testRunUrlTemplate ||= `${jira.url}/secure/Tests.jspa#/testCycle/{key}`;

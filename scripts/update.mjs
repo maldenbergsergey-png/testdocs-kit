@@ -9,11 +9,14 @@ const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptsDir, "..");
 
 function parseArgs(argv) {
-  const supported = new Set(["--enable-jira-writes"]);
+  const supported = new Set(["--enable-jira-writes", "--enable-release-test-run-writes"]);
   for (const arg of argv) {
     if (!supported.has(arg)) throw new Error(`Неизвестный аргумент: ${arg}`);
   }
-  return { enableJiraWrites: argv.includes("--enable-jira-writes") };
+  return {
+    enableJiraWrites: argv.includes("--enable-jira-writes"),
+    enableReleaseTestRunWrites: argv.includes("--enable-release-test-run-writes")
+  };
 }
 
 function run(command, args, options = {}) {
@@ -28,6 +31,7 @@ try {
   run("git", ["pull", "--ff-only"]);
   const installArgs = [path.join(scriptsDir, "install.mjs"), "--reuse", "--skip-browser-auth"];
   if (args.enableJiraWrites) installArgs.push("--enable-jira-writes");
+  if (args.enableReleaseTestRunWrites) installArgs.push("--enable-release-test-run-writes");
   run(process.execPath, installArgs);
   console.log("Обновление завершено. Перезапустите AI-клиент.");
 } catch (error) {

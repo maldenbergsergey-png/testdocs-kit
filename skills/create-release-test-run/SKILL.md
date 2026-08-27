@@ -62,7 +62,7 @@ Before creation, verify that the connected tools separately support:
 
 Call `zephyr_create_test_run` once with the complete deduplicated `items` list, exact release issue links, and resolved assignee `userKey` for every item. The public Server/DC API makes the run composition immutable, so do not create an empty run or plan to attach or reassign cases later. After the run returns a stable key, call `jira_create_qa_work_item` with the exact live-metadata fields and that run key or URL in the semantic test-coverage field.
 
-If either protected create-tool is absent, report that creation is not enabled for this connection and give the recovery command `TESTDOCS_ENABLE_JIRA_WRITES=1 npm run update`; do not describe the workflow itself as forbidden. On a partial failure, do not delete, recreate, or silently retry mutations; report exactly what exists, what failed, and the safe manual or supported next action.
+If either protected create-tool is absent, report that creation is not enabled for the Zephyr-linked Jira connection and give the narrow recovery command `npm run update -- --enable-release-test-run-writes`; do not describe the workflow itself as forbidden. This opt-in must not enable Bug creation, checklist publication, generic Jira writes, or Test Run writes for other Jira connections. On a partial failure, do not delete, recreate, or silently retry mutations; report exactly what exists, what failed, and the safe manual or supported next action.
 
 ## Output
 
