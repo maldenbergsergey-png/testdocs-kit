@@ -112,6 +112,8 @@ Every included execution must have exactly one assignee from the tester list sup
 
 Use the exact project-backed Test Run title format. Do not derive it from an example in another project.
 
+Treat the Test Run folder tree as distinct from the test-case library tree. Before creating in a non-root folder, resolve an exact existing Test Run folder path through the connected read capability; do not construct or retry candidate paths from test-case folders, project names, or release names. The public Zephyr Server/DC API can discover folder paths only from existing Test Runs because it has no folder-tree read endpoint, so an empty folder may require an exact user-supplied path. For the Test Run root, omit the `folder` field completely; `/` is not a root value for Test Run creation.
+
 When the request explicitly includes creation of the related QA work item:
 
 - read the exact project's live create metadata for the requested non-defect work-item type;
@@ -130,6 +132,8 @@ For sanity, hotfix, `web_mobile`, or another mode not covered by a project-backe
 A proposal request does not authorize external writes. An explicit request to create the Test Run and linked Jira work item authorizes only those named creations after the full payload and targets pass validation.
 
 Treat Test Run creation, case attachment, task linking, execution assignment, Jira issue creation, and Test Run-to-issue linking as distinct results that all require validation, even when one adapter combines the Test Run results in one call. The public Server/DC adapter creates the run with its complete case, task-link, and assignment composition in a single immutable `POST /rest/atm/1.0/testrun` request. Preflight every required value before that mutation. Create the Test Run before the Jira work item so the returned stable run reference can populate test coverage.
+
+For a non-root target, call the folder-discovery capability once and use only an exact returned path. Do not retry a failed create with guessed folder variants. A `400` folder error means the requested run was not created; report the rejected exact value and return to read-only discovery or request the exact path when the folder may be empty.
 
 If a later operation fails, do not delete or duplicate the created run or issue automatically. Return the successful object identifiers and URLs, failed operations, and the safest supported recovery. Never claim a case, task, user, version, or Test Run was linked without a successful connector response.
 

@@ -774,6 +774,75 @@ async function zephyrGetIssueTestCases({ issueKey }) {
   };
 }
 
+async function zephyrListTestRunFolders({ projectKey, contains, maxResults = 2000 }) {
+  if (!projectKey || !/^[A-Za-z][A-Za-z0-9_]*$/.test(projectKey)) {
+    throw new Error("An exact Jira projectKey is required.");
+  }
+
+  const scanLimit = Math.min(Math.max(Number(maxResults) || 2000, 1), 5000);
+  const pageSize = 200;
+  const runs = [];
+  const seenPages = new Set();
+  let startAt = 0;
+  let complete = true;
+
+  while (runs.length < scanLimit) {
+    const params = new URLSearchParams({
+      fields: "key,name,folder",
+      query: `projectKey = "${escapeTqlValue(projectKey)}"`,
+      startAt: String(startAt),
+      maxResults: String(Math.min(pageSize, scanLimit - runs.length))
+    });
+    const data = await zephyrRequest(`/rest/atm/1.0/testrun/search?${params.toString()}`);
+    const page = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.results)
+        ? data.results
+        : Array.isArray(data?.values)
+          ? data.values
+          : [];
+    const signature = page.map((run) => run?.key || `${run?.name || ""}:${run?.folder || ""}`).join("|");
+    if (page.length && seenPages.has(signature)) {
+      complete = false;
+      break;
+    }
+    if (page.length) seenPages.add(signature);
+    runs.push(...page);
+    if (page.length < Math.min(pageSize, scanLimit - (runs.length - page.length))) break;
+    startAt += page.length;
+  }
+
+  if (runs.length >= scanLimit) complete = false;
+  const needle = String(contains || "").trim().toLocaleLowerCase();
+  const byFolder = new Map();
+  for (const run of runs) {
+    if (typeof run?.folder !== "string" || !run.folder.trim()) continue;
+    const path = run.folder.trim();
+    if (needle && !path.toLocaleLowerCase().includes(needle)) continue;
+    const current = byFolder.get(path) || { path, sampleTestRuns: [] };
+    if (current.sampleTestRuns.length < 3) {
+      current.sampleTestRuns.push({ key: run.key || null, name: run.name || null });
+    }
+    byFolder.set(path, current);
+  }
+
+  return {
+    projectKey,
+    folders: [...byFolder.values()].sort((left, right) => left.path.localeCompare(right.path)),
+    root: {
+      path: null,
+      createInstruction: "Omit the folder field completely. Never send '/' for the Test Run root."
+    },
+    _testdocs: {
+      readOnly: true,
+      discoveryBasis: "existing_test_runs",
+      scannedTestRunCount: runs.length,
+      complete,
+      limitation: "The public Zephyr Server/DC API has no folder-tree read endpoint. Empty Test Run folders cannot be discovered from search results; an exact user-supplied path is still required for an empty folder."
+    }
+  };
+}
+
 function escapeHtmlText(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -878,6 +947,9 @@ async function zephyrCreateTestRun({
   }
   if (folder && !folder.startsWith("/")) {
     throw new Error("folder must be an existing absolute Zephyr folder path beginning with '/'.");
+  }
+  if (folder === "/") {
+    throw new Error("For the Test Run root, omit folder completely; '/' is not a valid Test Run folder value.");
   }
   if (items.some((item) => !item?.testCaseKey || !item?.userKey)) {
     throw new Error("Every Test Run item requires testCaseKey and the resolved Jira userKey assignee.");
@@ -1073,6 +1145,7 @@ module.exports = {
      zephyr_get_test_case: zephyrGetTestCase,
      zephyr_get_all_test_cases: zephyrGetAllTestCases,
      zephyr_get_issue_test_cases: zephyrGetIssueTestCases,
+     zephyr_list_test_run_folders: zephyrListTestRunFolders,
      zephyr_create_test_run: zephyrCreateTestRun,
      zephyr_create_test_case: zephyrCreateTestCase,
      zephyr_update_session_test_case: zephyrUpdateSessionTestCase,

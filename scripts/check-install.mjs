@@ -104,6 +104,7 @@ async function main() {
     }
     if (usesZephyr(config, jira.id)) {
       assert(tools.includes("zephyr_get_issue_test_cases"), "Jira MCP не отдал чтение кейсов, связанных с задачей.");
+      assert(tools.includes("zephyr_list_test_run_folders"), "Jira MCP не отдал поиск папок Test Run.");
     }
     if (usesZephyr(config, jira.id) && config.enableTestCaseCreation !== false) {
       assert(tools.includes("zephyr_create_test_case"), "Jira MCP не отдал инструмент создания кейса Zephyr.");

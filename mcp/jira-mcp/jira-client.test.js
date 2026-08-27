@@ -257,6 +257,32 @@ test("zephyr_get_issue_test_cases reads direct Jira-to-case relations without cl
   assert.equal(result._testdocs.completeCaseContent, false);
 });
 
+test("zephyr_list_test_run_folders discovers exact non-root paths and documents root omission", async (t) => {
+  let requestedUrl;
+  t.mock.method(global, "fetch", async (url) => {
+    requestedUrl = String(url);
+    return response(200, [
+      { key: "DEMO-R1", name: "Regression", folder: "/WEB/Release 2.14" },
+      { key: "DEMO-R2", name: "Smoke", folder: "/WEB" },
+      { key: "DEMO-R3", name: "Repeat", folder: "/WEB/Release 2.14" },
+      { key: "DEMO-R4", name: "Root run" }
+    ]);
+  });
+
+  const result = await tools.zephyr_list_test_run_folders({ projectKey: "DEMO", contains: "web" });
+  const parsed = new URL(requestedUrl);
+
+  assert.equal(parsed.pathname, "/rest/atm/1.0/testrun/search");
+  assert.equal(parsed.searchParams.get("fields"), "key,name,folder");
+  assert.equal(parsed.searchParams.get("query"), 'projectKey = "DEMO"');
+  assert.deepEqual(result.folders.map((folder) => folder.path), ["/WEB", "/WEB/Release 2.14"]);
+  assert.equal(result.folders[1].sampleTestRuns.length, 2);
+  assert.equal(result.root.path, null);
+  assert.match(result.root.createInstruction, /Omit the folder field/);
+  assert.equal(result._testdocs.discoveryBasis, "existing_test_runs");
+  assert.match(result._testdocs.limitation, /Empty Test Run folders cannot be discovered/);
+});
+
 test("zephyr_create_test_case sends step-level test data to the public Server API", async (t) => {
   let request;
   t.mock.method(global, "fetch", async (url, options) => {
@@ -386,6 +412,18 @@ test("zephyr_create_test_run sends the complete linked and assigned composition 
 
 test("zephyr_create_test_run rejects silent, unassigned, or duplicate composition before any request", async (t) => {
   const fetchMock = t.mock.method(global, "fetch", async () => response(201, { key: "UNEXPECTED-R1" }));
+  await assert.rejects(
+    tools.zephyr_create_test_run({
+      confirmed: true,
+      projectKey: "DEMO",
+      name: "Root must omit folder",
+      folder: "/",
+      version: "2.14.0",
+      issueLinks: ["DEMO-1"],
+      items: [{ testCaseKey: "DEMO-T1", userKey: "JIRAUSER1" }]
+    }),
+    /omit folder completely/
+  );
   await assert.rejects(
     tools.zephyr_create_test_run({
       projectKey: "DEMO",

@@ -328,16 +328,29 @@ async function main() {
     async (input) => toTextResult(await tools.zephyr_get_issue_test_cases(input))
   );
 
+  server.registerTool(
+    "zephyr_list_test_run_folders",
+    {
+      description: "Discover existing Zephyr Server/DC Test Run folder paths by searching existing Test Runs in one exact project through the public API. Use this before creating a run in a non-root folder instead of guessing paths. Root is always represented by omitting folder, never by '/'. Because the public API has no folder-tree read endpoint, empty folders are not discoverable by this tool.",
+      inputSchema: z.object({
+        projectKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/),
+        contains: z.string().min(1).optional().describe("Optional case-insensitive substring used to narrow returned folder paths locally."),
+        maxResults: z.number().int().positive().max(5000).optional().default(2000).describe("Maximum existing Test Runs to scan while discovering folder paths.")
+      })
+    },
+    async (input) => toTextResult(await tools.zephyr_list_test_run_folders(input))
+  );
+
   if (releaseTestRunCreationEnabled) {
     server.registerTool(
       "zephyr_create_test_run",
       {
-        description: "Create exactly one immutable Zephyr Scale Server/DC Test Run/Test Cycle through the public POST /rest/atm/1.0/testrun API after an explicit user request. Send the complete deduplicated case list, exact release issue links, and resolved Jira userKey for every item in this one call: the public API cannot add, remove, rename, or reassign the run composition afterward. Does not delete or recreate a run on failure.",
+        description: "Create exactly one immutable Zephyr Scale Server/DC Test Run/Test Cycle through the public POST /rest/atm/1.0/testrun API after an explicit user request. Send the complete deduplicated case list, exact release issue links, and resolved Jira userKey for every item in this one call: the public API cannot add, remove, rename, or reassign the run composition afterward. For root creation omit folder completely; never send '/'. For a non-root target, first resolve an exact path with zephyr_list_test_run_folders instead of guessing. Does not delete or recreate a run on failure.",
         inputSchema: z.object({
           confirmed: z.literal(true),
           projectKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/),
           name: z.string().min(1).max(255),
-          folder: z.string().min(1).regex(/^\//).optional().describe("Existing Test Run folder path, not the test-case search folder unless they are confirmed identical."),
+          folder: z.string().min(2).regex(/^\//).optional().describe("Exact existing non-root Test Run folder path. Omit this field completely for root; '/' is invalid for Test Run creation."),
           version: z.string().min(1).describe("Exact Zephyr release version name."),
           testPlanKey: z.string().min(1).optional(),
           iteration: z.string().min(1).optional(),

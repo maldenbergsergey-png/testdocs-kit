@@ -29,6 +29,7 @@ For a release Test Run/Test Cycle workflow, confirm separately that the connecto
 
 - resolve the exact release version and retrieve its Jira issues;
 - list all complete cases inside an exact existing folder boundary;
+- discover exact Test Run folder paths represented by existing Test Runs; root creation omits `folder`, while empty Test Run folders remain undiscoverable through the public API;
 - find cases linked to each release issue;
 - create a Test Run/Test Cycle with a stable returned key and URL;
 - attach the selected cases and release issues;
