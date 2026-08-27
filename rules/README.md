@@ -15,6 +15,7 @@ This directory is the source of truth for QA test-documentation policy. Skills d
 - [`coverage-rules.md`](coverage-rules.md) — permanent coverage decision rules.
 - [`coverage-matrix-rules.md`](coverage-matrix-rules.md) — functionality decomposition and scenario-to-case mapping.
 - [`regression-model-rules.md`](regression-model-rules.md) — construction and maintenance of a traceable regression coverage model.
+- [`test-run-rules.md`](test-run-rules.md) — release Test Run discovery, eligibility, depth, assignment, and creation rules.
 - [`update-rules.md`](update-rules.md) — safe changes to existing cases.
 - [`review-rules.md`](review-rules.md) — review criteria and finding severity.
 - [`standard-derivation-rules.md`](standard-derivation-rules.md) — evidence and approval rules for deriving shared policy from a documentation corpus.

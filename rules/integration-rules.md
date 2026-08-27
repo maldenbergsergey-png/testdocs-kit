@@ -15,9 +15,14 @@ Identify integrations by capability rather than product name or MCP tool name:
 | Knowledge read | Retrieve a supplied or issue-linked specification or Confluence page | Optional |
 | TMS read | Find and read existing cases, versions, links, folders, and lifecycle metadata | Optional |
 | TMS write | Create, update, link, comment on, version, or change status of reviewed cases | Optional and approval-gated |
+| Release scope read | Resolve an exact release version and retrieve the issues included in it | Only for a release Test Run workflow |
+| Test Run read | Read Test Run/Test Cycle metadata, linked cases, executions, assignments, and relations | Optional |
+| Test Run create | Create one validated Test Run/Test Cycle, attach cases and release tasks, and assign executions | Optional and approval-gated |
 | Jira checklist comment | Publish finalized Jira Wiki checklist to the anchored issue as the authenticated user | Optional and approval-gated |
 | Jira create metadata | Read the authenticated user and exact project/type field schema needed for a bug draft | Only for Jira bug creation |
 | Jira bug create | Create one validated defect issue and return its key and URL | Optional and approval-gated |
+| Jira QA work-item metadata | Read the exact non-defect work-item schema and authenticated user | Only for linked Test Run work-item creation |
+| Jira QA work-item create | Create one validated non-defect QA work item and attach the created Test Run | Optional and approval-gated |
 | QA Report import | Send finalized Jira Wiki checklist and receive a short-lived editor URL | Optional and approval-gated |
 
 Do not assume a capability exists because a server is named Jira, Confluence, Zephyr, or TMS. Inspect the tools exposed by the current connection. Preserve separate error states for unavailable capability, permission denied, not found, ambiguous instance, and empty result.
@@ -42,14 +47,16 @@ Use the context supplied in chat, files, or other explicitly scoped sources. Do 
 
 A standalone Confluence or knowledge-page URL is a valid primary scope anchor even when no Jira issue exists. Retrieve that exact page and only materially relevant linked sources. Do not require an issue key, infer an issue, or broaden to the whole knowledge space.
 
+An exact release version is a valid scope anchor for a Test Run request. Resolve that version in the explicitly supplied Jira project or connection, retrieve only its release issues and materially linked requirements, then search cases only inside the user-specified TMS folder boundary. Do not infer a project from the version name or broaden the search to another release or the whole test library.
+
 ## Neutral context bundle
 
 Normalize retrieved material into this tool-independent bundle:
 
 ```text
-Request intent: prepare testing (checklist-only | full package | cases-only | task-scoped cases | optimize | review; optional targeted scope) | prepare bug report (draft | create) | analyze coverage | update | build matrix | build regression model
-Input mode: ISSUE_ANCHORED | KNOWLEDGE_ANCHORED | TMS_ANCHORED | MANUAL_CONTEXT
-Scope anchor: issue key/link or supplied-context description
+Request intent: prepare testing (checklist-only | full package | cases-only | task-scoped cases | optimize | review; optional targeted scope) | prepare bug report (draft | create) | prepare test run (draft | create) | analyze coverage | update | build matrix | build regression model
+Input mode: ISSUE_ANCHORED | RELEASE_ANCHORED | KNOWLEDGE_ANCHORED | TMS_ANCHORED | MANUAL_CONTEXT
+Scope anchor: issue key/link, exact release version, or supplied-context description
 Issue facts: summary, behavior, acceptance criteria, status, decisions
 Relevant comment evidence: evidence type, relevant content, exact comment link or ID, author/date when available, and corroboration status for previous checklists
 Relevant linked requirements and knowledge: stable ID/link, title, version when available, relevant content
@@ -57,6 +64,7 @@ Relevant source links: exact URL, readable purpose, source location, retrieval s
 Source field inventory: every explicitly defined field, control, tab, default, validation, visibility condition, role, state, and constraint; each marked retrieved, ambiguous, or unavailable
 Existing test coverage: stable case IDs, versions, lifecycle, links, and complete case content when needed
 Existing coverage discovery: COMPLETE | PARTIAL | UNAVAILABLE; directly linked cases; discovered relevant cases; search scope; limitations
+Test Run scope when applicable: launch kind; coverage depth; platform; TMS folder; eligible testers; title convention; case-to-task traceability; assignment proposal
 Source conflicts: ...
 Missing capabilities or permissions: ...
 Missing behavioral context: ...
@@ -101,6 +109,8 @@ Map any supported test-management product to the neutral test-case fields:
 
 Do not assume that test cases are Jira issues. Some products store them as separate test objects; others represent them through Jira issue types or vendor-specific entities. Use the capabilities exposed by the connected MCP server and preserve unsupported fields as explicit gaps.
 
+Do not assume that a Test Run/Test Cycle is a Jira issue or that creating the container also attaches cases, links release tasks, creates executions, or assigns testers. Inspect and validate each supported operation and return the stable run identifier and URL supplied by the connector.
+
 Do not assume modern Zephyr Scale endpoints, cloud field names, versioning, or call-step behavior for a legacy Test Management for Jira installation. Confirm the deployment, product version, and actual MCP tool schema first.
 
 The installer records one active TMS provider: `zephyr_scale` for Zephyr Scale / legacy Test Management for Jira, or `qa_tools` for QA Tools (ТестОпс). Zephyr shares the configured Jira connection and requires no separate base URL or credentials. QA Tools is an independent connection and requires its instance URL plus an API token or local username/password authentication. Use the selected provider's exposed capabilities only; do not query both TMS products speculatively.
@@ -113,6 +123,8 @@ Read-only retrieval is allowed when the user places the source in scope. Every w
 
 The same intent rule applies to a Jira bug: an explicit request to create/file/register a bug in an identified project authorizes one creation after live create metadata and required fields are validated. A request only to draft, compose, format, or show a bug report does not authorize creation. Bug creation does not authorize comments, attachments, links, transitions, edits, or reassignment.
 
+For Test Runs, a request to assemble, prepare, compose, show, or propose a run authorizes only reads and a reviewable proposal. An explicit request to create or register the Test Run and linked Jira QA work item authorizes only those named creations after the release, folder, case list, task relations, assignments, live Jira schema, and complete payloads are validated. Test Run creation does not authorize changing source cases or deleting a partially created run.
+
 Treat these as separate write operations. New-case creation requires either an explicit same-request create/publication instruction or a later confirmation of a reviewed draft. All other operations require a separate explicit request after review:
 
 - create a test case;
@@ -124,6 +136,8 @@ Treat these as separate write operations. New-case creation requires either an e
 - move a case or change folder membership;
 - publish a checklist as a Jira comment;
 - send a checklist to QA Report.
+
+Test Run container creation, case attachment, release-task linking, execution assignment, Jira QA work-item creation, and attachment of the run to that work item are separate external operations even when a connector exposes a composite call. Preflight the whole requested workflow before its first mutation. Create the run first so its returned stable reference can be used by the Jira work item. If a later step fails, preserve and report successful object identifiers and do not automatically delete, duplicate, or retry a mutation whose outcome is uncertain.
 
 For a TMS write, confirm the target Jira instance, project, TMS product, existing folder path (or explicit root), and exact operation. For creation, validate the complete case payload before the call and report the returned stable case key and full case URL afterward. After any successful case creation or permitted current-session correction, return a clickable full URL supplied by the connector. If the connector cannot supply one, report that gap and do not invent a route. Checklist delivery uses the narrower destination rules below. Never delete external cases automatically. A request to generate, analyze, review, or check actualization does not authorize publication.
 

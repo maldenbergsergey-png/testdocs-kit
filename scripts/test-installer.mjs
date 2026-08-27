@@ -108,6 +108,7 @@ try {
   assert(fs.existsSync(path.join(testRoot, ".claude", "skills", "generate-test-cases", "SKILL.md")), "Не установлены Claude Skills.");
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "prepare-task-testing", "SKILL.md")), "Не установлен task-first skill.");
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "create-bug-report", "SKILL.md")), "Не установлен skill создания баг-репортов.");
+  assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "create-release-test-run", "SKILL.md")), "Не установлен skill формирования Test Run.");
   assert(fs.existsSync(path.join(testRoot, ".claude", "skills", "generate-test-checklist", "SKILL.md")), "Не установлен checklist skill для Claude.");
 
   const publicConfigs = [codexConfig, openCodeConfig, genericConfig].map((file) => fs.readFileSync(file, "utf8")).join("\n");

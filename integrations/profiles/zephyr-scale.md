@@ -23,6 +23,20 @@ Preserve raw field and lifecycle values. Map them to the neutral context bundle 
 
 Treat create, update, new-version, issue-link, comment, status-change, folder-move, and called-step changes as separate operations. Prepare a concise audit comment for every mutation, but write it only through a separately exposed and authorized comment capability; never hide it in `Цель`. The bundled adapter exposes new-case creation, narrow session correction, and guarded existing-case update. Existing-case update requires an explicit apply request, a fingerprint from a complete baseline read, and a matching immediate pre-write re-read. Keep every other update and destructive operation unavailable.
 
+## Test Run capability checklist
+
+For a release Test Run/Test Cycle workflow, confirm separately that the connector can:
+
+- resolve the exact release version and retrieve its Jira issues;
+- list all complete cases inside an exact existing folder boundary;
+- find cases linked to each release issue;
+- create a Test Run/Test Cycle with a stable returned key and URL;
+- attach the selected cases and release issues;
+- create executions and assign each one to an exact user;
+- expose a stable Test Run value accepted by the Jira project's semantic test-coverage field or relation.
+
+Do not treat test-case creation capability as Test Run capability. Do not assume a cycle-create endpoint performs case attachment, issue linking, execution creation, or assignment unless the connector response confirms those results.
+
 ## Compatibility
 
 Do not hard-code one Cloud, Server, or Data Center API schema into the QA skills. Record deployment and product version in the connection profile, then adapt the MCP tool output to `rules/integration-rules.md`.

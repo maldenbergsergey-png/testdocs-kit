@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Release Test Run"
+  short_description: "Build and optionally create scoped release test runs"
+  default_prompt: "Use $create-release-test-run to build a release test run for this version, scope, platform, and coverage level."
