@@ -1,0 +1,4 @@
+interface:
+  display_name: "Explain Task Testing"
+  short_description: "Explain how to test a task without artifacts"
+  default_prompt: "Use $explain-task-testing to study my task and explain clearly how I can test it."

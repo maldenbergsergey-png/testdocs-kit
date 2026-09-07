@@ -21,18 +21,20 @@ function withUniqueIds(items, type) {
 }
 
 export function migrateConfig(input = {}) {
-  if (input.version === 2 && input.connections) {
+  if (input.version >= 2 && input.connections) {
     const config = structuredClone(input);
     config.connections = {
       jira: withUniqueIds(config.connections.jira, "jira"),
       confluence: withUniqueIds(config.connections.confluence, "confluence"),
-      eva: withUniqueIds(config.connections.eva, "eva")
+      eva: withUniqueIds(config.connections.eva, "eva"),
+      mcp: withUniqueIds(config.connections.mcp, "mcp")
     };
     for (const eva of config.connections.eva) delete eva.command;
     for (const jira of config.connections.jira) {
       jira.enableReleaseTestRunCreation = jira.enableReleaseTestRunCreation === true;
     }
     config.tms ||= { category: "none", provider: "none" };
+    config.version = 3;
     return config;
   }
 
@@ -57,8 +59,8 @@ export function migrateConfig(input = {}) {
 
   const config = {
     ...structuredClone(input),
-    version: 2,
-    connections: { jira, confluence, eva: [] },
+    version: 3,
+    connections: { jira, confluence, eva: [], mcp: [] },
     tms
   };
   delete config.jira;

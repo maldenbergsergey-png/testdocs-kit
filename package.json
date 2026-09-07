@@ -1,6 +1,6 @@
 {
   "name": "testdocs-kit",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "description": "Переносимый набор QA-скиллов и MCP-серверов для тестовой документации",
@@ -13,10 +13,12 @@
     "configure:eva": "node scripts/install.mjs --configure eva",
     "configure:tms": "node scripts/install.mjs --configure tms",
     "configure:delivery": "node scripts/install.mjs --configure delivery",
+    "configure:integrations": "node scripts/install.mjs --configure integrations",
     "add:jira": "node scripts/install.mjs --add jira",
     "add:confluence": "node scripts/install.mjs --add confluence",
     "add:eva": "node scripts/install.mjs --add eva",
     "auth": "node scripts/browser-auth.mjs",
+    "workspace": "node scripts/task-workspace.mjs",
     "check": "npm run test:checklist && node scripts/check-install.mjs",
     "test:bootstrap": "node scripts/test-bootstrap.mjs",
     "test:command-shell": "node --test scripts/command-shell.test.mjs",
@@ -25,9 +27,10 @@
     "test:qa-tools-mcp": "npm --prefix mcp/qa-tools-mcp test",
     "test:browser-auth": "node --check scripts/browser-auth.mjs",
     "test:session-auth": "node --test mcp/session-auth.test.cjs",
+    "test:workspace": "node --test scripts/task-workspace.test.mjs",
     "test:format": "node scripts/validate-test-case-format.mjs",
     "test:checklist": "node scripts/validate-checklist-format.mjs",
-    "test": "npm run test:format && npm run test:checklist && npm run test:bootstrap && npm run test:command-shell && npm run test:browser-auth && npm run test:session-auth && npm run test:mcp && npm run test:qa-tools-mcp && npm run test:installer"
+    "test": "npm run test:format && npm run test:checklist && npm run test:bootstrap && npm run test:command-shell && npm run test:browser-auth && npm run test:session-auth && npm run test:workspace && npm run test:mcp && npm run test:qa-tools-mcp && npm run test:installer"
   },
   "engines": {
     "node": ">=20"

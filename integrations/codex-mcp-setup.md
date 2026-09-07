@@ -37,6 +37,7 @@ npm run reconfigure
 npm run configure:jira
 npm run configure:eva
 npm run configure:tms
+npm run configure:integrations
 npm run add:jira
 ```
 
@@ -119,6 +120,20 @@ default_tools_approval_mode = "writes"
 ```
 
 Use `enabled_tools` only after the administrator supplies the server's exact tool names. Prefer a read-only allowlist for ordinary analysis. Keep write approvals enabled.
+
+### Official remote MCP used by task execution
+
+The bundled installer can add these remote servers without putting OAuth tokens in the repository:
+
+| Provider | Endpoint | Authentication |
+| --- | --- | --- |
+| Figma | `https://mcp.figma.com/mcp` | Browser OAuth; Google sign-in, when used, stays inside Figma's flow |
+| GitLab | `https://<host>/api/v4/mcp` | Browser OAuth/DCR; company Keycloak stays inside GitLab's flow |
+| Postman US | `https://mcp.postman.com/minimal` or `/mcp` for Full | Browser OAuth |
+| Postman EU | `https://mcp.eu.postman.com/<mode>` | `TESTDOCS_POSTMAN_AUTH_HEADER=Bearer ...` outside the repository |
+| Elastic Agent Builder | `{KIBANA_URL}[/s/{space}]/api/agent_builder/mcp` | Deployment-supported OAuth or `TESTDOCS_ELASTIC_AUTH_HEADER=ApiKey ...` |
+
+For GitLab, first confirm that the instance exposes its official MCP and permits OAuth Dynamic Client Registration, or obtain the administrator-approved client registration required by that host. For Elastic, confirm the version/deployment and Agent Builder availability; a normal Kibana browser SSO session does not automatically authenticate the MCP client.
 
 ## 4. Verify capabilities safely
 

@@ -1,6 +1,6 @@
 ---
 name: collect-test-context
-description: Collect and normalize QA context from an explicitly supplied Jira issue, standalone Confluence or knowledge page, document, local file, and existing cases in Zephyr Scale, legacy Test Management for Jira, or another TMS. Use before drafting a source-anchored bug report or generating, reviewing, updating, optimizing, or analyzing test documentation when external context is referenced. Remain read-only and return a traceable context bundle; do not create issues or publish cases.
+description: Collect and normalize QA context from an explicitly supplied Jira or GitLab issue/MR, Confluence or knowledge page, Figma node, API source, document, local file, logs, and existing cases in Zephyr Scale, legacy Test Management for Jira, or another TMS. Use before explaining or executing task testing, drafting a source-anchored bug report, or generating, reviewing, updating, optimizing, or analyzing test documentation when external context is referenced. Remain read-only and return a traceable context bundle; do not create issues or publish cases.
 ---
 
 # Collect test context
@@ -22,6 +22,8 @@ Read [`../../integrations/README.md`](../../integrations/README.md) only when co
 Accept:
 
 - a Jira issue key or URL plus a QA intent;
+- a GitLab issue, merge request, commit, pipeline, or repository URL;
+- a Figma node URL, Postman object URL, or scoped log/observability reference;
 - an exact release version, Jira project/connection, and Test Run intent;
 - a Confluence or knowledge-page link;
 - a TMS case key, URL, folder, or explicitly scoped search request;
@@ -29,11 +31,13 @@ Accept:
 
 Infer the intent branches from `task-testing-rules.md`: checklist-only, full package, cases-only, task-scoped cases, optimization, review, and targeted scope. Also recognize analyze coverage, update/apply, build a matrix, build a regression model, and prepare or create a release Test Run/Test Cycle. Do not make the user choose internal skills when their intent is clear.
 
+Also recognize advice-only task testing and hands-on execution from `task-execution-rules.md`. Read that rule for either branch.
+
 Also recognize bug-report draft and Jira bug-create intent from `bug-report-standard.md`. Read that rule when this branch is selected.
 
 ## Discover capabilities
 
-Inspect the tools available in the current host and classify them as issue read, issue relations, knowledge read, TMS read, or TMS write. Match by documented capability and input/output shape, not by a hard-coded tool name.
+Inspect the tools available in the current host and classify them as issue/change read, issue relations, knowledge read, design read, API workspace read/write, log read, TMS read, or TMS write. Match by documented capability and input/output shape, not by a hard-coded tool name.
 
 When setup selected QA Tools, use its `testops_find_*`, `testops_get_*`, or `testops_list_*` capabilities for scoped TMS reads. When setup selected Zephyr Scale / Test Management for Jira, use only the Zephyr-compatible capabilities from the Jira connection. Do not search an unselected second TMS.
 
@@ -45,17 +49,20 @@ When more than one Jira or company connection could satisfy the same key, stop b
 
 1. Record the request intent, supplied references, and requested scope.
 2. For a release Test Run request, resolve the exact version only in the supplied Jira project/connection, retrieve its release issues, and preserve the user-specified TMS folder, platform, launch kind, coverage depth, and tester list. Search no broader TMS scope than that folder.
-3. If an issue key or link is supplied, retrieve that issue as the primary anchor. Do not broaden to a project-wide search by default.
+3. If a Jira/GitLab issue, merge request, commit or link is supplied, retrieve that exact object as the primary anchor. Do not broaden to a project-wide or group-wide search by default.
 4. If a standalone Confluence or knowledge-page URL is supplied without an issue, retrieve that page as the primary knowledge anchor. Follow only its relevant requirement, design, attachment, or decision links. Do not require a Jira issue and do not crawl the whole space.
 5. Retrieve only relevant parent, child, linked issue, comment, attachment, and knowledge-page content needed to understand the requested behavior. In comments, identify decisions, corrections, unresolved questions, and recognizable previous tester checklists or execution notes.
 6. Inventory every URL in the primary issue and scoped knowledge pages. Classify relevant targets such as requirements, designs/mockups, API contracts, attachments, related decisions, and supporting documents; follow them only when they can materially affect the requested QA result. Preserve the exact URL, readable purpose, source location, and retrieval status. Do not claim an inaccessible target was read and do not crawl unrelated navigation.
-7. Before summarizing a structured source, inventory every explicitly named field, control, tab, default, validation, visibility condition, permission, state, and constraint in scope. Preserve the source wording and mark each item retrieved, ambiguous, or unavailable. Do not collapse unprocessed items into “other fields.”
-8. When existing coverage matters, use targeted discovery in this order: directly linked cases; cases explicitly named in sources; cases associated with a relevant parent, epic, or affected function when supported; focused search by stable page, function, block, or scenario terms; a confirmed folder or TMS area. Preserve raw product fields and stable identifiers. If a case key is known, read it directly. Do not use project-wide `get all` by default. For a Test Run, the confirmed folder is a hard search boundary, but every case inside it may be inspected when semantic fallback is required.
-9. If no external URL or key is supplied, use only the supplied chat, files, and explicitly scoped sources. Do not search an arbitrary external project.
-10. Preserve relevant comment evidence with its link or ID, author, date, and evidence type when available. Keep a previous checklist distinct from approved requirements and permanent TMS coverage; preserve its useful scenario text, but do not promote its expected results or execution status to facts without corroboration.
-11. Separate facts, source conflicts, missing permissions, missing capabilities, and missing behavioral information. Use `PARTIAL_CONTEXT` when a page, attachment, table, field list, comment checklist, or relevant linked target was truncated or only partly retrieved.
-12. Normalize the evidence into the context bundle from `integration-rules.md`.
-13. Route sufficient context to the requested downstream skill:
+7. For a supplied Figma selection link, preserve the exact file/node identity and retrieve only that node and materially required supported states. For a supplied Postman workspace/collection/request, retrieve only that API scope. For logs, require an environment plus a time or correlation boundary before querying.
+8. Before summarizing a structured source, inventory every explicitly named field, control, tab, default, validation, visibility condition, permission, state, and constraint in scope. Preserve the source wording and mark each item retrieved, ambiguous, or unavailable. Do not collapse unprocessed items into “other fields.”
+9. When existing coverage matters, use targeted discovery in this order: directly linked cases; cases explicitly named in sources; cases associated with a relevant parent, epic, or affected function when supported; focused search by stable page, function, block, or scenario terms; a confirmed folder or TMS area. Preserve raw product fields and stable identifiers. If a case key is known, read it directly. Do not use project-wide `get all` by default. For a Test Run, the confirmed folder is a hard search boundary, but every case inside it may be inspected when semantic fallback is required.
+10. If no external URL or key is supplied, use only the supplied chat, files, and explicitly scoped sources. Do not search an arbitrary external project.
+11. Preserve relevant comment evidence with its link or ID, author, date, and evidence type when available. Keep a previous checklist distinct from approved requirements and permanent TMS coverage; preserve its useful scenario text, but do not promote its expected results or execution status to facts without corroboration.
+12. Separate facts, source conflicts, missing permissions, missing capabilities, and missing behavioral information. Use `PARTIAL_CONTEXT` when a page, attachment, table, field list, comment checklist, or relevant linked target was truncated or only partly retrieved.
+13. Normalize the evidence into the context bundle from `integration-rules.md`.
+14. Route sufficient context to the requested downstream skill:
+   - advice-only “how to test” → `explain-task-testing`;
+   - hands-on task execution → `execute-task-testing`;
    - checklist-only preparation → `prepare-task-testing` checklist branch;
    - generic/full task preparation → `prepare-task-testing` full branch;
    - cases-only or task-scoped cases → `prepare-task-testing` corresponding cases branch;
@@ -68,7 +75,7 @@ When more than one Jira or company connection could satisfy the same key, stop b
    - coverage structure → `build-coverage-matrix`;
    - regression organization → `build-regression-model`;
    - release Test Run/Test Cycle preparation or creation → `create-release-test-run`.
-14. Return the bundle and downstream result in chat. Do not call an external write tool.
+15. Return the bundle and downstream result in chat. Do not call an external write tool.
 
 ## Actualization path
 

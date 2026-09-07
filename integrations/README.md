@@ -13,6 +13,10 @@ Integrations are context transport, not QA logic. This repository works fully wi
 - [`../rules/integration-rules.md`](../rules/integration-rules.md) — neutral context bundle and mandatory read/write boundaries.
 - [`../skills/collect-test-context/SKILL.md`](../skills/collect-test-context/SKILL.md) — read-only collection and routing workflow.
 - [`profiles/qa-report.md`](profiles/qa-report.md) — optional finalized-checklist import and external editor handoff.
+- [`profiles/gitlab.md`](profiles/gitlab.md) — official GitLab remote MCP, OAuth/Keycloak considerations, and scoped change context.
+- [`profiles/figma.md`](profiles/figma.md) — official Figma remote MCP and node-specific design comparison.
+- [`profiles/postman.md`](profiles/postman.md) — official Postman remote MCP modes for API assets and optional collection management.
+- [`profiles/elastic-kibana.md`](profiles/elastic-kibana.md) — version-aware Elastic Agent Builder MCP and scoped log analysis.
 
 ## Manual context is the baseline
 

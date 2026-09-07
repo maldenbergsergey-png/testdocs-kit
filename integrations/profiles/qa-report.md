@@ -20,6 +20,8 @@ Send `POST {baseUrl}/api/checklists/import` with JSON:
 
 The adapter validates an HTTP(S) base URL, requires explicit user confirmation, sends content in the POST body, and returns the editor URL. It does not store Jira or QA Report credentials.
 
+The current documented import contract contains checklist text and source metadata only. It has no attachment-upload field. Keep screenshots, videos and request evidence in the local task workspace and reference them in the report; do not claim they were uploaded to QA Report. Attach them manually or add a future documented attachment endpoint before automating that transfer.
+
 ## Opening behavior
 
 Open the returned URL only after an explicit user request, in a separate external browser tab/window. Do not embed QA Report into the AI client or another page. When browser control is unavailable, show a clickable link for the user.

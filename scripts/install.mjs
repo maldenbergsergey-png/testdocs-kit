@@ -75,7 +75,7 @@ function showHelp() {
   --clients codex,claude,opencode,generic  Настроить указанные клиенты
   --answers /path/to/answers.json          Взять ответы из JSON без вопросов
   --reuse                                 Применить сохранённые настройки без вопросов
-  --configure jira|confluence|eva|tms|delivery|all
+  --configure jira|confluence|eva|tms|delivery|integrations|all
                                           Перенастроить только выбранную часть
   --add jira|confluence|eva               Добавить подключение, сохранив существующие
   --opencode-format stable|v2              Явно выбрать формат OpenCode
@@ -337,6 +337,92 @@ async function collectQaReport(previous = {}) {
   return { enabled: true, baseUrl };
 }
 
+function previousMcp(items, provider) {
+  return (items || []).find((item) => item.provider === provider) || {};
+}
+
+async function collectExternalMcp(previousItems = []) {
+  const items = [];
+
+  const figmaPrevious = previousMcp(previousItems, "figma");
+  if (await confirm("Подключить официальный Figma MCP для чтения макетов", figmaPrevious.enabled ?? false)) {
+    items.push({
+      id: "figma",
+      provider: "figma",
+      enabled: true,
+      kind: "remote",
+      url: "https://mcp.figma.com/mcp",
+      authMode: "oauth"
+    });
+  }
+
+  const gitlabPrevious = previousMcp(previousItems, "gitlab");
+  if (await confirm("Подключить официальный GitLab MCP", gitlabPrevious.enabled ?? false)) {
+    const host = (await askReusable(
+      "Адрес GitLab без завершающего слеша",
+      gitlabPrevious.host || "",
+      "https://gitlab.com"
+    )).replace(/\/+$/, "");
+    items.push({
+      id: "gitlab",
+      provider: "gitlab",
+      enabled: true,
+      kind: "remote",
+      host,
+      url: `${host}/api/v4/mcp`,
+      authMode: "oauth"
+    });
+  }
+
+  const postmanPrevious = previousMcp(previousItems, "postman");
+  if (await confirm("Подключить официальный Postman MCP", postmanPrevious.enabled ?? false)) {
+    const region = (await ask("Postman region: 1 — US с OAuth, 2 — EU с API key", postmanPrevious.region === "eu" ? "2" : "1")) === "2" ? "eu" : "us";
+    const modeChoice = await ask(
+      "Postman tools: 1 — Minimal, 2 — Full (включая управление коллекциями), 3 — Code, 4 — Learn",
+      ({ full: "2", code: "3", learn: "4" })[postmanPrevious.mode] || "1"
+    );
+    const mode = ({ "2": "full", "3": "code", "4": "learn" })[modeChoice] || "minimal";
+    const endpoint = mode === "full" ? "mcp" : mode;
+    const entry = {
+      id: "postman",
+      provider: "postman",
+      enabled: true,
+      kind: "remote",
+      region,
+      mode,
+      url: `https://mcp.${region === "eu" ? "eu." : ""}postman.com/${endpoint}`,
+      authMode: region === "us" ? "oauth" : "env_header"
+    };
+    if (region === "eu") {
+      entry.envHttpHeaders = { Authorization: "TESTDOCS_POSTMAN_AUTH_HEADER" };
+      console.log("Для Postman EU задайте TESTDOCS_POSTMAN_AUTH_HEADER='Bearer <API key>' вне репозитория.");
+    }
+    items.push(entry);
+  }
+
+  const elasticPrevious = previousMcp(previousItems, "elastic");
+  if (await confirm("Подключить Elastic Agent Builder MCP для чтения логов", elasticPrevious.enabled ?? false)) {
+    const url = (await askReusable(
+      "Полный Elastic Agent Builder MCP URL (с учётом Space)",
+      elasticPrevious.url || "",
+      "https://kibana.company.example/api/agent_builder/mcp"
+    )).replace(/\/+$/, "");
+    const authChoice = await ask(
+      "Elastic auth: 1 — OAuth (поддерживаемый Serverless), 2 — API key через переменную окружения",
+      elasticPrevious.authMode === "oauth" ? "1" : "2"
+    );
+    const authMode = authChoice === "1" ? "oauth" : "env_header";
+    const entry = { id: "elastic", provider: "elastic", enabled: true, kind: "remote", url, authMode };
+    if (authMode === "env_header") {
+      entry.envHttpHeaders = { Authorization: "TESTDOCS_ELASTIC_AUTH_HEADER" };
+      console.log("Задайте TESTDOCS_ELASTIC_AUTH_HEADER='ApiKey <encoded key>' вне репозитория.");
+    }
+    items.push(entry);
+  }
+
+  return items;
+}
+
 async function collectTms(previousTms = {}, previousQaTools = {}, previousWriteSetting = false, jiraItems = []) {
   const fallback = previousTms.category === "other" ? "2" : previousTms.category === "none" || !jiraItems.length ? "3" : "1";
   const categoryChoice = await ask(
@@ -455,6 +541,15 @@ function validateAnswers(config) {
     }
     validateUrl(eva.baseUrl, `Адрес Eva ${eva.id}`);
   }
+  for (const mcp of connectionList(config, "mcp")) {
+    if (mcp.kind !== "remote" || !mcp.provider || !mcp.url || !["oauth", "env_header"].includes(mcp.authMode)) {
+      throw new Error(`Не полностью настроен remote MCP ${mcp.id}.`);
+    }
+    validateUrl(mcp.url, `Адрес remote MCP ${mcp.id}`);
+    if (mcp.authMode === "env_header" && (!mcp.envHttpHeaders || !Object.keys(mcp.envHttpHeaders).length)) {
+      throw new Error(`Для remote MCP ${mcp.id} не задана переменная заголовка авторизации.`);
+    }
+  }
   if (config.qaReport?.enabled) {
     validateUrl(config.qaReport.baseUrl, "qaReport.baseUrl");
   }
@@ -524,13 +619,14 @@ async function collectConfig(args, clients, existing = null) {
   }
   const previous = migrateConfig(previousRaw);
   previous.clients = clients;
-  previous.connections ||= { jira: [], confluence: [], eva: [] };
+  previous.connections ||= { jira: [], confluence: [], eva: [], mcp: [] };
+  previous.connections.mcp ||= [];
   console.log("\nСекреты вводятся скрыто и сохраняются вне репозитория.\n");
   const target = args.add || args.configure || "all";
   if (args.add && !["jira", "confluence", "eva"].includes(args.add)) {
     throw new Error("--add поддерживает jira, confluence или eva.");
   }
-  if (!["jira", "confluence", "eva", "tms", "delivery", "all"].includes(target)) {
+  if (!["jira", "confluence", "eva", "tms", "delivery", "integrations", "all"].includes(target)) {
     throw new Error("Неизвестный раздел настройки.");
   }
   const mode = args.add ? "add" : args.configure && args.configure !== "all" ? "configure" : "all";
@@ -590,7 +686,10 @@ async function collectConfig(args, clients, existing = null) {
       ? await confirm("Разрешить отправку checklist в QA Report по явному запросу", previous.enableQaReportImport === true)
       : false;
   }
-  previous.version = 2;
+  if (["all", "integrations"].includes(target)) {
+    previous.connections.mcp = await collectExternalMcp(previous.connections.mcp);
+  }
+  previous.version = 3;
   previous.enableWrites = false;
   previous.enableTestCaseCreation = true;
   return validateAnswers(previous);
@@ -779,12 +878,34 @@ function configuredServers(config) {
   if (config.qaReport?.enabled && config.enableQaReportImport === true) {
     servers.push({ name: "testdocs_delivery", service: "delivery", tools: ["qa_report_import_checklist"] });
   }
+  for (const item of connectionList(config, "mcp")) {
+    servers.push({
+      name: `testdocs_${item.id.replace(/-/g, "_")}`,
+      kind: "remote",
+      url: item.url,
+      authMode: item.authMode,
+      envHttpHeaders: item.envHttpHeaders || null,
+      provider: item.provider
+    });
+  }
   return servers;
 }
 
 function codexBlock(config) {
   const sections = [MANAGED_BEGIN];
   for (const server of configuredServers(config)) {
+    if (server.kind === "remote") {
+      const envHeaders = server.envHttpHeaders
+        ? `\nenv_http_headers = { ${Object.entries(server.envHttpHeaders).map(([key, value]) => `${key} = ${tomlString(value)}`).join(", ")} }`
+        : "";
+      sections.push(`
+[mcp_servers.${server.name}]
+url = ${tomlString(server.url)}
+enabled = true
+required = false${envHeaders}
+default_tools_approval_mode = "writes"`);
+      continue;
+    }
     const args = [launcherFile, server.service, ...(server.id ? [server.id] : [])];
     const enabledTools = server.tools?.length
       ? `\nenabled_tools = [${server.tools.map(tomlString).join(", ")}]`
@@ -835,10 +956,29 @@ function v2McpServerConfig(service, id) {
   };
 }
 
+function openCodeServerConfig(server, format) {
+  if (server.kind !== "remote") {
+    return format === "v2"
+      ? v2McpServerConfig(server.service, server.id)
+      : stableMcpServerConfig(server.service, server.id);
+  }
+  const value = {
+    type: "remote",
+    url: server.url,
+    ...(format === "v2" ? { disabled: false, codemode: false } : { enabled: true })
+  };
+  if (server.authMode === "env_header") {
+    value.oauth = false;
+    value.headers = Object.fromEntries(
+      Object.entries(server.envHttpHeaders || {}).map(([key, envName]) => [key, `{env:${envName}}`])
+    );
+  }
+  return value;
+}
+
 function openCodeSnippet(config, format) {
   const servers = {};
-  const buildServer = format === "v2" ? v2McpServerConfig : stableMcpServerConfig;
-  for (const server of configuredServers(config)) servers[server.name] = buildServer(server.service, server.id);
+  for (const server of configuredServers(config)) servers[server.name] = openCodeServerConfig(server, format);
   return {
     $schema: "https://opencode.ai/config.json",
     mcp: format === "v2" ? { servers } : servers
@@ -884,7 +1024,7 @@ function removeManagedOpenCodePermissions(data) {
 }
 
 function ensureSafeFormatMigration(data, format) {
-  const isManaged = (name) => /^testdocs_(jira|confluence|eva)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name);
+  const isManaged = (name) => /^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name);
   if (format === "stable" && data.mcp?.servers) {
     const foreignServers = Object.keys(data.mcp.servers).filter((name) => !isManaged(name));
     if (foreignServers.length) {
@@ -947,7 +1087,7 @@ function mergeOpenCodeConfig(config, args) {
   const removeManaged = (container) => {
     if (!container || typeof container !== "object") return;
     for (const name of Object.keys(container)) {
-      if (/^testdocs_(jira|confluence|eva)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name)) {
+      if (/^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name)) {
         delete container[name];
       }
     }
@@ -957,12 +1097,12 @@ function mergeOpenCodeConfig(config, args) {
   if (format === "stable") {
     if (data.mcp.servers) delete data.mcp.servers;
     removeManaged(data.mcp);
-    for (const server of configured) data.mcp[server.name] = stableMcpServerConfig(server.service, server.id);
+    for (const server of configured) data.mcp[server.name] = openCodeServerConfig(server, format);
   } else {
     data.mcp.servers ||= {};
     removeManaged(data.mcp);
     removeManaged(data.mcp.servers);
-    for (const server of configured) data.mcp.servers[server.name] = v2McpServerConfig(server.service, server.id);
+    for (const server of configured) data.mcp.servers[server.name] = openCodeServerConfig(server, format);
   }
   writeJsonWithBackup(target, data);
   console.log(`OpenCode настроен (${format}): ${target}`);
@@ -970,9 +1110,15 @@ function mergeOpenCodeConfig(config, args) {
 }
 
 function claudeCommands(config) {
-  return configuredServers(config).map((server) =>
-    `claude mcp add --transport stdio --scope user ${server.name} -- ${JSON.stringify(process.execPath)} ${JSON.stringify(launcherFile)} ${server.service}${server.id ? ` ${server.id}` : ""}`
-  );
+  return configuredServers(config).map((server) => {
+    if (server.kind === "remote") {
+      const headers = Object.entries(server.envHttpHeaders || {})
+        .map(([key, envName]) => ` --header ${JSON.stringify(`${key}: \${${envName}}`)}`)
+        .join("");
+      return `claude mcp add --transport http --scope user ${server.name} ${JSON.stringify(server.url)}${headers}`;
+    }
+    return `claude mcp add --transport stdio --scope user ${server.name} -- ${JSON.stringify(process.execPath)} ${JSON.stringify(launcherFile)} ${server.service}${server.id ? ` ${server.id}` : ""}`;
+  });
 }
 
 function configureClaude(config, noCli) {
@@ -991,10 +1137,15 @@ function configureClaude(config, noCli) {
       console.log(`Claude Code уже содержит ${server.name}; регистрация пропущена.`);
       continue;
     }
-    const added = spawnSync("claude", [
-      "mcp", "add", "--transport", "stdio", "--scope", "user", server.name,
-      "--", process.execPath, launcherFile, server.service, ...(server.id ? [server.id] : [])
-    ], { stdio: "inherit" });
+    if (server.kind === "remote" && server.authMode === "env_header") {
+      console.warn(`Для ${server.name} с API key выполните команду из ${commandsFile} после задания переменной окружения.`);
+      continue;
+    }
+    const commandArgs = server.kind === "remote"
+      ? ["mcp", "add", "--transport", "http", "--scope", "user", server.name, server.url]
+      : ["mcp", "add", "--transport", "stdio", "--scope", "user", server.name,
+          "--", process.execPath, launcherFile, server.service, ...(server.id ? [server.id] : [])];
+    const added = spawnSync("claude", commandArgs, { stdio: "inherit" });
     if (added.status !== 0) console.warn(`Не удалось добавить ${server.name}. Команды сохранены: ${commandsFile}`);
   }
 }
@@ -1002,10 +1153,17 @@ function configureClaude(config, noCli) {
 function writeGenericSnippet(config) {
   const mcpServers = {};
   for (const server of configuredServers(config)) {
-    mcpServers[server.name] = {
-      command: process.execPath,
-      args: [launcherFile, server.service, ...(server.id ? [server.id] : [])]
-    };
+    mcpServers[server.name] = server.kind === "remote"
+      ? {
+          url: server.url,
+          ...(server.envHttpHeaders ? {
+            headers: Object.fromEntries(Object.entries(server.envHttpHeaders).map(([key, envName]) => [key, `\${${envName}}`]))
+          } : {})
+        }
+      : {
+          command: process.execPath,
+          args: [launcherFile, server.service, ...(server.id ? [server.id] : [])]
+        };
   }
   const target = path.join(getConfigDir(), "client-snippets", "generic-mcp.json");
   writeJsonWithBackup(target, { mcpServers });
@@ -1047,6 +1205,24 @@ function authenticateBrowserSessions(config, args) {
   }
 }
 
+function authenticateRemoteMcp(config, clients, args) {
+  const oauthServers = configuredServers(config).filter(
+    (server) => server.kind === "remote" && server.authMode === "oauth"
+  );
+  if (!oauthServers.length) return;
+  if (args.noCli || args.skipBrowserAuth || !clients.includes("codex") || !commandAvailable("codex")) {
+    console.log("OAuth remote MCP завершите через MCP-интерфейс выбранного клиента после перезапуска.");
+    return;
+  }
+  for (const server of oauthServers) {
+    console.log(`\nАвторизация remote MCP ${server.name}...`);
+    const result = spawnSync("codex", ["mcp", "login", server.name], { stdio: "inherit" });
+    if (result.status !== 0) {
+      console.warn(`Авторизация ${server.name} не завершена; повторите: codex mcp login ${server.name}`);
+    }
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) return showHelp();
@@ -1062,7 +1238,7 @@ async function main() {
       : await chooseClients(args);
   if (!clients.length) throw new Error("Не выбран ни один клиент.");
   const config = await collectConfig(args, clients, existing);
-  config.version = 2;
+  config.version = 3;
   config.clients = clients;
   config.enableWrites = false;
   config.enableTestCaseCreation = true;
@@ -1104,6 +1280,7 @@ async function main() {
   buildAdapters(config);
   verifyInstallation(args);
   authenticateBrowserSessions(config, args);
+  authenticateRemoteMcp(config, clients, args);
 
   const tmsSummary = hasQaTools(config)
     ? "QA Tools подключён через официальный MCP; изменяющие tools требуют отдельного разрешения и явного запроса, удаление скрыто."

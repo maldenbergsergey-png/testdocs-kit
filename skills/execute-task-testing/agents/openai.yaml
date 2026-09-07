@@ -1,0 +1,4 @@
+interface:
+  display_name: "Execute Task Testing"
+  short_description: "Test an implementation and produce a QA report"
+  default_prompt: "Use $execute-task-testing to test the task I provide and return an evidence-backed Jira-ready report."

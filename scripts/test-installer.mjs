@@ -95,7 +95,7 @@ try {
     assert(fs.existsSync(file), `Не создан ${file}`);
   }
   const savedPrivateConfig = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
-  assert(savedPrivateConfig.version === 2, "Старый конфиг не мигрирован в version 2.");
+  assert(savedPrivateConfig.version === 3, "Старый конфиг не мигрирован в version 3.");
   assert(savedPrivateConfig.caFile?.endsWith("globalsign-gcc-r3-dv-tls-ca-2020.pem"), "Не сохранён CA-файл.");
   assert(savedPrivateConfig.enableTestCaseCreation === true, "Не включены создание и защищённое исправление кейса Zephyr.");
   assert(savedPrivateConfig.connections.jira[0].enableBugCreation === true, "Не включено создание багов Jira по явному запросу.");
@@ -111,6 +111,8 @@ try {
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "prepare-task-testing", "SKILL.md")), "Не установлен task-first skill.");
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "create-bug-report", "SKILL.md")), "Не установлен skill создания баг-репортов.");
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "create-release-test-run", "SKILL.md")), "Не установлен skill формирования Test Run.");
+  assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "explain-task-testing", "SKILL.md")), "Не установлен skill объяснения тестирования.");
+  assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "execute-task-testing", "SKILL.md")), "Не установлен skill выполнения тестирования.");
   assert(fs.existsSync(path.join(testRoot, ".claude", "skills", "generate-test-checklist", "SKILL.md")), "Не установлен checklist skill для Claude.");
 
   const publicConfigs = [codexConfig, openCodeConfig, genericConfig].map((file) => fs.readFileSync(file, "utf8")).join("\n");
@@ -434,6 +436,58 @@ try {
   );
   assert(afterEnableWrites.enableWrites === false, "TESTDOCS_ENABLE_JIRA_WRITES включил общие небезопасные Jira-записи.");
 
+  fs.writeFileSync(answersFile, JSON.stringify({
+    version: 3,
+    enableWrites: false,
+    clients: ["codex", "opencode", "generic"],
+    connections: {
+      jira: [],
+      confluence: [],
+      eva: [],
+      mcp: [
+        { id: "figma", provider: "figma", enabled: true, kind: "remote", url: "https://mcp.figma.com/mcp", authMode: "oauth" },
+        { id: "gitlab", provider: "gitlab", enabled: true, kind: "remote", url: "https://gitlab.example.invalid/api/v4/mcp", authMode: "oauth" },
+        { id: "postman", provider: "postman", enabled: true, kind: "remote", url: "https://mcp.postman.com/mcp", authMode: "oauth" },
+        {
+          id: "elastic",
+          provider: "elastic",
+          enabled: true,
+          kind: "remote",
+          url: "https://kibana.example.invalid/api/agent_builder/mcp",
+          authMode: "env_header",
+          envHttpHeaders: { Authorization: "TESTDOCS_ELASTIC_AUTH_HEADER" }
+        }
+      ]
+    },
+    tms: { category: "none", provider: "none" },
+    qaReport: { enabled: false }
+  }), "utf8");
+  const remoteResult = spawnSync(process.execPath, [
+    path.join(scriptsDir, "install.mjs"),
+    "--clients", "codex,opencode,generic",
+    "--answers", answersFile,
+    "--skip-dependencies",
+    "--no-cli",
+    "--opencode-format", "v2"
+  ], { cwd: repoRoot, env, encoding: "utf8" });
+  if (remoteResult.status !== 0) {
+    process.stdout.write(remoteResult.stdout || "");
+    process.stderr.write(remoteResult.stderr || "");
+    throw new Error("Не установлены официальные remote MCP.");
+  }
+  const remoteCodex = fs.readFileSync(codexConfig, "utf8");
+  const remoteOpenCode = JSON.parse(fs.readFileSync(openCodeConfig, "utf8"));
+  const remoteGeneric = JSON.parse(fs.readFileSync(genericConfig, "utf8"));
+  for (const name of ["testdocs_figma", "testdocs_gitlab", "testdocs_postman", "testdocs_elastic"]) {
+    assert(remoteCodex.includes(`[mcp_servers.${name}]`), `Codex не получил ${name}.`);
+    assert(remoteOpenCode.mcp.servers[name]?.type === "remote", `OpenCode не получил remote ${name}.`);
+    assert(remoteGeneric.mcpServers[name]?.url, `Generic snippet не получил ${name}.`);
+  }
+  assert(remoteCodex.includes('default_tools_approval_mode = "writes"'), "Remote MCP не защищены approval mode для записей.");
+  assert(remoteCodex.includes('Authorization = "TESTDOCS_ELASTIC_AUTH_HEADER"'), "Codex не получил безопасную env-ссылку Elastic auth.");
+  assert(!remoteCodex.includes("ApiKey "), "В Codex config попал Elastic API key.");
+  assert(remoteOpenCode.mcp.servers.testdocs_elastic.headers.Authorization === "{env:TESTDOCS_ELASTIC_AUTH_HEADER}", "OpenCode не получил env-подстановку Elastic auth.");
+
   console.log("Изолированная установка Codex/Claude Code/OpenCode/generic: OK");
   console.log("Повторная установка без дублирования: OK");
   console.log("OpenCode stable, миграция ошибочного конфига и V2: OK");
@@ -444,6 +498,7 @@ try {
   console.log("Несколько Jira, единая Eva и повторное применение настроек: OK");
   console.log("Узкий opt-in Test Run только для выбранной Zephyr Jira: OK");
   console.log("Явное включение защищённых Jira write-инструментов при обновлении: OK");
+  console.log("Figma, GitLab, Postman и Elastic remote MCP без секретов в клиентских конфигах: OK");
 } finally {
   fs.rmSync(testRoot, { recursive: true, force: true });
 }

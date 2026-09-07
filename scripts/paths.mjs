@@ -35,6 +35,23 @@ export function getConfigFile() {
     : path.join(getConfigDir(), "config.json");
 }
 
+export function getDataDir() {
+  if (process.env.TESTDOCS_DATA_DIR) {
+    return path.resolve(process.env.TESTDOCS_DATA_DIR);
+  }
+
+  if (process.env.TESTDOCS_INSTALL_ROOT) {
+    return path.join(getInstallHome(), ".local", "share", "testdocs-kit");
+  }
+
+  if (process.platform === "win32" && process.env.LOCALAPPDATA) {
+    return path.join(process.env.LOCALAPPDATA, "testdocs-kit");
+  }
+
+  const xdgData = process.env.XDG_DATA_HOME;
+  return path.join(xdgData ? path.resolve(xdgData) : path.join(getInstallHome(), ".local", "share"), "testdocs-kit");
+}
+
 export function getSessionFile(service) {
   return path.join(getConfigDir(), "sessions", `${service}.json`);
 }

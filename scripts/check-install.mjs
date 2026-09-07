@@ -16,7 +16,7 @@ function validatePrivateConfig() {
   const configFile = getConfigFile();
   assert(fs.existsSync(configFile), `Не найден ${configFile}. Выполните npm run setup.`);
   const config = migrateConfig(JSON.parse(fs.readFileSync(configFile, "utf8")));
-  assert(config.version === 2, "Неподдерживаемая версия файла настроек.");
+  assert(config.version === 3, "Неподдерживаемая версия файла настроек.");
   if (config.caFile) {
     assert(fs.existsSync(config.caFile), `Не найден дополнительный CA-файл: ${config.caFile}`);
   }
@@ -36,6 +36,14 @@ function validatePrivateConfig() {
   for (const eva of connectionList(config, "eva")) {
     assert(/^https?:\/\//.test(eva.baseUrl || ""), `Неполный адрес Eva ${eva.id}.`);
     assert(eva.secret, `Не заполнен API-токен Eva ${eva.id}.`);
+  }
+  for (const mcp of connectionList(config, "mcp")) {
+    assert(mcp.kind === "remote", `Неизвестный тип MCP ${mcp.id}.`);
+    assert(/^https?:\/\//.test(mcp.url || ""), `Неполный адрес MCP ${mcp.id}.`);
+    assert(["oauth", "env_header"].includes(mcp.authMode), `Неизвестная авторизация MCP ${mcp.id}.`);
+    if (mcp.authMode === "env_header") {
+      assert(Object.keys(mcp.envHttpHeaders || {}).length > 0, `Не заданы env headers MCP ${mcp.id}.`);
+    }
   }
   if (config.qaReport?.enabled) {
     assert(/^https?:\/\//.test(config.qaReport.baseUrl || ""), "Неполные настройки QA Report.");
@@ -84,7 +92,9 @@ async function main() {
   const offlineExternal = process.argv.includes("--offline-external");
   const config = validatePrivateConfig();
   if (!connectionList(config, "jira").length && !connectionList(config, "confluence").length && !connectionList(config, "eva").length && !(config.qaReport?.enabled && config.enableQaReportImport === true) && !hasQaTools(config)) {
-    console.log("MCP-сервисы отключены; проверен только файл настроек.");
+    console.log(connectionList(config, "mcp").length
+      ? "Удалённые MCP настроены; offline-проверка ограничена их конфигурацией."
+      : "MCP-сервисы отключены; проверен только файл настроек.");
     console.log("Проверка установки: OK");
     return;
   }

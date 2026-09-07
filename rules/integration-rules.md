@@ -24,6 +24,11 @@ Identify integrations by capability rather than product name or MCP tool name:
 | Jira QA work-item metadata | Read the exact non-defect work-item schema and authenticated user | Only for linked Test Run work-item creation |
 | Jira QA work-item create | Create one validated non-defect QA work item and attach the created Test Run | Optional and approval-gated |
 | QA Report import | Send finalized Jira Wiki checklist and receive a short-lived editor URL | Optional and approval-gated |
+| Source/change read | Retrieve an explicitly supplied GitLab issue, MR, commit, diff or pipeline result | Optional |
+| Design read | Retrieve a supplied Figma file/node, render and supported design metadata | Optional |
+| API workspace read | Retrieve a supplied Postman workspace, collection, specification, request or example | Optional |
+| API workspace write | Create or update a Postman collection/specification/mock/monitor | Optional and approval-gated |
+| Log read | Run a time- and environment-bounded Elastic/Kibana query and return sanitized evidence | Optional |
 
 Do not assume a capability exists because a server is named Jira, Confluence, Zephyr, or TMS. Inspect the tools exposed by the current connection. Preserve separate error states for unavailable capability, permission denied, not found, ambiguous instance, and empty result.
 
@@ -54,13 +59,17 @@ An exact release version is a valid scope anchor for a Test Run request. Resolve
 Normalize retrieved material into this tool-independent bundle:
 
 ```text
-Request intent: prepare testing (checklist-only | full package | cases-only | task-scoped cases | optimize | review; optional targeted scope) | prepare bug report (draft | create) | prepare test run (draft | create) | analyze coverage | update | build matrix | build regression model
+Request intent: explain task testing | execute task testing | prepare testing (checklist-only | full package | cases-only | task-scoped cases | optimize | review; optional targeted scope) | prepare bug report (draft | create) | prepare test run (draft | create) | analyze coverage | update | build matrix | build regression model
 Input mode: ISSUE_ANCHORED | RELEASE_ANCHORED | KNOWLEDGE_ANCHORED | TMS_ANCHORED | MANUAL_CONTEXT
 Scope anchor: issue key/link, exact release version, or supplied-context description
 Issue facts: summary, behavior, acceptance criteria, status, decisions
 Relevant comment evidence: evidence type, relevant content, exact comment link or ID, author/date when available, and corroboration status for previous checklists
 Relevant linked requirements and knowledge: stable ID/link, title, version when available, relevant content
 Relevant source links: exact URL, readable purpose, source location, retrieval status, and whether it influenced the requested QA result
+Change context: GitLab object URL, stable ID/SHA, changed behavior surface, pipeline result and retrieval status
+Design context: Figma file/node URL, viewport/state, retrieved properties/render and limitations
+API context: Postman workspace/collection/request IDs, environment identity without secrets, contract/example provenance
+Log context: environment, time zone/window, service/correlation scope, query, sanitized result and retrieval status
 Source field inventory: every explicitly defined field, control, tab, default, validation, visibility condition, role, state, and constraint; each marked retrieved, ambiguous, or unavailable
 Existing test coverage: stable case IDs, versions, lifecycle, links, and complete case content when needed
 Existing coverage discovery: COMPLETE | PARTIAL | UNAVAILABLE; directly linked cases; discovered relevant cases; search scope; limitations
