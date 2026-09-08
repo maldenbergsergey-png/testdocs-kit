@@ -105,7 +105,7 @@ async function main() {
     server.registerTool(
       "jira_create_bug",
       {
-        description: "Create exactly one standalone Jira bug or defect subtask after explicit user intent and live create-metadata validation. A subtask requires an exact source-backed parentKey. Reporter/author remains the authenticated Jira user; assignee defaults to that same user when Jira exposes a usable identity. Does not comment, attach, link, transition, edit, or reassign after creation.",
+        description: "Create exactly one standalone Jira bug or defect subtask after explicit user intent and live create-metadata validation. A subtask requires an exact source-backed parentKey. Reporter/author remains the authenticated Jira user; assignee defaults to that same user when Jira exposes a usable identity. Includes supplied evidence uploads and a narrow Description update for previews (Server/DC Wiki) or named links. Returns partial failures with the created key; never retry the whole create call. Custom steps/results belong in additionalFields using live IDs, including optional fields.",
         inputSchema: z.object({
           confirmed: z.literal(true),
           projectKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/),
@@ -114,6 +114,12 @@ async function main() {
           parentKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*-\d+$/).optional(),
           summary: z.string().min(1).max(500),
           description: z.string().optional(),
+          descriptionFormat: z.enum(["plain", "wiki"]).optional().default("plain").describe("Use wiki only for a confirmed Server/DC Wiki renderer to insert image thumbnails."),
+          attachments: z.array(z.object({
+            path: z.string().min(1).describe("Absolute readable local path of evidence supplied for this bug."),
+            filename: z.string().min(1).optional().describe("Safe unique upload filename; defaults to the local basename."),
+            mimeType: z.string().min(1)
+          })).max(20).optional(),
           additionalFields: z.record(z.string(), z.unknown()).optional(),
           assignToCurrentUser: z.boolean().optional().default(true)
         }).refine((input) => Boolean(input.issueTypeId || input.issueTypeName), {

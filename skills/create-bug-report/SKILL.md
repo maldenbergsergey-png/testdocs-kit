@@ -41,11 +41,13 @@ For `CREATE_IN_JIRA`:
 
 1. Discover available tools by capability. Require issue-create metadata and bug-create capabilities; do not substitute generic comments or browser form automation.
 2. Call the create-metadata capability for the exact project. In Jira Cloud, first list issue types and then repeat with the selected defect issue-type ID to retrieve its fields; Server/Data Center may return expanded fields in one call. Inspect the authenticated user, available issue types, field IDs, displayed names, schemas, allowed values, defaults, required flags, and operations.
-3. Select the actual standalone defect or defect-subtask issue type. For a subtask, set the exact supplied or source-backed parent using the live schema. Map semantic blocks to dedicated fields only when their meaning is unambiguous. Put unmapped blocks in `Описание` without duplication.
+3. Select the actual standalone defect or defect-subtask issue type. For a subtask, set the exact supplied or source-backed parent using the live schema. Complete the field inventory and semantic mapping required by `bug-report-standard.md`, including optional custom fields for steps, actual result, and expected result. Use `additionalFields` (or the connector equivalent) with live IDs and correct serialization. Use `Описание` only for blocks whose dedicated writable fields are absent; resolve mapping gaps before creation.
 4. Set assignee to the authenticated current user when supported. Let Jira set reporter/author to that authenticated user. Use the same user for an unambiguous specialist/system-developer field when its live schema accepts that user shape.
 5. Apply labels, components, priority, severity, versions, teams, and other routing only from approved project rules, explicit user input, unambiguous defaults, or allowed values. Omit optional guesses.
 6. Validate every required field. If a required value is missing, show the nearly complete payload and request only that value; do not create yet.
-7. Call the dedicated bug-create capability once with `confirmed: true`. Include only fields supported by the retrieved metadata.
+7. Preflight the supplied evidence and preview plan under `Supplied attachments and previews` in `bug-report-standard.md`. With the bundled connector, pass available evidence as `attachments` entries (`path`, safe `filename`, `mimeType`); use `descriptionFormat: "wiki"` only for a confirmed Server/DC Wiki renderer. The bundled uploader accepts at most 20 files, each within Jira’s upload limit and a 25 MiB local cap (10 MiB fallback when Jira supplies no limit).
+8. Call the dedicated bug-create capability once with `confirmed: true`. Include only fields supported by the retrieved metadata. Complete the supported upload/preview operations against that returned key, or inspect the composite connector’s per-file outcomes.
+9. Read the created issue back and compare saved semantic fields and attachments with the preflight mapping. Do not repeat creation to repair a mismatch.
 
 If metadata or creation capability is unavailable, return a Jira-ready draft and state the exact capability gap. Do not claim creation.
 
@@ -57,6 +59,6 @@ After creation, return:
 - final summary;
 - assignee and specialist values actually applied;
 - optional routing fields left unset for tester triage;
-- supplied materials that still require manual attachment because the connector could not upload them.
+- uploaded attachments and preview status, plus exact pending materials or verification gaps.
 
-Do not edit, transition, comment, attach files, link issues, or reassign the bug unless the user explicitly requests that separate operation.
+Apply the write boundary in `bug-report-standard.md`: supplied evidence uploads and their Description previews belong to the create workflow; unrelated later mutations require an explicit request.

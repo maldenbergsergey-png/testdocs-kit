@@ -57,7 +57,7 @@ async function fetchWithNetworkDetails(url, options, system) {
   }
 }
 
-async function jiraRequest(path, method = "GET", body) {
+async function jiraRequest(path, method = "GET", body, multipart = false) {
   if (!JIRA_URL) {
     throw new Error("JIRA_URL is required");
   }
@@ -69,9 +69,9 @@ async function jiraRequest(path, method = "GET", body) {
     headers: {
       ...buildAuthHeaders(url),
       Accept: "application/json",
-      "Content-Type": "application/json"
+      ...(multipart ? { "X-Atlassian-Token": "no-check" } : { "Content-Type": "application/json" })
     },
-    body: body ? JSON.stringify(body) : undefined
+    body: multipart ? body : body ? JSON.stringify(body) : undefined
   }, "Jira");
 
   const contentType = res.headers.get("content-type") || "";
@@ -122,24 +122,39 @@ async function getIssue({ key }) {
   return jiraRequest(`/rest/api/${JIRA_API_VERSION}/issue/${key}`);
 }
 
+async function readCreateMetadataPages(basePath, property, pageSize) {
+  const values = [];
+  let startAt = 0;
+  for (;;) {
+    const page = await jiraRequest(`${basePath}?maxResults=${pageSize}&startAt=${startAt}`);
+    const items = page?.[property] || page?.values;
+    if (!Array.isArray(items)) throw new Error("Jira create metadata returned no field/type inventory.");
+    values.push(...items);
+    const next = startAt + items.length;
+    if (page.isLast === true || (Number.isFinite(page.total) && next >= page.total)) return values;
+    if (page.isLast !== false && !Number.isFinite(page.total) && items.length < (page.maxResults || pageSize)) return values;
+    if (!items.length || next <= startAt) throw new Error("Jira create metadata pagination is incomplete.");
+    startAt = next;
+  }
+}
+
 async function getIssueCreateMetadata({ projectKey, issueTypeId }) {
   if (!projectKey) throw new Error("projectKey is required.");
   let currentUser;
   let project;
   if (String(JIRA_API_VERSION) === "3") {
-    const issueTypesPath = `/rest/api/3/issue/createmeta/${encodeURIComponent(projectKey)}/issuetypes?maxResults=100`;
+    const issueTypesPath = `/rest/api/3/issue/createmeta/${encodeURIComponent(projectKey)}/issuetypes`;
     const [user, issueTypesResult] = await Promise.all([
       jiraRequest("/rest/api/3/myself"),
-      jiraRequest(issueTypesPath)
+      readCreateMetadataPages(issueTypesPath, "issueTypes", 100)
     ]);
     currentUser = user;
-    const issueTypes = issueTypesResult?.issueTypes || issueTypesResult?.values || [];
+    const issueTypes = issueTypesResult;
     let selectedFields = null;
     if (issueTypeId) {
-      const fieldsResult = await jiraRequest(
-        `/rest/api/3/issue/createmeta/${encodeURIComponent(projectKey)}/issuetypes/${encodeURIComponent(issueTypeId)}?maxResults=200`
+      const fields = await readCreateMetadataPages(
+        `/rest/api/3/issue/createmeta/${encodeURIComponent(projectKey)}/issuetypes/${encodeURIComponent(issueTypeId)}`, "fields", 200
       );
-      const fields = fieldsResult?.fields || fieldsResult?.values || [];
       selectedFields = Object.fromEntries(fields.map((field) => [field.fieldId || field.key, field]));
     }
     project = {
@@ -282,7 +297,14 @@ async function createJiraIssue({
 }
 
 async function createBug(input) {
-  return createJiraIssue(input, "bug");
+  if (input?.confirmed !== true) throw new Error("Explicit user intent is required to create a Jira bug.");
+  if (!/^(FE|BE|Android|iOS)\. \S/.test(input.summary || "")) {
+    throw new Error("Bug summary must start with FE. , BE. , Android. , or iOS. followed by the observable problem.");
+  }
+  const { prepareBugAttachments, finishBugAttachments } = require("./bug-attachments");
+  const files = await prepareBugAttachments(input, jiraRequest, JIRA_API_VERSION);
+  const result = await createJiraIssue(input, "bug");
+  return finishBugAttachments(input, result, files, jiraRequest, JIRA_API_VERSION, plainTextToAdf);
 }
 
 async function createQaWorkItem(input) {

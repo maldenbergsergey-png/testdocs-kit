@@ -15,10 +15,10 @@
 Write the summary as an observable problem, preferably in the form:
 
 ```text
-[system scope or platform]. [Area or object] — [incorrect behavior] при [short condition]
+<FE|BE|Android|iOS>. [Area or object] — [incorrect behavior] при [short condition]
 ```
 
-Make the summary answer `what`, `where`, and, when useful, `under what condition`. Use a supported platform or system-scope prefix such as `FE`, `BE`, `iOS`, or `Android` when it materially routes the defect or a project convention requires it. Do not invent a scope, use a generic `WEB` prefix, or prefix with `Bug`, issue key, priority, or environment unless a confirmed project convention requires that.
+Make the summary answer `what`, `where`, and, when useful, `under what condition`. Always start with exactly one prefix followed by a period and a space: `FE. ` (frontend), `BE. ` (backend), `Android. `, or `iOS. `. Choose from source-backed affected scope, not a guessed root cause. If scope is ambiguous, ask before creation; mark the missing prefix in a draft. Do not invent a scope, use a generic `WEB` prefix, or prefix with `Bug`, issue key, priority, or environment.
 
 ## Standalone issue or subtask
 
@@ -88,10 +88,23 @@ Add only materials relevant to the defect type:
 
 Preserve code and JSON formatting. Remove or mask credentials, cookies, authorization headers, tokens, personal data, and unrelated production payloads. Never fabricate a log, screenshot, recording, request, response, or design link. When a connector cannot upload a supplied file, include its accessible direct link if available and list the attachment as a manual follow-up after issue creation.
 
+## Supplied attachments and previews
+
+- Include files supplied as evidence for this bug in the create workflow unless the user excludes them. Inventory each file’s available path/content, safe upload name, type, and intended caption. Do not attach unrelated files or treat an inaccessible chat image as an available local file.
+- Preflight upload support, file readability, attachment limits, and Description rendering before creating. Upload the actual supplied files to the returned issue key; a local path or external image URL alone is not a Jira attachment.
+- Add uploaded images to `Материалы` in Description as small previews with readable captions. For Server/DC Wiki rendering use `!uploaded-name.png|thumbnail!` with the actual uploaded filename; logs and videos use named attachment links. Preserve the rest of Description and dedicated fields.
+- For Cloud use supported ADF media with a real Media Services ID supplied by a capable connector; a Jira attachment ID is not that ID. If the connector cannot insert media, keep named links to successfully uploaded files and explicitly report that inline previews remain unavailable. Never fake media IDs or claim links are thumbnails.
+- If upload or preview insertion fails after creation, preserve and return the issue key and successful attachment IDs, identify the failed/pending files, and stop uncertain writes. Do not recreate the bug, delete uploaded files, or automatically repeat an upload after an ambiguous outcome.
+
 ## Jira field mapping
 
 - Read create metadata for the exact Jira project and defect issue type before preparing the final create payload.
+- Inventory all pages of the selected issue type’s create fields, including optional custom fields. A project/type list without fields or a truncated metadata response is not sufficient.
+- Build a semantic mapping before creation: block → live field ID and name → schema/serialization → value, or an explicit reason for Description fallback. Check reproduction steps (`Шаги воспроизведения`, `Steps to reproduce`), actual result (`Фактический результат`, `Actual result`), and expected result (`Ожидаемый результат`, `Expected result`) individually; these names are semantic hints, not hard-coded IDs.
 - Match fields by stable field ID plus displayed name and schema. Do not rely on a custom-field ID learned from another Jira or project.
+- Optional dedicated fields still take precedence over Description. Send them via the connector’s custom/additional field payload, using live IDs. For Cloud textarea fields use ADF when required; do not stringify ADF or send Wiki markup as plain ADF text.
+- Use Description fallback only when the complete schema has no matching writable field. An ambiguous field, unsupported serialization, permission error, or incomplete metadata is a mapping gap, not proof that the field is absent: resolve or report it before creation. Never retry a rejected custom-field payload by silently moving everything into Description.
+- Before writing, verify that each known semantic block has exactly one destination and all three reproduction/result blocks have been considered. After creation, read the issue back and check the actual saved dedicated fields, Description, and attachments. Report unverified or mismatched values without claiming success for them.
 - Use the defect issue type actually available in the target project. Do not silently create a Task or Story when no defect type is available.
 - Satisfy every required field. If a required value cannot be derived from approved project rules, the current Jira user, or supplied context, stop before creation and request it.
 - Let Jira record the authenticated user as reporter/author. Assign the new bug to that same authenticated user when the assignee field permits it; otherwise preserve the project default and report the limitation.
@@ -102,6 +115,6 @@ Preserve code and JSON formatting. Remove or mask credentials, cookies, authoriz
 
 - `составь`, `подготовь`, `покажи`, `оформи черновик`, or a voice description alone authorizes only a draft in chat.
 - An explicit instruction to `создай`, `заведи`, or `зарегистрируй` the bug in the named Jira project authorizes one creation in the same turn after the exact payload passes validation. No second confirmation is required.
-- Creating a bug is one external write. Editing it, changing assignee, adding attachments/comments/links, or transitioning it is separate and requires a separate explicit request.
+- A create request includes uploading the evidence supplied for that bug and inserting its previews/attachment links into the newly created Description. These are separate API writes within the authorized create workflow, requiring no second confirmation. Unrelated edits, reassignment, later attachments, comments, issue links, and transitions still require an explicit request.
 - Never create a duplicate automatically after an ambiguous timeout or connector error. Search by the returned key when available; otherwise report the uncertain result and require verification.
 - After success, return the stable issue key and connector-supplied full URL, plus any fields intentionally left for tester triage. Never invent a URL.

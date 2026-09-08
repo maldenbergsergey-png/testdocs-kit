@@ -65,7 +65,7 @@ test("jira_create_bug creates one issue and assigns it to the authenticated user
     projectKey: "DEMO",
     issueTypeId: "1",
     parentKey: "DEMO-10",
-    summary: "Checkout — total is not recalculated",
+    summary: "FE. Checkout — total is not recalculated",
     description: "Steps:\n1. Open checkout",
     additionalFields: { customfield_10001: "Total is recalculated" }
   });
