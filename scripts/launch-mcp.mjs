@@ -150,6 +150,7 @@ if (service === "browser") {
   if (!fs.existsSync(serviceEntries.browser)) fail("Playwright MCP не установлен; выполните npm run setup -- --reuse.");
   const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), "testdocs-browser-"));
   serviceArgs.push("--output-dir", outputDir);
+  if (config.figma?.mode === "browser") serviceArgs.push("--caps", "vision");
   if (config.browser.mode === "extension") serviceArgs.push("--extension");
   else {
     const profileDir = path.join(getDataDir(), "browser", "profile");

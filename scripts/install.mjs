@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import { applyFigmaMode, defaultFigmaMode, isFigmaDesktop } from "./figma-config.mjs";
 import path from "node:path";
 import process from "node:process";
 import readline from "node:readline/promises";
@@ -45,6 +46,7 @@ function parseArgs(argv) {
     openCodeFormat: null,
     caFile: null,
     browserMode: null,
+    figmaMode: null,
     enableJiraWrites: process.env.TESTDOCS_ENABLE_JIRA_WRITES === "1",
     enableReleaseTestRunWrites: process.env.TESTDOCS_ENABLE_RELEASE_TEST_RUN_WRITES === "1"
   };
@@ -56,6 +58,7 @@ function parseArgs(argv) {
     else if (arg === "--configure") result.configure = argv[++index];
     else if (arg === "--add") result.add = argv[++index];
     else if (arg === "--opencode-format") result.openCodeFormat = argv[++index];
+    else if (arg === "--figma-mode") result.figmaMode = argv[++index];
     else if (arg === "--browser-mode") result.browserMode = argv[++index];
     else if (arg === "--ca-file") result.caFile = argv[++index];
     else if (arg === "--enable-jira-writes") result.enableJiraWrites = true;
@@ -77,10 +80,11 @@ function showHelp() {
   --clients codex,claude,opencode,generic  Настроить указанные клиенты
   --answers /path/to/answers.json          Взять ответы из JSON без вопросов
   --reuse                                 Применить сохранённые настройки без вопросов
-  --configure jira|confluence|eva|tms|delivery|integrations|browser|all
+  --configure jira|confluence|eva|tms|delivery|integrations|figma|browser|all
                                           Перенастроить только выбранную часть
   --add jira|confluence|eva               Добавить подключение, сохранив существующие
   --opencode-format stable|v2              Явно выбрать формат OpenCode
+  --figma-mode browser|desktop|remote|off          Режим Figma MCP без ручной правки JSON
   --browser-mode persistent|extension|off  Режим локального Playwright MCP
   --ca-file /path/to/ca-bundle.pem         Дополнительные доверенные CA в формате PEM
   --enable-jira-writes                     Разрешить создание Bug, публикацию checklist,
@@ -344,19 +348,17 @@ function previousMcp(items, provider) {
   return (items || []).find((item) => item.provider === provider) || {};
 }
 
-async function collectExternalMcp(previousItems = []) {
+async function collectExternalMcp(config, clients = []) {
+  const previousItems = config.connections.mcp || [];
   const items = [];
 
   const figmaPrevious = previousMcp(previousItems, "figma");
-  if (await confirm("Подключить официальный Figma MCP для чтения макетов", figmaPrevious.enabled ?? false)) {
-    items.push({
-      id: "figma",
-      provider: "figma",
-      enabled: true,
-      kind: "remote",
-      url: "https://mcp.figma.com/mcp",
-      authMode: "oauth"
-    });
+  if (await confirm("Настроить чтение макетов Figma", config.figma?.mode ? config.figma.mode !== "off" : figmaPrevious.enabled ?? false)) {
+    const mode = await ask("Figma: browser — обычный браузер без Dev Mode; desktop — MCP при доступном платном месте; remote — облачный MCP с OAuth и лимитами", defaultFigmaMode(config.figma || figmaPrevious, clients));
+    applyFigmaMode(config, mode);
+    items.push(...config.connections.mcp.filter(item => item.provider === "figma"));
+  } else {
+    config.figma = { mode: "off" };
   }
 
   const gitlabPrevious = previousMcp(previousItems, "gitlab");
@@ -548,7 +550,7 @@ function validateAnswers(config) {
     validateUrl(eva.baseUrl, `Адрес Eva ${eva.id}`);
   }
   for (const mcp of connectionList(config, "mcp")) {
-    if (mcp.kind !== "remote" || !mcp.provider || !mcp.url || !["oauth", "env_header"].includes(mcp.authMode)) {
+    if (mcp.kind !== "remote" || !mcp.provider || !mcp.url || (!["oauth", "env_header"].includes(mcp.authMode) && !isFigmaDesktop(mcp))) {
       throw new Error(`Не полностью настроен remote MCP ${mcp.id}.`);
     }
     validateUrl(mcp.url, `Адрес remote MCP ${mcp.id}`);
@@ -632,7 +634,7 @@ async function collectConfig(args, clients, existing = null) {
   if (args.add && !["jira", "confluence", "eva"].includes(args.add)) {
     throw new Error("--add поддерживает jira, confluence или eva.");
   }
-  if (!["jira", "confluence", "eva", "tms", "delivery", "integrations", "browser", "all"].includes(target)) {
+  if (!["jira", "confluence", "eva", "tms", "delivery", "integrations", "figma", "browser", "all"].includes(target)) {
     throw new Error("Неизвестный раздел настройки.");
   }
   const mode = args.add ? "add" : args.configure && args.configure !== "all" ? "configure" : "all";
@@ -693,7 +695,11 @@ async function collectConfig(args, clients, existing = null) {
       : false;
   }
   if (["all", "integrations"].includes(target)) {
-    previous.connections.mcp = await collectExternalMcp(previous.connections.mcp);
+    previous.connections.mcp = await collectExternalMcp(previous, clients);
+  }
+  if (target === "figma" && !args.figmaMode) {
+    const current = previous.figma || previousMcp(previous.connections.mcp, "figma");
+    applyFigmaMode(previous, await ask("Figma mode: browser, desktop, remote или off", defaultFigmaMode(current, clients)));
   }
   if (["all", "browser"].includes(target) && !args.browserMode) {
     const mode = await ask("Браузер: persistent — отдельный Chrome с сохранением входа, extension — текущие вкладки через расширение, off — отключить", previous.browser?.enabled ? previous.browser.mode : "off");
@@ -987,6 +993,7 @@ function openCodeServerConfig(server, format) {
     url: server.url,
     ...(format === "v2" ? { disabled: false, codemode: false } : { enabled: true })
   };
+  if (server.authMode === "none") value.oauth = false;
   if (server.authMode === "env_header") {
     value.oauth = false;
     value.headers = Object.fromEntries(
@@ -1227,7 +1234,8 @@ function authenticateBrowserSessions(config, args) {
 
 function authenticateRemoteMcp(config, clients, args) {
   const oauthServers = configuredServers(config).filter(
-    (server) => server.kind === "remote" && server.authMode === "oauth"
+    (server) => server.kind === "remote" && server.authMode === "oauth" &&
+      (args.configure !== "figma" || server.provider === "figma")
   );
   if (!oauthServers.length) return;
   if (args.noCli || args.skipBrowserAuth || !clients.includes("codex") || !commandAvailable("codex")) {
@@ -1258,6 +1266,7 @@ async function main() {
       : await chooseClients(args);
   if (!clients.length) throw new Error("Не выбран ни один клиент.");
   const config = await collectConfig(args, clients, existing);
+  if (args.figmaMode) applyFigmaMode(config, args.figmaMode);
   if (args.browserMode) {
     if (!["persistent", "extension", "off"].includes(args.browserMode)) throw new Error("--browser-mode: используйте persistent, extension или off.");
     config.browser = { enabled: args.browserMode !== "off", mode: args.browserMode === "off" ? "persistent" : args.browserMode };
@@ -1303,8 +1312,14 @@ async function main() {
   // Register independent MCP services before an optional adapter build can fail.
   buildAdapters(config);
   verifyInstallation(args);
-  authenticateBrowserSessions(config, args);
+  if (args.configure !== "figma") authenticateBrowserSessions(config, args);
   authenticateRemoteMcp(config, clients, args);
+  if (config.figma?.mode === "browser") {
+    console.log("Figma через testdocs_browser: Dev Mode и OAuth Figma MCP не нужны. Откройте ссылку на макет через браузер агента и войдите в Figma.\nДоступны видимые данные и снимки; экспорт зависит от прав на файл. Структура слоёв и скрытые свойства не подтверждаются снимком.");
+  }
+  if (connectionList(config, "mcp").some(isFigmaDesktop)) {
+    console.log("Figma Desktop настроена: откройте макет в приложении Figma, включите Dev Mode → Enable desktop MCP server.\nВход используется из приложения Figma; mcp auth не нужен. После перезапуска OpenCode: opencode mcp list.\nНастройка сохранена; доступность приложения и инструментов Figma проверьте в клиенте.");
+  }
 
   const tmsSummary = hasQaTools(config)
     ? "QA Tools подключён через официальный MCP; изменяющие tools требуют отдельного разрешения и явного запроса, удаление скрыто."

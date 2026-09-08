@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import { defaultFigmaMode, isFigmaDesktop } from "./figma-config.mjs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -487,6 +488,51 @@ try {
   assert(remoteCodex.includes('Authorization = "TESTDOCS_ELASTIC_AUTH_HEADER"'), "Codex не получил безопасную env-ссылку Elastic auth.");
   assert(!remoteCodex.includes("ApiKey "), "В Codex config попал Elastic API key.");
   assert(remoteOpenCode.mcp.servers.testdocs_elastic.headers.Authorization === "{env:TESTDOCS_ELASTIC_AUTH_HEADER}", "OpenCode не получил env-подстановку Elastic auth.");
+
+  assert(defaultFigmaMode({}, ["opencode"]) === "browser", "OpenCode must default to free browser access.");
+  assert(defaultFigmaMode({ url: "https://mcp.figma.com/mcp" }, ["opencode"]) === "browser", "Legacy implicit remote must offer browser for OpenCode.");
+  assert(defaultFigmaMode({ mode: "remote" }, ["opencode"]) === "remote", "Explicit choice must be preserved.");
+  assert(!isFigmaDesktop({ provider: "gitlab", url: "http://127.0.0.1:3845/mcp", authMode: "none" }), "No-auth exception must be scoped to Figma.");
+  assert(!isFigmaDesktop({ provider: "figma", url: "https://example.invalid/mcp", authMode: "none" }), "No-auth exception must be scoped to loopback endpoint.");
+  for (const format of ["stable", "v2"]) {
+    // Seed each format explicitly: unrelated servers must not be migrated implicitly.
+    const fixture = JSON.parse(fs.readFileSync(openCodeConfig, "utf8"));
+    const fixtureServers = fixture.mcp.servers || fixture.mcp;
+    fixture.mcp = format === "v2" ? { servers: fixtureServers } : fixtureServers;
+    fs.writeFileSync(openCodeConfig, JSON.stringify(fixture));
+    for (const mode of ["browser", "browser", "desktop", "remote", "off"]) {
+      const result = spawnSync(process.execPath, [
+        path.join(scriptsDir, "install.mjs"), "--clients", "opencode,generic",
+        "--configure", "figma", "--figma-mode", mode,
+        "--skip-dependencies", "--no-cli", "--opencode-format", format
+      ], { cwd: repoRoot, env, encoding: "utf8", timeout: 30000 });
+      assert(result.status === 0, result.stdout + result.stderr);
+      const installed = JSON.parse(fs.readFileSync(openCodeConfig, "utf8"));
+      const servers = format === "v2" ? installed.mcp.servers : installed.mcp;
+      assert(JSON.stringify(servers.existing_server) === JSON.stringify(fixtureServers.existing_server), "Figma-only setup changed an unrelated MCP server.");
+      assert(servers.testdocs_gitlab.url === "https://gitlab.example.invalid/api/v4/mcp", "Figma-only setup changed GitLab.");
+      assert(servers.testdocs_postman, "Figma-only setup removed Postman.");
+      assert(servers.testdocs_elastic, "Figma-only setup removed Elastic.");
+      const saved = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
+      const figmaItems = saved.connections.mcp.filter(item => item.provider === "figma");
+      assert(figmaItems.length === (["browser", "off"].includes(mode) ? 0 : 1), "Duplicate or stale Figma connection.");
+      if (mode === "browser") {
+        assert(!servers.testdocs_figma, "Browser mode must not register official Figma MCP.");
+        assert(servers.testdocs_browser, "Browser mode must register browser MCP.");
+        assert(saved.browser.enabled && saved.figma.mode === "browser", "Browser settings not persisted.");
+        assert(!result.stdout.includes("Авторизация remote MCP testdocs_figma"), "Browser mode attempted Figma OAuth.");
+      } else if (mode === "off") assert(!servers.testdocs_figma, "Disabled Figma remains registered.");
+      else if (mode === "desktop") {
+        assert(servers.testdocs_figma.url === "http://127.0.0.1:3845/mcp", "Wrong Desktop endpoint.");
+        assert(servers.testdocs_figma.oauth === false, "Desktop must disable OAuth.");
+        assert(figmaItems[0].authMode === "none", "Desktop auth mode not persisted.");
+      } else {
+        assert(servers.testdocs_figma.url === "https://mcp.figma.com/mcp", "Wrong Remote endpoint.");
+        assert(servers.testdocs_figma.oauth !== false, "Desktop OAuth override leaked into Remote.");
+      }
+    }
+  }
+  console.log("Figma browser/Desktop/Remote/off, OpenCode defaults and independent reconfiguration: OK");
 
   console.log("Изолированная установка Codex/Claude Code/OpenCode/generic: OK");
   console.log("Повторная установка без дублирования: OK");

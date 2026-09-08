@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import { isFigmaDesktop } from "./figma-config.mjs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
@@ -40,7 +41,7 @@ function validatePrivateConfig() {
   for (const mcp of connectionList(config, "mcp")) {
     assert(mcp.kind === "remote", `Неизвестный тип MCP ${mcp.id}.`);
     assert(/^https?:\/\//.test(mcp.url || ""), `Неполный адрес MCP ${mcp.id}.`);
-    assert(["oauth", "env_header"].includes(mcp.authMode), `Неизвестная авторизация MCP ${mcp.id}.`);
+    assert(["oauth", "env_header"].includes(mcp.authMode) || isFigmaDesktop(mcp), `Неизвестная авторизация MCP ${mcp.id}.`);
     if (mcp.authMode === "env_header") {
       assert(Object.keys(mcp.envHttpHeaders || {}).length > 0, `Не заданы env headers MCP ${mcp.id}.`);
     }
@@ -106,6 +107,11 @@ async function main() {
     const tools = await listTools("browser", null, Client, StdioClientTransport);
     for (const name of ["browser_navigate", "browser_snapshot", "browser_click", "browser_fill_form"]) {
       assert(tools.includes(name), `Playwright MCP: missing ${name}.`);
+    }
+    if (config.figma?.mode === "browser") {
+      for (const name of ["browser_take_screenshot", "browser_mouse_click_xy"]) {
+        assert(tools.includes(name), `Figma browser mode: missing ${name}.`);
+      }
     }
     results.push("Playwright MCP: tools available; browser sign-in and target access require a separate check.");
   }

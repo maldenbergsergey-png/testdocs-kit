@@ -8,6 +8,7 @@
     "setup": "node scripts/install.mjs",
     "update": "node scripts/update.mjs",
     "reconfigure": "node scripts/install.mjs --configure all",
+    "configure:figma": "node scripts/install.mjs --configure figma --figma-mode browser",
     "configure:browser": "node scripts/install.mjs --configure browser",
     "configure:jira": "node scripts/install.mjs --configure jira",
     "configure:confluence": "node scripts/install.mjs --configure confluence",

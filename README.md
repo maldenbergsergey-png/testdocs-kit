@@ -57,6 +57,32 @@ npm run setup -- --reuse --browser-mode persistent
 
 Документация: [OpenCode MCP](https://opencode.ai/docs/mcp-servers/), [Playwright MCP](https://github.com/microsoft/playwright-mcp).
 
+### Figma в OpenCode
+
+Из установленной копии kit выполните:
+
+```bash
+npm run configure:figma
+```
+
+По умолчанию команда включает **browser**: агент открывает Figma через `testdocs_browser`, использует обычный доступ к файлу и делает снимки макета. Платный Dev Mode, Figma Desktop MCP, OAuth Figma MCP и API-токен для этого режима не требуются. Старое официальное MCP-подключение Figma убирается, остальные интеграции сохраняются. Установленный браузерный режим (включая extension) сохраняется; если его нет, используется отдельный Chrome с сохраняемым входом. Для работы с canvas включаются инструменты скриншотов и координатных действий Playwright.
+
+После настройки перезапустите OpenCode. Попросите агента открыть ссылку на конкретный frame через `testdocs_browser` и войдите в Figma в открытом браузере, если требуется. Экспорт возможен только при разрешении владельца файла. Снимок подтверждает видимое оформление, но не скрытые свойства, переменные или точные размеры слоёв. Для чтения canvas модель/клиент должны уметь просматривать изображения; если это недоступно, передайте экспортированный PNG или другой доступный материал и явно ограничьте объём проверки.
+
+`opencode mcp list` покажет `testdocs_browser`, а не отдельный `testdocs_figma`. Состояние MCP не подтверждает вход в Figma и доступ к конкретному макету. Обычный `npm run update` сохраняет выбранный режим; для переключения старой настройки выполните `npm run configure:figma` один раз. Отключение Figma не отключает общий браузер, который нужен и для тестирования приложения.
+
+Дополнительные режимы выбираются явно:
+
+```bash
+npm run configure:figma -- --figma-mode desktop
+npm run configure:figma -- --figma-mode remote
+npm run configure:figma -- --figma-mode off
+```
+
+**Desktop** требует доступа к desktop MCP в Figma (Dev/Full seat на поддержанном платном плане): откройте макет в приложении, включите Dev Mode → Enable desktop MCP server и оставьте Figma открытой. **Remote** использует облачный OAuth, поддержку клиента со стороны Figma и лимиты плана; его нельзя обещать как неограниченный бесплатный вариант. REST API с персональным токеном также имеет лимиты и не является способом их обойти. Режим browser использует только разрешённые обычному пользователю действия и не обходит ограничения файла.
+
+Источники: [права просмотра и экспорта](https://help.figma.com/hc/en-us/articles/15297425105303-Explore-design-files), [доступ к Figma MCP](https://developers.figma.com/docs/figma-mcp-server/plans-access-and-permissions/), [лимиты REST API](https://developers.figma.com/docs/rest-api/rate-limits/).
+
 ### 1. Чек-лист для задачи
 
 ```text
@@ -238,7 +264,7 @@ git clone https://github.com/maldenbergsergey-png/testdocs-kit.git && cd testdoc
 9. При необходимости подключить QA Report.
 10. При необходимости подключить официальные remote MCP: Figma, GitLab и Postman; для поддерживаемого Elastic Agent Builder — Kibana/Elastic endpoint.
 
-Figma, GitLab и Postman US используют браузерный OAuth. В GitLab корпоративный Keycloak остаётся частью штатного GitLab OAuth flow. Postman EU и Elastic API key задаются через переменные окружения, имя которых сохраняется в конфигурации, а значение ключа — нет. Повторно изменить только эти подключения можно командой:
+Figma Remote, GitLab и Postman US используют браузерный OAuth; Figma Desktop использует вход в приложении Figma без OAuth клиента. В GitLab корпоративный Keycloak остаётся частью штатного GitLab OAuth flow. Postman EU и Elastic API key задаются через переменные окружения, имя которых сохраняется в конфигурации, а значение ключа — нет. Повторно изменить только эти подключения можно командой:
 
 ```bash
 npm run configure:integrations
