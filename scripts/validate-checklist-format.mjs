@@ -32,8 +32,7 @@ function cells(row) {
   return result;
 }
 
-for (const file of files) {
-  const source = fs.readFileSync(file, "utf8");
+export function validateChecklist(source, file = "checklist") {
   const lines = source.split(/\r?\n/);
   let mode = null;
   let bodyRows = 0;
@@ -46,14 +45,21 @@ for (const file of files) {
       mode = "questions";
       continue;
     }
-    if (!line.startsWith("|") || line.startsWith("||")) continue;
+    if (!line.startsWith("|")) {
+      mode = null;
+      continue;
+    }
+    assert(!line.startsWith("||"), `${file}:${offset + 1}: неподдержанный порядок или состав колонок header.`);
     assert(mode, `${file}:${offset + 1}: строка таблицы без поддержанного header.`);
+    assert(line.endsWith("|"), `${file}:${offset + 1}: отсутствует конечный разделитель строки.`);
     assert(!line.includes("||"), `${file}:${offset + 1}: body row содержит ||.`);
     const rowCells = cells(line);
     const expectedCount = mode === "execution" ? 7 : 4;
     assert(rowCells.length === expectedCount, `${file}:${offset + 1}: ожидалось ${expectedCount} колонок, получено ${rowCells.length}.`);
     if (mode === "execution") {
-      assert(rowCells.slice(4).every((value) => value.trim() === ""), `${file}:${offset + 1}: execution-колонки должны быть пустыми.`);
+      assert(rowCells.slice(0, 4).every((value) => value.trim() !== ""), `${file}:${offset + 1}: колонки 1–4, включая ожидаемый результат, должны быть заполнены.`);
+      assert(rowCells[4].trim() === "", `${file}:${offset + 1}: Фактический результат (колонка 5) должен быть пустым в плане.`);
+      assert(rowCells[6].trim() === "", `${file}:${offset + 1}: Статус (колонка 7) должен быть пустым в плане.`);
     }
     bodyRows += 1;
   }
@@ -65,4 +71,8 @@ for (const file of files) {
   }
 }
 
-console.log(`Jira Wiki checklist format: OK (${files.length} fixture)`);
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const targets = process.argv.length > 2 ? process.argv.slice(2) : files;
+  for (const file of targets) validateChecklist(fs.readFileSync(file, "utf8"), file);
+  console.log(`Jira Wiki checklist format: OK (${targets.length} files)`);
+}

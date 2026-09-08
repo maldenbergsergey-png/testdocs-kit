@@ -24,7 +24,7 @@ Before generating, read:
 5. Group rows by the natural meaning and type of the affected behavior. Choose section names from the actual content; for a small homogeneous checklist use one section. Do not force `Основные проверки` and `Дополнительные проверки`.
 6. For every row materially derived from a previous Jira-comment checklist, fill `Комментарий` with the provenance format required by the standard. Leave actual result and status empty.
 7. Add `Требует уточнения` only for genuine conflicts or missing expected behavior. Omit it entirely when the context is sufficient.
-8. Run the completeness, decomposition, provenance, and Jira Wiki self-check from the standard.
+8. Run the completeness, decomposition, provenance, and Jira Wiki self-check from the standard on the final serialized checklist. Validate every row against the column positions specified there, including rows with source comments; use the format validator described in the standard when available.
 9. Return only a short scope note, the copy-ready checklist in one fenced `text` block, and material limitations.
 
 If context supports only part of the task, generate that safe part and put unresolved expected behavior in `Требует уточнения`. Do not emit Test Cases or internal orchestration narration.

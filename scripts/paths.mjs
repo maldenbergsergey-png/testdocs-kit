@@ -72,6 +72,7 @@ export const launcherFile = path.join(repoRoot, "scripts", "launch-mcp.mjs");
 export const browserAuthFile = path.join(repoRoot, "scripts", "browser-auth.mjs");
 
 export const serviceEntries = {
+  browser: path.join(repoRoot, "mcp", "browser-mcp", "node_modules", "@playwright", "mcp", "cli.js"),
   jira: path.join(repoRoot, "mcp", "jira-mcp", "mcp-stdio.js"),
   confluence: path.join(repoRoot, "mcp", "confluence-mcp", "dist", "index.js"),
   delivery: path.join(repoRoot, "mcp", "jira-mcp", "mcp-stdio.js"),

@@ -44,6 +44,7 @@ function parseArgs(argv) {
     add: null,
     openCodeFormat: null,
     caFile: null,
+    browserMode: null,
     enableJiraWrites: process.env.TESTDOCS_ENABLE_JIRA_WRITES === "1",
     enableReleaseTestRunWrites: process.env.TESTDOCS_ENABLE_RELEASE_TEST_RUN_WRITES === "1"
   };
@@ -55,6 +56,7 @@ function parseArgs(argv) {
     else if (arg === "--configure") result.configure = argv[++index];
     else if (arg === "--add") result.add = argv[++index];
     else if (arg === "--opencode-format") result.openCodeFormat = argv[++index];
+    else if (arg === "--browser-mode") result.browserMode = argv[++index];
     else if (arg === "--ca-file") result.caFile = argv[++index];
     else if (arg === "--enable-jira-writes") result.enableJiraWrites = true;
     else if (arg === "--enable-release-test-run-writes") result.enableReleaseTestRunWrites = true;
@@ -75,10 +77,11 @@ function showHelp() {
   --clients codex,claude,opencode,generic  Настроить указанные клиенты
   --answers /path/to/answers.json          Взять ответы из JSON без вопросов
   --reuse                                 Применить сохранённые настройки без вопросов
-  --configure jira|confluence|eva|tms|delivery|integrations|all
+  --configure jira|confluence|eva|tms|delivery|integrations|browser|all
                                           Перенастроить только выбранную часть
   --add jira|confluence|eva               Добавить подключение, сохранив существующие
   --opencode-format stable|v2              Явно выбрать формат OpenCode
+  --browser-mode persistent|extension|off  Режим локального Playwright MCP
   --ca-file /path/to/ca-bundle.pem         Дополнительные доверенные CA в формате PEM
   --enable-jira-writes                     Разрешить создание Bug, публикацию checklist,
                                           Test Run и связанной QA-задачи
@@ -497,6 +500,9 @@ async function collectTms(previousTms = {}, previousQaTools = {}, previousWriteS
 function validateAnswers(config) {
   if (!config || typeof config !== "object") throw new Error("Файл ответов должен содержать JSON-объект.");
   config = migrateConfig(config);
+  if (config.browser && (typeof config.browser.enabled !== "boolean" || !["persistent", "extension"].includes(config.browser.mode))) {
+    throw new Error("Некорректные настройки browser: enabled boolean, mode persistent|extension.");
+  }
   const validateUrl = (value, label) => {
     try {
       const parsed = new URL(value);
@@ -626,7 +632,7 @@ async function collectConfig(args, clients, existing = null) {
   if (args.add && !["jira", "confluence", "eva"].includes(args.add)) {
     throw new Error("--add поддерживает jira, confluence или eva.");
   }
-  if (!["jira", "confluence", "eva", "tms", "delivery", "integrations", "all"].includes(target)) {
+  if (!["jira", "confluence", "eva", "tms", "delivery", "integrations", "browser", "all"].includes(target)) {
     throw new Error("Неизвестный раздел настройки.");
   }
   const mode = args.add ? "add" : args.configure && args.configure !== "all" ? "configure" : "all";
@@ -689,6 +695,11 @@ async function collectConfig(args, clients, existing = null) {
   if (["all", "integrations"].includes(target)) {
     previous.connections.mcp = await collectExternalMcp(previous.connections.mcp);
   }
+  if (["all", "browser"].includes(target) && !args.browserMode) {
+    const mode = await ask("Браузер: persistent — отдельный Chrome с сохранением входа, extension — текущие вкладки через расширение, off — отключить", previous.browser?.enabled ? previous.browser.mode : "off");
+    if (!["persistent", "extension", "off"].includes(mode)) throw new Error("Неизвестный режим браузера.");
+    previous.browser = { enabled: mode !== "off", mode: mode === "off" ? "persistent" : mode };
+  }
   previous.version = 3;
   previous.enableWrites = false;
   previous.enableTestCaseCreation = true;
@@ -732,6 +743,14 @@ function run(command, commandArgs, options = {}) {
 
 function installDependencies(skip, config) {
   const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+  if (config.browser?.enabled) {
+    const browserDir = path.join(repoRoot, "mcp", "browser-mcp");
+    if (skip) {
+      if (!fs.existsSync(path.join(browserDir, "node_modules", "@playwright", "mcp", "cli.js"))) throw new Error("Playwright MCP не установлен. Повторите без --skip-dependencies.");
+    } else {
+      run(npm, ["ci"], { cwd: browserDir });
+    }
+  }
   const jiraDir = path.join(repoRoot, "mcp", "jira-mcp");
   const confluenceDir = path.join(repoRoot, "mcp", "confluence-mcp");
   const qaToolsDir = path.join(repoRoot, "mcp", "qa-tools-mcp");
@@ -841,6 +860,7 @@ function tomlString(value) {
 
 function configuredServers(config) {
   const servers = [];
+  if (config.browser?.enabled) servers.push({ name: "testdocs_browser", service: "browser" });
   const jiraItems = connectionList(config, "jira");
   for (const jira of jiraItems) {
     const tools = [
@@ -1024,7 +1044,7 @@ function removeManagedOpenCodePermissions(data) {
 }
 
 function ensureSafeFormatMigration(data, format) {
-  const isManaged = (name) => /^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name);
+  const isManaged = (name) => /^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic|browser)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name);
   if (format === "stable" && data.mcp?.servers) {
     const foreignServers = Object.keys(data.mcp.servers).filter((name) => !isManaged(name));
     if (foreignServers.length) {
@@ -1087,7 +1107,7 @@ function mergeOpenCodeConfig(config, args) {
   const removeManaged = (container) => {
     if (!container || typeof container !== "object") return;
     for (const name of Object.keys(container)) {
-      if (/^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name)) {
+      if (/^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic|browser)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name)) {
         delete container[name];
       }
     }
@@ -1238,6 +1258,10 @@ async function main() {
       : await chooseClients(args);
   if (!clients.length) throw new Error("Не выбран ни один клиент.");
   const config = await collectConfig(args, clients, existing);
+  if (args.browserMode) {
+    if (!["persistent", "extension", "off"].includes(args.browserMode)) throw new Error("--browser-mode: используйте persistent, extension или off.");
+    config.browser = { enabled: args.browserMode !== "off", mode: args.browserMode === "off" ? "persistent" : args.browserMode };
+  }
   config.version = 3;
   config.clients = clients;
   config.enableWrites = false;

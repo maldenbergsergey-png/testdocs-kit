@@ -60,7 +60,9 @@ function validatePrivateConfig() {
 }
 
 async function loadMcpClient(config) {
-  const packageFile = hasQaTools(config) || connectionList(config, "eva").length
+  const packageFile = config.browser?.enabled
+    ? path.join(repoRoot, "mcp", "browser-mcp", "package.json")
+    : hasQaTools(config) || connectionList(config, "eva").length
     ? path.join(repoRoot, "mcp", "qa-tools-mcp", "package.json")
     : connectionList(config, "jira").length || (config.qaReport?.enabled && config.enableQaReportImport === true)
     ? path.join(repoRoot, "mcp", "jira-mcp", "package.json")
@@ -91,7 +93,7 @@ async function listTools(service, connectionId, Client, StdioClientTransport) {
 async function main() {
   const offlineExternal = process.argv.includes("--offline-external");
   const config = validatePrivateConfig();
-  if (!connectionList(config, "jira").length && !connectionList(config, "confluence").length && !connectionList(config, "eva").length && !(config.qaReport?.enabled && config.enableQaReportImport === true) && !hasQaTools(config)) {
+  if (!connectionList(config, "jira").length && !connectionList(config, "confluence").length && !connectionList(config, "eva").length && !(config.qaReport?.enabled && config.enableQaReportImport === true) && !hasQaTools(config) && !config.browser?.enabled) {
     console.log(connectionList(config, "mcp").length
       ? "Удалённые MCP настроены; offline-проверка ограничена их конфигурацией."
       : "MCP-сервисы отключены; проверен только файл настроек.");
@@ -100,6 +102,13 @@ async function main() {
   }
   const { Client, StdioClientTransport } = await loadMcpClient(config);
   const results = [];
+  if (config.browser?.enabled) {
+    const tools = await listTools("browser", null, Client, StdioClientTransport);
+    for (const name of ["browser_navigate", "browser_snapshot", "browser_click", "browser_fill_form"]) {
+      assert(tools.includes(name), `Playwright MCP: missing ${name}.`);
+    }
+    results.push("Playwright MCP: tools available; browser sign-in and target access require a separate check.");
+  }
 
   for (const jira of connectionList(config, "jira")) {
     const tools = await listTools("jira", jira.id, Client, StdioClientTransport);

@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { spawn } from "node:child_process";
-import { getConfigFile, getSessionFile, serviceEntries } from "./paths.mjs";
+import { getConfigFile, getSessionFile, getDataDir, serviceEntries, repoRoot } from "./paths.mjs";
 import { connectionList, findConnection, hasQaTools, migrateConfig, sessionKey, usesZephyr } from "./config-model.mjs";
 
 function fail(message) {
@@ -37,6 +39,11 @@ function buildEnvironment(service, connectionId, config) {
     TESTDOCS_ENABLE_QA_REPORT_IMPORT: config.enableQaReportImport === true ? "1" : "0",
     ...(config.caFile ? { NODE_EXTRA_CA_CERTS: config.caFile } : {})
   };
+
+  if (service === "browser") {
+    if (!config.browser?.enabled) fail("браузер выключен; выполните npm run configure:browser.");
+    return common;
+  }
 
   if (service === "jira") {
     const jira = findConnection(config, "jira", connectionId);
@@ -132,12 +139,26 @@ function buildEnvironment(service, connectionId, config) {
 const service = process.argv[2];
 const connectionId = process.argv[3];
 if (!Object.hasOwn(serviceEntries, service)) {
-  fail("укажите сервис jira, confluence, eva, qa_tools или delivery.");
+  fail("укажите сервис jira, confluence, eva, qa_tools, browser или delivery.");
 }
 
 const config = readConfig();
-const child = spawn(process.execPath, [serviceEntries[service]], {
-  cwd: new URL(`../mcp/${service === "confluence" ? "confluence-mcp" : ["qa_tools", "eva"].includes(service) ? "qa-tools-mcp" : "jira-mcp"}/`, import.meta.url),
+const serviceArgs = [serviceEntries[service]];
+if (service === "browser") {
+  if (!config.browser?.enabled) fail("браузер выключен; выполните npm run configure:browser.");
+  if (!["persistent", "extension"].includes(config.browser.mode)) fail("неизвестный режим browser.");
+  if (!fs.existsSync(serviceEntries.browser)) fail("Playwright MCP не установлен; выполните npm run setup -- --reuse.");
+  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), "testdocs-browser-"));
+  serviceArgs.push("--output-dir", outputDir);
+  if (config.browser.mode === "extension") serviceArgs.push("--extension");
+  else {
+    const profileDir = path.join(getDataDir(), "browser", "profile");
+    fs.mkdirSync(profileDir, { recursive: true, mode: 0o700 });
+    serviceArgs.push("--browser", "chrome", "--user-data-dir", profileDir);
+  }
+}
+const child = spawn(process.execPath, serviceArgs, {
+  cwd: service === "browser" ? repoRoot : new URL(`../mcp/${service === "confluence" ? "confluence-mcp" : ["qa_tools", "eva"].includes(service) ? "qa-tools-mcp" : "jira-mcp"}/`, import.meta.url),
   env: buildEnvironment(service, connectionId, config),
   stdio: "inherit"
 });

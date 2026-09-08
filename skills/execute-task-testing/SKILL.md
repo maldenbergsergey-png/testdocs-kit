@@ -28,7 +28,7 @@ Do not load profiles for systems that are not relevant.
 ## Workflow
 
 1. Collect and normalize the task, iteration scope, requirements, comments, designs, change context and contracts.
-2. Determine environment/build, roles, required data, reachable surfaces and supported matrix. State material gaps.
+2. Determine environment/build, roles, required data, reachable surfaces and supported matrix. For UI checks, perform the browser-capability preflight from `task-execution-rules.md` before declaring access unavailable. State material gaps.
 3. Produce the empty checklist and show it for review. Do not import an empty checklist into QA Report.
 4. Continue after the scope is settled. Use available tools directly; request a browser sign-in or one precise user action only when access blocks a dependent check.
 5. Execute independent checks even when another branch is blocked. For every row, preserve the observed fact, evidence provenance and one allowed status from `task-execution-rules.md`.

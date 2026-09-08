@@ -8,6 +8,7 @@
     "setup": "node scripts/install.mjs",
     "update": "node scripts/update.mjs",
     "reconfigure": "node scripts/install.mjs --configure all",
+    "configure:browser": "node scripts/install.mjs --configure browser",
     "configure:jira": "node scripts/install.mjs --configure jira",
     "configure:confluence": "node scripts/install.mjs --configure confluence",
     "configure:eva": "node scripts/install.mjs --configure eva",
@@ -29,8 +30,9 @@
     "test:session-auth": "node --test mcp/session-auth.test.cjs",
     "test:workspace": "node --test scripts/task-workspace.test.mjs",
     "test:format": "node scripts/validate-test-case-format.mjs",
-    "test:checklist": "node scripts/validate-checklist-format.mjs",
-    "test": "npm run test:format && npm run test:checklist && npm run test:bootstrap && npm run test:command-shell && npm run test:browser-auth && npm run test:session-auth && npm run test:workspace && npm run test:mcp && npm run test:qa-tools-mcp && npm run test:installer"
+    "test:checklist": "node scripts/validate-checklist-format.mjs && node --test scripts/validate-checklist-format.test.mjs",
+    "test": "npm run test:format && npm run test:checklist && npm run test:bootstrap && npm run test:command-shell && npm run test:browser-auth && npm run test:session-auth && npm run test:workspace && npm run test:mcp && npm run test:qa-tools-mcp && npm run test:installer && npm run test:browser-mcp",
+    "test:browser-mcp": "node --test scripts/browser-mcp.test.mjs"
   },
   "engines": {
     "node": ">=20"
