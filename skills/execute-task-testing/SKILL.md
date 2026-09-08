@@ -33,7 +33,7 @@ Do not load profiles for systems that are not relevant.
 4. Continue after the scope is settled. Use available tools directly; request a browser sign-in or one precise user action only when access blocks a dependent check.
 5. Execute independent checks even when another branch is blocked. For every row, preserve the observed fact, evidence provenance and one allowed status from `task-execution-rules.md`.
 6. Create a local task workspace only when files or continuation context need persistence. Run `node scripts/task-workspace.mjs init --project <project> --task <task>` from the installed kit, then write only inside the returned path. Never store task data in this repository.
-7. Return the completed Jira Wiki report plus a concise run summary and limitations.
+7. Return the completed report plus a concise run summary and limitations. Follow the report-format, cell-layout, design-evidence and visual verification rules in `task-execution-rules.md`, including when HTML is requested.
 8. Import into QA Report or publish to Jira only when the user explicitly asks for that destination. Use the exact finalized report and never retry an ambiguous write silently.
 
 ## Tool selection

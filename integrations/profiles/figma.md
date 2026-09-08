@@ -16,7 +16,7 @@ The remote server uses an interactive OAuth flow in the user's browser. The iden
 - Require a node-specific Figma URL when a precise visual comparison is expected. Preserve file key and node ID.
 - Read the frame/component properties, visible text, states, variables and relevant rendered image available from the connected tools.
 - Compare only the implemented viewport/state represented by the supplied node. Do not infer unseen breakpoints or interaction states.
-- Preserve a direct named link to the expected node in the report. Export or store a local expected image only when it materially improves traceability.
+- Preserve a direct named link to the expected node in the report. Follow `../../rules/task-execution-rules.md` for design evidence: when the user requests a design-based visual check and an HTML report, obtain the actual rendered node image for inclusion alongside implementation evidence; a Figma link alone does not satisfy that request. If image retrieval fails, report the limitation without reconstructing the design.
 - Treat comments, annotations and prototype links according to their actual content and retrieval status; do not invent behavior from static pixels.
 
 Figma write tools are unrelated to ordinary QA comparison and must not be called unless the user explicitly asks to change or create design content.
