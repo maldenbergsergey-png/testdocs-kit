@@ -12,7 +12,7 @@ Integrations are context transport, not QA logic. This repository works fully wi
 - [`profiles/qa-tools.md`](profiles/qa-tools.md) — QA Tools / ТестОпс MCP and authentication profile.
 - [`../rules/integration-rules.md`](../rules/integration-rules.md) — neutral context bundle and mandatory read/write boundaries.
 - [`../skills/collect-test-context/SKILL.md`](../skills/collect-test-context/SKILL.md) — read-only collection and routing workflow.
-- [`profiles/qa-report.md`](profiles/qa-report.md) — optional finalized-checklist import and external editor handoff.
+- [`profiles/qa-report.md`](profiles/qa-report.md) — finalized-checklist import or temporary HTTP delivery of text/files into an open report, including credential handling and saved receipts; a dedicated temporary-API MCP is optional.
 - [`profiles/gitlab.md`](profiles/gitlab.md) — official GitLab remote MCP, OAuth/Keycloak considerations, and scoped change context.
 - [`profiles/figma.md`](profiles/figma.md) — official Figma remote MCP and node-specific design comparison.
 - [`profiles/postman.md`](profiles/postman.md) — official Postman remote MCP modes for API assets and optional collection management.
@@ -59,6 +59,8 @@ When no issue key or external link is supplied, do not search an arbitrary proje
 3. If a read capability is missing or fails, state what content is needed and request it manually.
 4. Continue the same workflow after the user supplies the content.
 5. Never invent retrieved data or imply that an unavailable system was checked.
+
+For a user-supplied QA Report temporary connection, read its profile before falling back. Capability detection includes permitted HTTP/terminal clients, not only named MCP tools. Follow the temporary-session authorization and credential rules in [`../rules/integration-rules.md`](../rules/integration-rules.md); do not apply the dedicated Jira/TMS write-tool requirements to this separate channel.
 
 Treat issue access, knowledge access, and TMS access as independent capabilities even when one product or MCP server exposes all of them. For example, EvaProject and EvaWiki can share one base URL and token, while Jira and Confluence may use either the same host or different hosts. A successful issue read does not prove that knowledge pages or vendor test objects can be read.
 

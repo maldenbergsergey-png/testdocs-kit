@@ -4,6 +4,8 @@ Use this optional profile for the QA Report editor documented at [maldenbergserg
 
 Follow the delivery and metadata rules in [`../../rules/integration-rules.md`](../../rules/integration-rules.md). Choose the channel from the user's request. A supplied temporary connection targets an existing open report; `qa_report_import_checklist` uses a different endpoint and cannot consume that connection.
 
+For a supplied temporary connection, go directly to **Temporary API for an open report**. An available general HTTP/terminal capability can execute this documented protocol under the rules above; the MCP tool inventory is not the full inventory of HTTP capabilities.
+
 ## Checklist-import connector
 
 Send `POST {baseUrl}/api/checklists/import` with JSON:
@@ -27,6 +29,28 @@ This connector's contract has no attachment-upload field. Its `issueUrl` tool ar
 ## Temporary API for an open report
 
 Use the supplied `url`, `token`, and `expiresAt` only for that session. Send `X-QA-Import-Token: <token>` in every request. Keep the real connection and token out of repository files, examples, and logs. An expired connection requires renewed session details; do not substitute the checklist-import endpoint.
+
+### HTTP client and credential handling
+
+Use a purpose-built temporary-session tool if one is available, or perform the same requests through Node.js `fetch`, Python, an HTTP request tool, or `curl` launched by the available terminal. The session token belongs in `X-QA-Import-Token`, not `Authorization: Bearer`. The user-issued connection already supplies the scoped credential; no Jira credentials, new MCP installation, or additional generic write opt-in is needed for this channel.
+
+Transfer the supplied token to the HTTP client through a supported private tool input, process memory/stdin, or an ephemeral private input/header file outside the repository. Preparing that input is part of executing the authorized request; do not ask the user to retype a usable token or configure an MCP solely for secret handling. If a file is needed, restrict its permissions to the current user (`0600` on POSIX) and remove that temporary credential file after use. Keep saved scripts token-free. Do not put a literal token in command-line arguments, enable shell tracing or verbose header logs, print the connection, or dump the process environment. A client-controlled request input carrying the credential to its intended endpoint is distinct from publishing it in output or reusable code.
+
+Send requests only to the supplied session URL and the documented suffixes below. Use normal TLS verification, bounded request timeouts, and no automatic redirects carrying the token. Preserve payloads and batch IDs without credentials so an uncertain write can be checked or retried under the idempotency contract.
+
+For example, once the agent has prepared a private header file containing `X-QA-Import-Token: <supplied token>`, these commands read context and then the receipt for a previously submitted batch. Variables refer to the actual supplied URL, private file path, and submitted batch ID; no token literal belongs in the commands:
+
+```sh
+curl -q --silent --show-error --fail-with-body --connect-timeout 10 --max-time 30 \
+  --header "@$QA_IMPORT_HEADERS_FILE" "$QA_IMPORT_URL/context"
+
+curl -q --silent --show-error --fail-with-body --connect-timeout 10 --max-time 30 \
+  --header "@$QA_IMPORT_HEADERS_FILE" "$QA_IMPORT_URL/batches/$QA_IMPORT_BATCH_ID"
+```
+
+Parse the receipt JSON and match its `id` to the submitted batch. `status: "saved"` is the protocol's browser acknowledgement of persistence and is observable through any of these HTTP clients. The user's report tab must remain open to apply and acknowledge the batch; the agent does not need browser control or a special MCP tool to read that acknowledgement. `pending` means the receiving browser has not acknowledged the batch yet; it is not an inability of `curl` to verify saving. Visual inspection and metadata checks remain as described below.
+
+### Requests and receipts
 
 1. `GET <url>/context` returns `reportId`, `expiresAt`, and `context.sections`, including section/row/column IDs and each cell's `text` and `hash`. Use these actual IDs and hashes for cell updates.
 2. `PUT <url>/files/<fileId>` accepts real file bytes, with `X-QA-File-Name` set to `encodeURIComponent(filename)` and the MIME type in `Content-Type`. Do not generate Base64. File and batch IDs use 1–80 ASCII letters, digits, `_`, or `-`.
