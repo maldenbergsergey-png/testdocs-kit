@@ -255,6 +255,8 @@ Derive scenarios from requirements, contracts, risk, and known failure modes. In
 
 ## Readability and style
 
+Apply the shared [output language and punctuation rules](README.md#язык-и-оформление-результатов) to case prose, including short hyphens and double quotation marks.
+
 Use consistent terminology from the authoritative context. Prefer concise declarative wording, parallel step structure, and explicit observable outcomes. Define or avoid abbreviations that are not established in the supplied material.
 
 Preserve an approved project vocabulary when writing for that project, but do not turn product names or local labels into universal rules.

@@ -2,6 +2,8 @@
 
 **Status:** proposed portable standard; pending human review.
 
+Apply the shared [output language and punctuation rules](README.md#язык-и-оформление-результатов) to the summary, reproduction steps, results, and evidence captions.
+
 ## Evidence and sufficiency
 
 - Convert informal or dictated notes into a concise, reproducible defect without inventing behavior, data, environment, ownership, severity, labels, or components.
@@ -15,7 +17,7 @@
 Write the summary as an observable problem, preferably in the form:
 
 ```text
-<FE|BE|Android|iOS>. [Area or object] — [incorrect behavior] при [short condition]
+<FE|BE|Android|iOS>. [Area or object] - [incorrect behavior] при [short condition]
 ```
 
 Make the summary answer `what`, `where`, and, when useful, `under what condition`. Always start with exactly one prefix followed by a period and a space: `FE. ` (frontend), `BE. ` (backend), `Android. `, or `iOS. `. Choose from source-backed affected scope, not a guessed root cause. If scope is ambiguous, ask before creation; mark the missing prefix in a draft. Do not invent a scope, use a generic `WEB` prefix, or prefix with `Bug`, issue key, priority, or environment.
