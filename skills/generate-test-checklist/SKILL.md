@@ -12,7 +12,7 @@ Create only the requested scope-level checklist. Do not perform permanent covera
 Before generating, read:
 
 - [`../../rules/test-checklist-standard.md`](../../rules/test-checklist-standard.md)
-- [`../../rules/integration-rules.md`](../../rules/integration-rules.md) when external context is referenced
+- [`../../rules/integration-rules.md`](../../rules/integration-rules.md) when external context or delivery is requested
 - [`../../rules/README.md`](../../rules/README.md) for placeholder handling
 
 ## Workflow
@@ -34,6 +34,6 @@ If context supports only part of the task, generate that safe part and put unres
 Showing the checklist is the default and performs no write.
 
 - If the user explicitly asks to publish the finalized checklist to the anchored Jira issue, use `jira_publish_checklist_comment` with the exact issue key, exact displayed Jira Wiki content, and `confirmed: true`. Do not use generic `add_comment`. Return the confirmed comment ID or URL.
-- If the user explicitly asks to send or open it in QA Report, use `qa_report_import_checklist` with `format: jira` implicitly supplied by the connector, a readable title, the full Jira issue URL when known, the exact displayed content, and `confirmed: true`.
+- If the user explicitly asks to send, fill, or open it in QA Report, read [`../../integrations/profiles/qa-report.md`](../../integrations/profiles/qa-report.md) and apply the metadata rules from `integration-rules.md`. Use the supplied temporary API for an open-report request; otherwise use the configured `qa_report_import_checklist` connector with the exact displayed content and `confirmed: true`.
 - When QA Report returns its editor URL and the user asked to open it, open it only through an available browser capability in a separate external tab/window. Never embed it. If opening is unavailable, return the clickable URL.
-- Treat the two destinations independently and never retry a write silently.
+- Treat the two destinations independently. For temporary API retries, follow the profile's batch receipt and idempotency contract; never duplicate an uncertain write.
