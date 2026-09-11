@@ -59,7 +59,7 @@ An exact release version is a valid scope anchor for a Test Run request. Resolve
 Normalize retrieved material into this tool-independent bundle:
 
 ```text
-Request intent: explain task testing | execute task testing | prepare testing (checklist-only | full package | cases-only | task-scoped cases | optimize | review; optional targeted scope) | prepare bug report (draft | create) | prepare test run (draft | create) | analyze coverage | update | build matrix | build regression model
+Request intent: estimate QA effort | explain task testing | execute task testing | prepare testing (checklist-only | full package | cases-only | task-scoped cases | optimize | review; optional targeted scope) | prepare bug report (draft | create) | prepare test run (draft | create) | analyze coverage | update | build matrix | build regression model
 Input mode: ISSUE_ANCHORED | RELEASE_ANCHORED | KNOWLEDGE_ANCHORED | TMS_ANCHORED | MANUAL_CONTEXT
 Scope anchor: issue key/link, exact release version, or supplied-context description
 Issue facts: summary, behavior, acceptance criteria, status, decisions
@@ -74,6 +74,7 @@ Source field inventory: every explicitly defined field, control, tab, default, v
 Existing test coverage: stable case IDs, versions, lifecycle, links, and complete case content when needed
 Existing coverage discovery: COMPLETE | PARTIAL | UNAVAILABLE; directly linked cases; discovered relevant cases; search scope; limitations
 Test Run scope when applicable: launch kind; coverage depth; platform; TMS folder; eligible testers; title convention; case-to-task traceability; assignment proposal
+Estimation context when applicable: parent/story and task/subtask boundary map; linked-task dependencies and retrieval completeness; team criteria and scope; platform matrix; environments, stages and QA handoffs; shared work allocation; known documentation/automation coverage and human validation; comparable effort history and provenance; baseline estimate or actuals for a comparison
 Source conflicts: ...
 Missing capabilities or permissions: ...
 Missing behavioral context: ...

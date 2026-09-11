@@ -1,0 +1,4 @@
+interface:
+  display_name: "QA Task Estimation"
+  short_description: "Оценка трудозатрат QA в человеко-часах"
+  default_prompt: "Используй $qa-task-estimation, чтобы оценить трудозатраты QA на мои задачи с учётом платформ, документации, регрессии, ретеста и рисков."

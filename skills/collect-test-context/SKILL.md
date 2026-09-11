@@ -1,6 +1,6 @@
 ---
 name: collect-test-context
-description: Collect and normalize QA context from an explicitly supplied Jira or GitLab issue/MR, Confluence or knowledge page, Figma node, API source, document, local file, logs, and existing cases in Zephyr Scale, legacy Test Management for Jira, or another TMS. Use before explaining or executing task testing, drafting a source-anchored bug report, or generating, reviewing, updating, optimizing, or analyzing test documentation when external context is referenced. Remain read-only and return a traceable context bundle; do not create issues or publish cases.
+description: Collect and normalize QA context from an explicitly supplied Jira or GitLab issue/MR, Confluence or knowledge page, Figma node, API source, document, local file, logs, and existing cases in Zephyr Scale, legacy Test Management for Jira, or another TMS. Use before estimating QA effort, explaining or executing task testing, drafting a source-anchored bug report, or generating, reviewing, updating, optimizing, or analyzing test documentation when external context is referenced. Remain read-only and return a traceable context bundle; do not create issues or publish cases.
 ---
 
 # Collect test context
@@ -33,6 +33,10 @@ Infer the intent branches from `task-testing-rules.md`: checklist-only, full pac
 
 Also recognize advice-only task testing and hands-on execution from `task-execution-rules.md`. Read that rule for either branch.
 
+For QA effort estimation, use `qa-task-estimation-rules.md` to assess context sufficiency. Retrieve existing coverage or history only when it materially affects the estimate; do not start a full TMS audit or demand executable test-case detail for a defensible preliminary estimate.
+
+For a task/subtask estimate, read the full supplied task, its parent story, the linked tasks and siblings in that feature's scope, and the documents defining their behavior. Map each task's change and dependencies before allocating hours. This feature-scoped completeness is not permission to crawl an entire project; inaccessible or partial sources remain explicit gaps. Parent and sibling context does not make their entire testing effort part of the target subtask.
+
 Also recognize bug-report draft and Jira bug-create intent from `bug-report-standard.md`. Read that rule when this branch is selected.
 
 ## Discover capabilities
@@ -61,6 +65,7 @@ When more than one Jira or company connection could satisfy the same key, stop b
 12. Separate facts, source conflicts, missing permissions, missing capabilities, and missing behavioral information. Use `PARTIAL_CONTEXT` when a page, attachment, table, field list, comment checklist, or relevant linked target was truncated or only partly retrieved.
 13. Normalize the evidence into the context bundle from `integration-rules.md`.
 14. Route sufficient context to the requested downstream skill:
+   - QA effort, planning hours, additional regression/retest, recalculation or comparison with actuals → `qa-task-estimation`;
    - advice-only “how to test” → `explain-task-testing`;
    - hands-on task execution → `execute-task-testing`;
    - checklist-only preparation → `prepare-task-testing` checklist branch;

@@ -19,6 +19,10 @@ This directory is the source of truth for QA test-documentation policy. Skills d
 - [`test-checklist-standard.md`](test-checklist-standard.md) — task- or document-scoped Jira checklist contract.
 - [`bug-report-standard.md`](bug-report-standard.md) — bug summary/content contract, live Jira field mapping, defaults, and creation boundary.
 - [`task-testing-rules.md`](task-testing-rules.md) — intent routing for checklist, full-package, cases-only, task-scoped, optimization, review, and targeted workflows.
+- [`qa-task-estimation-rules.md`](qa-task-estimation-rules.md) - QA effort estimation, platform scope, base work, regression, retest, risk reserve, and package totals.
+- [`qa-estimation-team-rules.md`](qa-estimation-team-rules.md) - scoped team criteria, private persistence, recalculation, and estimate-versus-actual comparisons.
+- [`qa-estimation-profile.md`](qa-estimation-profile.md) - published starting process for component checks, documentation, AI validation, environments, and risk analysis.
+- [`qa-estimation-platform-matrix.md`](qa-estimation-platform-matrix.md) - scoped desktop/mobile web, design breakpoints, and native iOS/Android coverage from the supplied matrices.
 - [`task-execution-rules.md`](task-execution-rules.md) — advice-only task research, hands-on execution, evidence, statuses, reports, and local task history.
 - [`test-case-type-rules.md`](test-case-type-rules.md) — E2E, overview, block, cross-page, integration, and platform classification.
 - [`test-case-lifecycle-rules.md`](test-case-lifecycle-rules.md) — lifecycle statuses, review readiness, and task linkage.

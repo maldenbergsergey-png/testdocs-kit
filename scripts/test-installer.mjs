@@ -114,6 +114,16 @@ try {
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "create-release-test-run", "SKILL.md")), "Не установлен skill формирования Test Run.");
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "explain-task-testing", "SKILL.md")), "Не установлен skill объяснения тестирования.");
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "execute-task-testing", "SKILL.md")), "Не установлен skill выполнения тестирования.");
+  for (const clientDirectory of [".agents", ".claude"]) {
+    const estimationSkill = fs.realpathSync(path.join(testRoot, clientDirectory, "skills", "qa-task-estimation"));
+    for (const resource of [
+      "SKILL.md", "agents/openai.yaml", "references/output-template.md",
+      "../../rules/qa-task-estimation-rules.md", "../../rules/qa-estimation-team-rules.md",
+      "../../rules/qa-estimation-profile.md", "../../rules/qa-estimation-platform-matrix.md"
+    ]) {
+      assert(fs.existsSync(path.resolve(estimationSkill, resource)), `QA estimation: недоступен ${resource} для ${clientDirectory}.`);
+    }
+  }
   assert(fs.existsSync(path.join(testRoot, ".claude", "skills", "generate-test-checklist", "SKILL.md")), "Не установлен checklist skill для Claude.");
 
   const publicConfigs = [codexConfig, openCodeConfig, genericConfig].map((file) => fs.readFileSync(file, "utf8")).join("\n");
