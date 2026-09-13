@@ -1,6 +1,6 @@
 ---
 name: execute-task-testing
-description: Perform hands-on testing of a supplied task or implementation using available browser, API, Android/iOS device control through Maestro MCP, design, source and log capabilities; maintain a task checklist and return an evidence-backed Jira-ready test report. Use when the user asks the agent to test or verify the implementation itself. Do not activate for advice-only or artifact-only requests.
+description: Test a supplied task or implementation through available browser, API, Android/iOS Maestro MCP, design, source and log capabilities, or assess supplied mobile recordings and screenshots when device access is unavailable. Maintain a task checklist and return an evidence-backed report. Use for testing or verifying an implementation, not advice-only or artifact-only requests.
 ---
 
 # Execute task testing
@@ -32,7 +32,7 @@ Do not load profiles for systems that are not relevant.
 1. Collect and normalize the task, iteration scope, requirements, comments, designs, change context and contracts.
 2. Determine environment/build, roles, required data, reachable surfaces and supported matrix. Perform the browser or mobile preflight from `task-execution-rules.md` for the requested surface before declaring access unavailable. State material gaps.
 3. Produce the empty checklist and show it for review. Do not import an empty checklist into QA Report.
-4. Continue after the scope is settled. Use available tools directly; request a browser sign-in or one precise user action only when access blocks a dependent check.
+4. Continue after the scope is settled. For native mobile tasks, follow the environment choice and app handoff in `task-execution-rules.md`: normally the user installs the specified build and hands over the open app before test actions in the app. If the environment or access is unavailable, follow the supplied-material workflow in the same rules. For other surfaces, use available tools directly and request only the user action needed to unblock access.
 5. Before the first evidence capture, create the local task workspace with `node scripts/task-workspace.mjs init --project <project> --task <task>` from the installed kit when files or continuation context need persistence. Write task data only inside the returned path, never in this repository.
 6. Execute independent checks even when another branch is blocked. For every row, preserve the observed fact, evidence provenance and one allowed status. Capture and save evidence during the check, including successful UI results, and maintain the row-to-file index under the evidence rules in `task-execution-rules.md`.
 7. Return the completed report plus a concise run summary and limitations. Follow the report-format, cell-layout, design-evidence and visual verification rules in `task-execution-rules.md`, including when HTML is requested.
@@ -44,7 +44,7 @@ For a later attachment/delivery request, resume from the saved report and eviden
 
 - Prefer a purpose-built connected capability for structured reads such as issues, Figma nodes, API collections and logs.
 - Use browser control for the actual UI when available, including functional and visual checks at supported viewport sizes. Record the browser actually used.
-- For native Android/iOS apps, use available Maestro MCP by default under the mobile rules and profile. Follow an explicit tool preference; keep mobile web on the browser route.
+- For native Android/iOS apps, select the device-control or supplied-material route under the mobile rules and profile. Use Maestro MCP after the app handoff when the environment is ready. Follow an explicit tool preference; keep mobile web on the browser route.
 - Use direct HTTP/terminal requests or an API client capability for backend checks. Sanitize stored requests and responses.
 - For a supplied QA Report temporary connection, follow the profile's HTTP client and credential handling section before deciding that delivery is unavailable. Apply the separate temporary-session permission and receipt rules from `integration-rules.md`.
 - A Postman collection is optional support material, not proof that requests were executed. Creating or updating a collection is an external write and requires explicit user intent.
