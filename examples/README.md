@@ -8,6 +8,7 @@ These deliberately small, anonymized examples demonstrate the repository's archi
 - [`good/reusable-regression-test-case.md`](good/reusable-regression-test-case.md) — a focused case designed for repeated regression execution.
 - [`good/reusable-regression-test-case-ru.md`](good/reusable-regression-test-case-ru.md) — another Russian-language regression example in the same mandatory format.
 - [`good/shared-admin-setup-and-consumer-ru.md`](good/shared-admin-setup-and-consumer-ru.md) — a reusable Zephyr-style administration setup with an explicit output and a focused consuming case.
+- [`good/admin-entity-with-api-verification-ru.md`](good/admin-entity-with-api-verification-ru.md) - an administration case with entity configuration and relations first, followed by checks in all API methods defined by the example contract.
 - [`good/regression-model-record.md`](good/regression-model-record.md) — a traceable mapping of a reusable case into regression coverage.
 - [`good/coverage-matrix-record.md`](good/coverage-matrix-record.md) — a matrix scenario linked to a case without duplicating execution steps.
 - [`good/coverage-create.md`](good/coverage-create.md) — a `CREATE` decision.

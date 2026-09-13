@@ -1,6 +1,6 @@
 ---
 name: execute-task-testing
-description: Test a supplied task or implementation through available browser, API, Android/iOS Maestro MCP, design, source and log capabilities, or assess supplied mobile recordings and screenshots when device access is unavailable. Maintain a task checklist and return an evidence-backed report. Use for testing or verifying an implementation, not advice-only or artifact-only requests.
+description: Test a task or quickly verify a named component through web/API, Android or iOS capabilities. Prepare a scoped checklist, execute available checks and return an evidence-backed report; assess supplied recordings/screenshots when access is unavailable. An issue key is optional. Do not use for advice-only or artifact-only requests.
 ---
 
 # Execute task testing
@@ -29,14 +29,12 @@ Do not load profiles for systems that are not relevant.
 
 ## Workflow
 
-1. Collect and normalize the task, iteration scope, requirements, comments, designs, change context and contracts.
-2. Determine environment/build, roles, required data, reachable surfaces and supported matrix. Perform the browser or mobile preflight from `task-execution-rules.md` for the requested surface before declaring access unavailable. State material gaps.
-3. Produce the empty checklist and show it for review. Do not import an empty checklist into QA Report.
-4. Continue after the scope is settled. For native mobile tasks, follow the environment choice and app handoff in `task-execution-rules.md`: normally the user installs the specified build and hands over the open app before test actions in the app. If the environment or access is unavailable, follow the supplied-material workflow in the same rules. For other surfaces, use available tools directly and request only the user action needed to unblock access.
-5. Before the first evidence capture, create the local task workspace with `node scripts/task-workspace.mjs init --project <project> --task <task>` from the installed kit when files or continuation context need persistence. Write task data only inside the returned path, never in this repository.
-6. Execute independent checks even when another branch is blocked. For every row, preserve the observed fact, evidence provenance and one allowed status. Capture and save evidence during the check, including successful UI results, and maintain the row-to-file index under the evidence rules in `task-execution-rules.md`.
-7. Return the completed report plus a concise run summary and limitations. Follow the report-format, cell-layout, design-evidence and visual verification rules in `task-execution-rules.md`, including when HTML is requested.
-8. Import into QA Report or publish to Jira only when the user explicitly asks for that destination. Use the exact finalized report. For QA Report, follow the profile for the selected channel and the task-link, environment, attachment, and completion rules in `integration-rules.md`. Resolve uncertain temporary batches through their receipt and idempotency contract; never duplicate an ambiguous write.
+1. Collect the supplied task or component scope, navigation path and source-backed criteria. Infer the platform from context and apply its preflight in `task-execution-rules.md`.
+2. Show the initial empty checklist before test actions; keep quick component checks minimal. Apply the preparation, app-handoff and fallback rules without an extra plan-approval pause when scope and access are clear.
+3. Before saving evidence, initialize the local workspace with `node scripts/task-workspace.mjs init --project <project> --task <task>` from the installed kit. Use a descriptive local task slug when no issue key exists. Write task data only inside the returned path.
+4. Execute reachable checks; continue independent rows when another is blocked. Preserve each observed result, allowed status and evidence provenance under `task-execution-rules.md`, including saved screenshots for successful UI checks and their row-to-file index.
+5. Save the completed report in `reports/` and return it with a concise summary and limitations in chat. Follow the report and evidence rules, including visual verification when HTML is requested.
+6. Deliver the finalized report only to an explicitly requested external destination. For QA Report, apply its profile and `integration-rules.md` for the chosen channel, metadata, attachments and saved receipts.
 
 For a later attachment/delivery request, resume from the saved report and evidence index. Follow «Повторное использование при прикреплении» in `task-execution-rules.md`; do not restart the test workflow just to attach files.
 
@@ -44,7 +42,7 @@ For a later attachment/delivery request, resume from the saved report and eviden
 
 - Prefer a purpose-built connected capability for structured reads such as issues, Figma nodes, API collections and logs.
 - Use browser control for the actual UI when available, including functional and visual checks at supported viewport sizes. Record the browser actually used.
-- For native Android/iOS apps, select the device-control or supplied-material route under the mobile rules and profile. Use Maestro MCP after the app handoff when the environment is ready. Follow an explicit tool preference; keep mobile web on the browser route.
+- For native apps, follow the mobile route and Maestro profile above.
 - Use direct HTTP/terminal requests or an API client capability for backend checks. Sanitize stored requests and responses.
 - For a supplied QA Report temporary connection, follow the profile's HTTP client and credential handling section before deciding that delivery is unavailable. Apply the separate temporary-session permission and receipt rules from `integration-rules.md`.
 - A Postman collection is optional support material, not proof that requests were executed. Creating or updating a collection is an external write and requires explicit user intent.

@@ -18,7 +18,7 @@ Before drafting, read:
 - [`../../rules/regression-model-rules.md`](../../rules/regression-model-rules.md) when the cases are intended for a regression model
 - [`../../rules/test-case-lifecycle-rules.md`](../../rules/test-case-lifecycle-rules.md) when preparing TMS-ready output
 - [`../../rules/reusable-setup-rules.md`](../../rules/reusable-setup-rules.md) when data or content preparation is shared, performed through an administration interface, or consumed by dependent cases
-- [`../../rules/integration-rules.md`](../../rules/integration-rules.md) when Jira, Confluence, TMS, or another external source is referenced
+- [`../../rules/integration-rules.md`](../../rules/integration-rules.md) when retrieving external context or inspecting a live product/supplied media; follow "Live product context"
 - [`../../rules/project-conventions.md`](../../rules/project-conventions.md) when the supplied context contains any company- or project-specific convention
 - [`../../rules/README.md`](../../rules/README.md) for placeholder handling
 
@@ -26,7 +26,7 @@ Do not copy rules into this skill or replace unresolved placeholders with invent
 
 ## Accept input
 
-Accept any useful combination of plain-language requirements, analysis, acceptance criteria, API examples, supporting documentation, or context retrieved through an available tool.
+Accept requirements, analysis, acceptance criteria, API examples, documentation, and user-scoped web/Android/iOS screens or recordings/screenshots under "Live product context" in `integration-rules.md`.
 
 Do not require an issue key, Jira, Confluence, Zephyr, a TMS, or MCP.
 

@@ -1,6 +1,6 @@
 ---
 name: build-coverage-matrix
-description: Build or update a hierarchical QA coverage matrix from supplied requirements, analysis, actual product navigation, sitemap data, UI designs, and existing test cases. Use for new projects, major redesigns, large modules, unstructured coverage, page or requirement decomposition, scenario inventories, and mapping cases to Page/Screen → Block → Structure → Scenario. Do not put execution steps in the matrix or invent behavior from visuals.
+description: Build or update a hierarchical QA coverage matrix from requirements, live web/Android/iOS navigation, supplied recordings/screenshots, designs and existing cases. Use for product decomposition, scenario inventories and mapping Page/Screen → Block → Structure → Scenario to cases. Do not put execution steps in the matrix or invent behavior from visuals.
 ---
 
 # Build coverage matrix
@@ -16,7 +16,7 @@ Before analysis, read:
 - [`../../rules/coverage-rules.md`](../../rules/coverage-rules.md) when classifying existing coverage
 - [`../../rules/regression-model-rules.md`](../../rules/regression-model-rules.md) when the matrix will feed a regression model
 - [`../../rules/reusable-setup-rules.md`](../../rules/reusable-setup-rules.md) when scenarios consume shared administration or data preparation
-- [`../../rules/integration-rules.md`](../../rules/integration-rules.md) when requirements or existing cases are retrieved externally
+- [`../../rules/integration-rules.md`](../../rules/integration-rules.md) when retrieving external context or inspecting a live product/supplied media; follow "Live product context"
 - [`../../rules/README.md`](../../rules/README.md) for placeholder handling
 
 ## Accept input

@@ -29,7 +29,7 @@ Identify integrations by capability rather than product name or MCP tool name:
 | API workspace read | Retrieve a supplied Postman workspace, collection, specification, request or example | Optional |
 | API workspace write | Create or update a Postman collection/specification/mock/monitor | Optional and approval-gated |
 | Log read | Run a time- and environment-bounded Elastic/Kibana query and return sanitized evidence | Optional |
-| Local mobile control | Inspect and interact with the selected Android/iOS test app and capture device evidence | Optional; scoped by the testing request |
+| Local mobile control | Inspect the selected Android/iOS app for product context or execute scoped tests and capture evidence | Optional; scoped by the request |
 
 Do not assume a capability exists because a server is named Jira, Confluence, Zephyr, or TMS. Inspect the tools exposed by the current connection. Preserve separate error states for unavailable capability, permission denied, not found, ambiguous instance, and empty result.
 
@@ -57,6 +57,13 @@ A standalone Confluence or knowledge-page URL is a valid primary scope anchor ev
 
 An exact release version is a valid scope anchor for a Test Run request. Resolve that version in the explicitly supplied Jira project or connection, retrieve only its release issues and materially linked requirements, then search cases only inside the user-specified TMS folder boundary. Do not infer a project from the version name or broaden the search to another release or the whole test library.
 
+### Live product context
+
+- A user-scoped browser page, native app/screen, or supplied recording/screenshot can inform a matrix, checklist, or test cases without an issue key. Use the relevant surface preflight, app handoff and material-fallback sections of [`task-execution-rules.md`](task-execution-rules.md); load the [Maestro profile](../integrations/profiles/maestro.md) only for native device control.
+- For documentation, inspect only the necessary navigation, blocks, controls and states. Return the requested artifact; a separate execution checklist, test run and statuses require testing intent. Ordinary navigation is within the inspection request; data-changing test scenarios are not implicit in a documentation request.
+- Preserve the navigation path, platform/OS, device type, known build/environment, and screenshot or recording timestamp as source provenance. Keep `app` as the native platform tag and record iOS/Android and device distinctions in source notes; observation on one configuration does not establish another.
+- Use observations for actual structure and labels. Approved requirements or confirmed user criteria define expected behavior; current behavior alone proves neither correctness nor permanent TMS coverage. Mark missing behavior and unobserved areas explicitly.
+
 ## Neutral context bundle
 
 Normalize retrieved material into this tool-independent bundle:
@@ -71,6 +78,7 @@ Relevant linked requirements and knowledge: stable ID/link, title, version when 
 Relevant source links: exact URL, readable purpose, source location, retrieval status, and whether it influenced the requested QA result
 Change context: GitLab object URL, stable ID/SHA, changed behavior surface, pipeline result and retrieval status
 Design context: Figma file/node URL, viewport/state, retrieved properties/render and limitations
+Product context when applicable: navigation path, platform/device type, known OS/build/environment, observed structure, evidence provenance and limits
 API context: Postman workspace/collection/request IDs, environment identity without secrets, contract/example provenance
 Log context: environment, time zone/window, service/correlation scope, query, sanitized result and retrieval status
 Source field inventory: every explicitly defined field, control, tab, default, validation, visibility condition, role, state, and constraint; each marked retrieved, ambiguous, or unavailable

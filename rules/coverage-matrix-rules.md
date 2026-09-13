@@ -20,11 +20,13 @@ Stable existing projects may use the matrix partially for the affected scope.
 Use sources in this order when available:
 
 1. approved requirements and analysis;
-2. actual product navigation and page structure for an existing product;
+2. actual web or native-app navigation and screen structure, including supplied recordings/screenshots with provenance;
 3. `sitemap.xml`;
 4. UI designs only when analysis is unavailable.
 
 Do not infer behavioral scenarios from visual designs when expected behavior is not defined.
+
+For live product inspection, follow [Live product context](integration-rules.md#live-product-context). Preserve the observed screen path and platform/device scope in source notes; a structural inventory does not confirm tested behavior or linked-case coverage.
 
 ## Structure
 

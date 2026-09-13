@@ -19,6 +19,7 @@ Before work, read:
 
 ## Route by intent
 
+- A request to test a task or quickly verify a component routes to `execute-task-testing` under `task-execution-rules.md`; live-product inspection for documentation follows "Live product context" in `integration-rules.md` and retains the artifact branch below.
 - An explicit checklist request selects `CHECKLIST_ONLY`.
 - An explicit request for all test documentation or a full package selects `FULL_PACKAGE`. Do not silently expand an otherwise ambiguous “prepare testing” request to every artifact; infer a concrete artifact from the remaining wording or ask one concise result-focused question when it cannot be determined.
 - An explicit request for test cases selects `CASES_ONLY`; do not require phrases such as “без чек-листа” or “только тест-кейсы”.

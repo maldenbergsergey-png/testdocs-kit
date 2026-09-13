@@ -8,6 +8,7 @@ const defaultFiles = [
   'examples/good/reusable-regression-test-case.md',
   'examples/good/reusable-regression-test-case-ru.md',
   'examples/good/shared-admin-setup-and-consumer-ru.md',
+  'examples/good/admin-entity-with-api-verification-ru.md',
 ];
 
 const files = process.argv.slice(2);

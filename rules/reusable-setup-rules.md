@@ -15,7 +15,7 @@ Create a reusable setup procedure when:
 
 Keep preparation inline when it is short, unique to one case, or is itself the action being verified.
 
-When the preparation surface is an administration interface and entity creation/configuration has stable supported behavior, prefer the linked administration creation case under `test-case-standard.md` over an unverified helper. Use a pure setup procedure when only state preparation is supported and administration behavior itself cannot be asserted.
+When the preparation surface is an administration interface and entity creation/configuration has stable supported behavior, prefer the linked administration creation case under `test-case-standard.md` over an unverified helper. Such a case follows [Создание и настройка сущности в админке](test-case-standard.md#создание-и-настройка-сущности-в-админке), including its final API verification. Use a pure setup procedure when only state preparation is supported and administration behavior itself cannot be asserted.
 
 ## Procedure contract
 
@@ -35,6 +35,8 @@ Every reusable setup procedure must define:
 Name it by the state it produces, for example `Prepare data: published content item`. Do not present a helper procedure as a complete regression test unless it independently verifies supported administration behavior.
 
 ## Writing setup steps
+
+These step boundaries apply to a pure helper procedure. An administration creation/configuration test case uses the two-part standard linked above; do not drop its API verification by treating that case as a helper.
 
 - Use the same Russian labels and the same four-column `№ | Шаг | Тестовые данные | Ожидаемый результат` table as a test case.
 - Never combine an action and its result with an arrow or in one cell.

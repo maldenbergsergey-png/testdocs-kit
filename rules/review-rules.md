@@ -20,6 +20,7 @@ Review against approved rules and supplied requirements. Do not treat personal p
 - **Technical detail:** the case includes only detail required by its intended test layer and approved verification surfaces.
 - **Reusable setup:** preparation dependencies are explicit, return a defined output, and do not hide the behavior under test or rely on execution order.
 - **Administration dependency:** a supported configurable entity has at most one coherent case per supported creation, update, or deletion operation before justified stage splits; every consumer calls the creation/configuration case first or deliberately skips it when a conforming entity already exists; every administration case has `админка`.
+- **Administration creation/configuration:** apply [Создание и настройка сущности в админке](test-case-standard.md#создание-и-настройка-сущности-в-админке) to check both parts, explicit entity relations, coverage of every source-backed related API method in the same environment, concrete response assertions, and screenshot availability. Missing API context is an explicit readiness gap; an unavailable screenshot alone is not.
 - **Reusability:** the case avoids hidden order, transient data, temporary environments, and incidental implementation details that prevent repeated regression execution.
 - **Data safety:** test data is explicit enough to reproduce the scenario and contains no invented secrets, production records, or personal data.
 - **General rule compliance:** the case follows all other applicable approved files under `rules/`.
