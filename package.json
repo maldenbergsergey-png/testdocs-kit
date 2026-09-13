@@ -10,6 +10,8 @@
     "reconfigure": "node scripts/install.mjs --configure all",
     "configure:figma": "node scripts/install.mjs --configure figma --figma-mode browser",
     "configure:browser": "node scripts/install.mjs --configure browser",
+    "configure:maestro": "node scripts/install.mjs --configure maestro",
+    "check:maestro": "node scripts/check-maestro.mjs",
     "configure:jira": "node scripts/install.mjs --configure jira",
     "configure:confluence": "node scripts/install.mjs --configure confluence",
     "configure:eva": "node scripts/install.mjs --configure eva",
@@ -32,8 +34,9 @@
     "test:workspace": "node --test scripts/task-workspace.test.mjs",
     "test:format": "node scripts/validate-test-case-format.mjs",
     "test:checklist": "node scripts/validate-checklist-format.mjs && node --test scripts/validate-checklist-format.test.mjs",
-    "test": "npm run test:format && npm run test:checklist && npm run test:bootstrap && npm run test:command-shell && npm run test:browser-auth && npm run test:session-auth && npm run test:workspace && npm run test:mcp && npm run test:qa-tools-mcp && npm run test:installer && npm run test:browser-mcp",
-    "test:browser-mcp": "node --test scripts/browser-mcp.test.mjs"
+    "test": "npm run test:format && npm run test:checklist && npm run test:bootstrap && npm run test:command-shell && npm run test:browser-auth && npm run test:session-auth && npm run test:workspace && npm run test:mcp && npm run test:qa-tools-mcp && npm run test:installer && npm run test:browser-mcp && npm run test:maestro",
+    "test:browser-mcp": "node --test scripts/browser-mcp.test.mjs",
+    "test:maestro": "node --test scripts/maestro-mcp.test.mjs"
   },
   "engines": {
     "node": ">=20"

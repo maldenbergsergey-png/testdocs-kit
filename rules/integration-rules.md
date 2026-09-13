@@ -29,8 +29,11 @@ Identify integrations by capability rather than product name or MCP tool name:
 | API workspace read | Retrieve a supplied Postman workspace, collection, specification, request or example | Optional |
 | API workspace write | Create or update a Postman collection/specification/mock/monitor | Optional and approval-gated |
 | Log read | Run a time- and environment-bounded Elastic/Kibana query and return sanitized evidence | Optional |
+| Local mobile control | Inspect and interact with the selected Android/iOS test app and capture device evidence | Optional; scoped by the testing request |
 
 Do not assume a capability exists because a server is named Jira, Confluence, Zephyr, or TMS. Inspect the tools exposed by the current connection. Preserve separate error states for unavailable capability, permission denied, not found, ambiguous instance, and empty result.
+
+Local mobile execution follows `task-execution-rules.md` and the [Maestro profile](../integrations/profiles/maestro.md). Enabling a device-control connection does not authorize cloud uploads or publication to Jira, TMS or QA Report. Ordinary test-app interactions within an explicit testing request do not require a separate publication request for each tap.
 
 ## Input modes
 

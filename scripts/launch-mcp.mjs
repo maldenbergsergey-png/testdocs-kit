@@ -4,6 +4,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import { maestroLaunch, maestroSpawnCommand } from "./maestro-config.mjs";
+import { requiresShell } from "./command-shell.mjs";
 import { getConfigFile, getSessionFile, getDataDir, serviceEntries, repoRoot } from "./paths.mjs";
 import { connectionList, findConnection, hasQaTools, migrateConfig, sessionKey, usesZephyr } from "./config-model.mjs";
 
@@ -138,12 +140,21 @@ function buildEnvironment(service, connectionId, config) {
 
 const service = process.argv[2];
 const connectionId = process.argv[3];
-if (!Object.hasOwn(serviceEntries, service)) {
-  fail("укажите сервис jira, confluence, eva, qa_tools, browser или delivery.");
+if (service !== "maestro" && !Object.hasOwn(serviceEntries, service)) {
+  fail("укажите сервис jira, confluence, eva, qa_tools, browser, maestro или delivery.");
 }
 
 const config = readConfig();
-const serviceArgs = [serviceEntries[service]];
+let launch;
+if (service === "maestro") {
+  try {
+    launch = maestroLaunch(config.maestro);
+    launch.spawnCommand = maestroSpawnCommand(launch.command);
+  }
+  catch (error) { fail(error.message); }
+  fs.mkdirSync(getDataDir(), { recursive: true, mode: 0o700 });
+}
+const serviceArgs = launch ? launch.args : [serviceEntries[service]];
 if (service === "browser") {
   if (!config.browser?.enabled) fail("браузер выключен; выполните npm run configure:browser.");
   if (!["persistent", "extension"].includes(config.browser.mode)) fail("неизвестный режим browser.");
@@ -158,9 +169,10 @@ if (service === "browser") {
     serviceArgs.push("--browser", "chrome", "--user-data-dir", profileDir);
   }
 }
-const child = spawn(process.execPath, serviceArgs, {
-  cwd: service === "browser" ? repoRoot : new URL(`../mcp/${service === "confluence" ? "confluence-mcp" : ["qa_tools", "eva"].includes(service) ? "qa-tools-mcp" : "jira-mcp"}/`, import.meta.url),
-  env: buildEnvironment(service, connectionId, config),
+const child = spawn(launch?.spawnCommand || process.execPath, serviceArgs, {
+  cwd: service === "maestro" ? getDataDir() : service === "browser" ? repoRoot : new URL(`../mcp/${service === "confluence" ? "confluence-mcp" : ["qa_tools", "eva"].includes(service) ? "qa-tools-mcp" : "jira-mcp"}/`, import.meta.url),
+  env: launch?.env || buildEnvironment(service, connectionId, config),
+  shell: launch ? requiresShell(launch.command) : false,
   stdio: "inherit"
 });
 

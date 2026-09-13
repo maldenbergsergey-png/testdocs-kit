@@ -7,6 +7,7 @@ import process from "node:process";
 import readline from "node:readline/promises";
 import { spawnSync } from "node:child_process";
 import { requiresShell } from "./command-shell.mjs";
+import { maestroLocalTools, resolveMaestro, validateMaestro } from "./maestro-config.mjs";
 import {
   getCodexConfigFile,
   getConfigDir,
@@ -46,6 +47,8 @@ function parseArgs(argv) {
     openCodeFormat: null,
     caFile: null,
     browserMode: null,
+    maestroMode: null,
+    maestroCommand: null,
     figmaMode: null,
     enableJiraWrites: process.env.TESTDOCS_ENABLE_JIRA_WRITES === "1",
     enableReleaseTestRunWrites: process.env.TESTDOCS_ENABLE_RELEASE_TEST_RUN_WRITES === "1"
@@ -60,6 +63,8 @@ function parseArgs(argv) {
     else if (arg === "--opencode-format") result.openCodeFormat = argv[++index];
     else if (arg === "--figma-mode") result.figmaMode = argv[++index];
     else if (arg === "--browser-mode") result.browserMode = argv[++index];
+    else if (arg === "--maestro-mode") result.maestroMode = argv[++index];
+    else if (arg === "--maestro-command") result.maestroCommand = argv[++index];
     else if (arg === "--ca-file") result.caFile = argv[++index];
     else if (arg === "--enable-jira-writes") result.enableJiraWrites = true;
     else if (arg === "--enable-release-test-run-writes") result.enableReleaseTestRunWrites = true;
@@ -80,12 +85,14 @@ function showHelp() {
   --clients codex,claude,opencode,generic  Настроить указанные клиенты
   --answers /path/to/answers.json          Взять ответы из JSON без вопросов
   --reuse                                 Применить сохранённые настройки без вопросов
-  --configure jira|confluence|eva|tms|delivery|integrations|figma|browser|all
+  --configure jira|confluence|eva|tms|delivery|integrations|figma|browser|maestro|all
                                           Перенастроить только выбранную часть
   --add jira|confluence|eva               Добавить подключение, сохранив существующие
   --opencode-format stable|v2              Явно выбрать формат OpenCode
   --figma-mode browser|desktop|remote|off          Режим Figma MCP без ручной правки JSON
   --browser-mode persistent|extension|off  Режим локального Playwright MCP
+  --maestro-mode auto|on|off               Локальный Maestro MCP (по умолчанию auto)
+  --maestro-command /absolute/path/maestro Путь к установленному Maestro CLI
   --ca-file /path/to/ca-bundle.pem         Дополнительные доверенные CA в формате PEM
   --enable-jira-writes                     Разрешить создание Bug, публикацию checklist,
                                           Test Run и связанной QA-задачи
@@ -634,7 +641,7 @@ async function collectConfig(args, clients, existing = null) {
   if (args.add && !["jira", "confluence", "eva"].includes(args.add)) {
     throw new Error("--add поддерживает jira, confluence или eva.");
   }
-  if (!["jira", "confluence", "eva", "tms", "delivery", "integrations", "figma", "browser", "all"].includes(target)) {
+  if (!["jira", "confluence", "eva", "tms", "delivery", "integrations", "figma", "browser", "maestro", "all"].includes(target)) {
     throw new Error("Неизвестный раздел настройки.");
   }
   const mode = args.add ? "add" : args.configure && args.configure !== "all" ? "configure" : "all";
@@ -700,6 +707,9 @@ async function collectConfig(args, clients, existing = null) {
   if (target === "figma" && !args.figmaMode) {
     const current = previous.figma || previousMcp(previous.connections.mcp, "figma");
     applyFigmaMode(previous, await ask("Figma mode: browser, desktop, remote или off", defaultFigmaMode(current, clients)));
+  }
+  if (target === "maestro" && !args.maestroMode) {
+    previous.maestro = { ...previous.maestro, mode: await ask("Maestro: auto - подключить установленный CLI, on - требовать CLI, off - отключить", previous.maestro?.mode || "auto") };
   }
   if (["all", "browser"].includes(target) && !args.browserMode) {
     const mode = await ask("Браузер: persistent — отдельный Chrome с сохранением входа, extension — текущие вкладки через расширение, off — отключить", previous.browser?.enabled ? previous.browser.mode : "off");
@@ -866,6 +876,7 @@ function tomlString(value) {
 
 function configuredServers(config) {
   const servers = [];
+  if (config.maestro?.enabled) servers.push({ name: "testdocs_maestro", service: "maestro", tools: maestroLocalTools });
   if (config.browser?.enabled) servers.push({ name: "testdocs_browser", service: "browser" });
   const jiraItems = connectionList(config, "jira");
   for (const jira of jiraItems) {
@@ -941,9 +952,9 @@ default_tools_approval_mode = "writes"`);
 command = ${tomlString(process.execPath)}
 args = [${args.map(tomlString).join(", ")}]
 enabled = true
-required = false
+required = false${server.service === "maestro" ? "\nstartup_timeout_sec = 60\ntool_timeout_sec = 180" : ""}
 ${enabledTools}
-default_tools_approval_mode = "approve"`);
+default_tools_approval_mode = "${server.service === "maestro" ? "writes" : "approve"}"`);
   }
   sections.push(MANAGED_END);
   return `${sections.join("\n")}\n`;
@@ -1051,7 +1062,7 @@ function removeManagedOpenCodePermissions(data) {
 }
 
 function ensureSafeFormatMigration(data, format) {
-  const isManaged = (name) => /^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic|browser)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name);
+  const isManaged = (name) => /^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic|browser|maestro)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name);
   if (format === "stable" && data.mcp?.servers) {
     const foreignServers = Object.keys(data.mcp.servers).filter((name) => !isManaged(name));
     if (foreignServers.length) {
@@ -1114,7 +1125,7 @@ function mergeOpenCodeConfig(config, args) {
   const removeManaged = (container) => {
     if (!container || typeof container !== "object") return;
     for (const name of Object.keys(container)) {
-      if (/^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic|browser)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name)) {
+      if (/^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic|browser|maestro)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name)) {
         delete container[name];
       }
     }
@@ -1266,6 +1277,16 @@ async function main() {
       : await chooseClients(args);
   if (!clients.length) throw new Error("Не выбран ни один клиент.");
   const config = await collectConfig(args, clients, existing);
+  validateMaestro(config.maestro);
+  config.maestro = resolveMaestro({
+    ...config.maestro,
+    ...(args.maestroMode ? { mode: args.maestroMode } : {}),
+    ...(args.maestroCommand ? { command: args.maestroCommand } : {})
+  });
+  console.log(config.maestro.enabled
+    ? "Maestro MCP будет подключён для локальных мобильных проверок. Доступ к устройству проверяется отдельно."
+    : config.maestro.mode === "off" ? "Maestro MCP отключён."
+      : "Maestro CLI не найден; режим auto сохранён. После установки CLI выполните npm run configure:maestro.");
   if (args.figmaMode) applyFigmaMode(config, args.figmaMode);
   if (args.browserMode) {
     if (!["persistent", "extension", "off"].includes(args.browserMode)) throw new Error("--browser-mode: используйте persistent, extension или off.");
