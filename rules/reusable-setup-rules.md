@@ -15,7 +15,7 @@ Create a reusable setup procedure when:
 
 Keep preparation inline when it is short, unique to one case, or is itself the action being verified.
 
-When the preparation surface is an administration interface and entity creation/configuration has stable supported behavior, prefer the linked administration creation case under `test-case-standard.md` over an unverified helper. Such a case follows [Создание и настройка сущности в админке](test-case-standard.md#создание-и-настройка-сущности-в-админке), including its final API verification. Use a pure setup procedure when only state preparation is supported and administration behavior itself cannot be asserted.
+When the preparation surface is an administration interface and entity creation/configuration has stable supported behavior, prefer the linked administration creation case under `test-case-standard.md` over an unverified helper. Such a case follows [Создание и настройка сущности в админке](test-case-standard.md#создание-и-настройка-сущности-в-админке) and ends with confirmation of saved fields and relations through that interface. Use a pure setup procedure when only state preparation is supported and administration behavior itself cannot be asserted.
 
 ## Procedure contract
 
@@ -36,7 +36,7 @@ Name it by the state it produces, for example `Prepare data: published content i
 
 ## Writing setup steps
 
-These step boundaries apply to a pure helper procedure. An administration creation/configuration test case uses the two-part standard linked above; do not drop its API verification by treating that case as a helper.
+These step boundaries apply to a pure helper procedure. An administration creation/configuration test case follows the standard linked above for required fields, frontend configuration, entity relations, and confirmation of saving. Neither procedure gains API checks merely because it prepares content for another case.
 
 - Use the same Russian labels and the same four-column `№ | Шаг | Тестовые данные | Ожидаемый результат` table as a test case.
 - Never combine an action and its result with an arrow or in one cell.
@@ -75,6 +75,8 @@ In every dependent case:
 Do not make a case depend silently on an earlier case or execution order. A setup dependency must be explicit and reproducible on demand.
 
 For an administration-case dependency, use a clickable stable TMS link. State that the call is executed only when a conforming entity is absent; if a suitable entity already exists, deliberately skip the call and identify the selected entity. The conditional skip must not change the functional assertions that follow.
+
+Apply [Подсказки и ссылки на настройку](test-case-standard.md#подсказки-и-ссылки-на-настройку) for named case or step links and property-specific `ℹ️` hints. Keep the creation call in the first action and the relevant entity/tab or configuration-step hint beside the consuming action. A requirement link alone does not supply a missing creation flow.
 
 ## Cleanup and reuse
 

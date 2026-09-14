@@ -126,6 +126,8 @@ State the required role or permission without embedding credentials. When the in
 
 Identify data needed to reproduce the scenario in the `Тестовые данные` cell of the step where the tester uses it. Use concrete values when the value itself exercises a boundary or rule. Use clear symbolic or parameterized values when any value with stated properties is sufficient.
 
+For a property configured through an administration interface, this cell may also contain a concise `ℹ️` setup or source hint tied to the current action. Apply [Подсказки и ссылки на настройку](#подсказки-и-ссылки-на-настройку); the hint does not replace the action or its expected result.
+
 - Never invent credentials, secrets, production records, or personally identifiable data.
 - State the relevant property of data, such as “registered user” or “value above the upper boundary.”
 - Keep generated identifiers and timestamps variable unless an exact value is behaviorally significant.
@@ -162,7 +164,7 @@ Write numbered actions in execution order.
 
 - Use the exact Markdown table header `| № | Шаг | Тестовые данные | Ожидаемый результат |` in chat and document output.
 - Keep the action, data, and expected result in separate table cells.
-- Put only data actually consumed by the action in `Тестовые данные`; leave the cell empty when the action needs no input data.
+- Put data consumed by the action and, when useful, its property-specific `ℹ️` setup/source hint in `Тестовые данные`; leave the cell empty when neither is needed.
 - Format two or more independent items in one cell as a vertical bullet list. Preserve one item per line when sending the case to a TMS; do not flatten it into a comma- or semicolon-separated sentence.
 - Begin each step with an unambiguous action.
 - Include the target and necessary input or selection.
@@ -196,7 +198,7 @@ Prefer behavioral language over implementation language. A refactor that preserv
 
 For UI and administration-interface cases, verify the state a tester can observe through that interface by default. Do not add HTTP methods, endpoints, database writes, internal parameter names, queues, jobs, or implementation flags merely to explain how the interface works. Move useful implementation context to a source note, or create a separate API or integration case when the technical contract itself is under test.
 
-For administration cases that create or configure content for later use, apply the two-part structure in [Создание и настройка сущности в админке](#создание-и-настройка-сущности-в-админке). Their final API checks confirm the result of the same operation and remain in that case; they are not incidental UI implementation detail. Separate API contract scenarios still require their own scope.
+For administration cases that create or configure content for later use, apply [Создание и настройка сущности в админке](#создание-и-настройка-сущности-в-админке). End with confirmation of the saved entity through the administration interface. API responses and downstream frontend behavior belong to separately scoped cases; knowledge of related endpoints does not add them to the creation scenario.
 
 Technical detail is justified only when all three conditions hold:
 
@@ -212,24 +214,39 @@ A setup procedure is a dependency, not proof of product coverage. If the adminis
 
 When a user-facing entity is configured through an administration interface, model its stable administration behavior with one coherent case per supported operation: one for creation, one for update, and one for deletion. Do not multiply cases by field or subsection inside the same operation. If one operation is too large or has independently diagnosable stages, split only that operation at those stage boundaries. Name split cases as `Админка. [Раздел или сущность]. [Операция]. Этап N. [Сценарий]` and preserve explicit links between the stages.
 
-The user-facing functional case must use the linked administration creation/configuration case as its first step or called step. The step identifies the exact case by clickable TMS link and the output required by the functional scenario. If a suitable entity already exists and satisfies the stated starting conditions, the tester deliberately skips that preparation call and records or selects the existing entity; otherwise the linked administration case is executed. Do not copy its administration actions into every functional case. Update and deletion remain separate linked administration coverage and are not called as preparation when their result would invalidate the consumer's starting state.
+The user-facing functional case must use the linked administration creation/configuration case as its first step or called step. The step identifies the exact case by a named clickable TMS link, any required step or step range, and the output required by the functional scenario. If a suitable entity already exists and satisfies the stated starting conditions, the tester deliberately skips that preparation call and records or selects the existing entity; otherwise the linked administration case is executed. A step reference must include its prerequisites, not silently skip required earlier setup. Do not copy its administration actions into every functional case. Update and deletion remain separate linked administration coverage and are not called as preparation when their result would invalidate the consumer's starting state.
 
 Keep a pure helper procedure distinct from administration behavior under test. Use a helper instead of an administration regression case only when the relevant administration operation is outside the approved scope or no supported expected behavior is available. Every administration test case receives the additional `админка` tag.
 
+### Подсказки и ссылки на настройку
+
+В функциональном кейсе оставлять действия пользователя и наблюдаемые результаты работы блока. Если проверяемое свойство задаётся в админке, помещать короткую подсказку с `ℹ️` в колонку `Тестовые данные` соответствующего шага. Различать два назначения ссылки:
+
+- **Где задано свойство.** Указать название параметра, сущность, вкладку или раздел админки и именованную ссылку на точное требование в Confluence или другом доступном источнике. Шаблон: `ℹ️ "[Параметр]" настраивается в сущности "[Название сущности]" > вкладка "[Название вкладки]". [Требование: назначение параметра](точный URL из источника)`. Ссылка может быть на названии сущности, если она ведёт к её описанию. Для связи сущностей кратко указать, какую связь требуется настроить. Не превращать подсказку в инструкцию по проверке базы данных.
+- **Как подготовить сущность или свойство.** Дать именованную ссылку на административный кейс создания/настройки либо на конкретный шаг этого кейса с необходимыми зависимостями. Шаблон: `ℹ️ Настройка "[Параметр]" описана в [Создание сущности](точный URL кейса), шаг N "[Название действия]"`. Обязательный вызов подготовки остаётся первым шагом функционального кейса; подсказка возле свойства помогает найти нужную часть настройки.
+
+Ссылка на требование объясняет расположение и смысл параметра; ссылка на кейс задаёт воспроизводимую подготовку. Использовать нужный вариант или оба, когда у каждого есть отдельное назначение. Саму ссылку на создание размещать в действии первого шага, а не только в `Материалы` или предусловиях. В этом шаге явно разрешать пропуск создания, если уже есть сущность со всеми требуемыми свойствами и связями, и указывать, как выбрать её и какие данные передать дальше.
+
+В чате использовать именованные Markdown-ссылки. В TMS сохранять кликабельные ссылки и значок `ℹ️`; оформлять подсказку информационным блоком, если редактор или коннектор это поддерживает. Если информационный блок недоступен, достаточно отдельного абзаца с `ℹ️` в той же ячейке. Не добавлять неподдерживаемые макросы и не заявлять создание блока без подтверждения. Релевантная ссылка на источник также остаётся в `Материалы` по общим правилам трассировки.
+
+Брать URL, названия сущностей, вкладок, номера и названия шагов только из текущего контекста. Если точной ссылки на шаг нет, использовать подтверждённую ссылку на кейс с текстовым номером и названием шага; не конструировать якорь. Видимая подпись ссылки на скриншоте не раскрывает её URL. При отсутствии нужного кейса предложить его создание в рамках запрошенного объёма; при отсутствии требований или точной ссылки указать пробел один раз вне тела кейса. Не выдавать зависимость за готовую, если без неё нельзя воспроизвести подготовку. Не создавать кейс в TMS без отдельного разрешения на публикацию.
+
 ### Создание и настройка сущности в админке
 
-Кейс, который проверяет создание или настройку сущности через административную панель для последующего использования контента, состоит из двух последовательных частей одного сценария:
+Кейс описывает один простой путь создания или настройки сущности, необходимой для функциональных проверок. Его граница - сохранённая сущность с нужными полями, состоянием и связями в административной панели. На этом сценарий заканчивается: не выполнять запросы к backend/API для поиска созданной сущности и не переходить на пользовательский фронтенд. Отображение и работа блока проверяются зависимым функциональным кейсом. Проверки API-контракта описываются отдельно, только когда они входят в запрошенный объём.
 
-1. **Создание и настройка сущности** - действия в админке, включая необходимые связи с другими сущностями и сохранение результата.
-2. **Проверка в API** - подтверждение результата этой операции во всех связанных методах, где по требованиям должна возвращаться созданная или настроенная сущность либо её данные.
+Использовать одну таблицу шагов со сквозной нумерацией без деления на UI- и API-части. Обновление и удаление остаются отдельными операциями; не добавлять их автоматически к созданию. Повторное открытие сохранённой карточки для сверки значений завершает проверку создания и само по себе не является сценарием обновления.
 
-Использовать одну таблицу шагов со сквозной нумерацией. Начало каждой части отмечать в первой строке её действия: `Создание и настройка сущности: открыть ...`, `Проверка в API: выполнить ...`. Не добавлять пустые строки-разделители без действия и ожидаемого результата. Две части не означают два отдельных кейса. Обновление и удаление остаются отдельными операциями по правилам выше; не добавлять их автоматически к созданию.
+**Достаточное содержание**
 
-**Первая часть: создание и настройка**
+- В предусловиях указать роль, доступ и способ выбора тестовой среды. В шагах описать путь к разделу и форме, нужные вкладки, заполнение полей, настройку состояния и сохранение, чтобы тестировщик без знания проекта мог повторить операцию.
+- Охватить все обязательные поля и все действия, необходимые для создания. Дополнительно заполнить те необязательные поля, которые нужны для проверяемых элементов на фронте. Явно назвать поля и сгруппировать связанные поля по вкладке или назначению; не писать только "заполнить обязательные поля" и не создавать отдельный кейс на каждое поле.
+- В `Тестовые данные` указать значения или воспроизводимые критерии их выбора. Для строк и файлов можно указать подтверждённые ограничения длины, формата и размера. Не придумывать диапазоны, форматы, значения по умолчанию и тексты ошибок. Допустимые границы описывать кратко; не расширять путь создания перебором негативных и граничных вариантов без отдельного объёма на валидацию.
+- Явно описать все необходимые для отображения связи: какую сущность выбрать, как её однозначно найти, через какое поле связать и как подтвердить сохранение связи в админке. Если связанную сущность нужно сначала создать, дать воспроизводимую подготовку или именованный вызов соответствующего кейса с его выходными данными. Не подразумевать, что другой кейс уже выполнен.
+- Завершить наблюдаемым подтверждением сохранения: сущность появляется в списке или карточке с введёнными значениями по подтверждённому поведению интерфейса. Когда сохранённые поля и связи видны при повторном открытии карточки, добавить короткий шаг сверки этих значений. Не ограничиваться фразой "создание успешно".
+- Передать зависимому кейсу доступный в админке идентификатор, символьный код, путь или уникальный признак сущности и существенные параметры её выбора. Генерируемые системой значения не подменять постоянными примерами и не получать их дополнительными API-запросами ради подготовки.
 
-- В предусловиях указать роль, доступ и способ выбора тестовой среды. В шагах описать путь к форме, заполнение нужных полей, настройку состояния и сохранение, чтобы тестировщик без знания проекта мог повторить операцию.
-- Явно описать связи: какую сущность выбрать, как её однозначно найти, через какое поле связать и как подтвердить сохранение связи. Если связанную сущность нужно сначала создать, дать воспроизводимую подготовку или именованный вызов соответствующего кейса с его выходными данными. Не подразумевать, что другой кейс уже выполнен.
-- Зафиксировать доступный идентификатор или уникальный признак результата и связанных сущностей. Использовать их в API-части и передавать зависимым кейсам. Генерируемые системой значения не подменять постоянными примерами.
+Неизвестные обязательные поля, правила настройки, связи или способ подтверждения сохранения перечислить один раз в `Требуется уточнить` вне тела кейса. Неизвестные API-методы, схемы ответов и доступ к API не являются пробелами готовности этого административного сценария. Полноту проверять в границах создания и нужной фронту конфигурации по `Source-field completeness`, без автоматического добавления остальных проверок админки.
 
 **Скриншот сущности**
 
@@ -237,18 +254,6 @@ Keep a pure helper procedure distinct from administration behavior under test. U
 - Помещать снимок как доступное вложение или именованную ссылку в `Материалы`, с короткой подписью о показанном состоянии. Не выдумывать ссылку или успешное прикрепление. Снимок дополняет текст шагов и результатов; динамические значения на нём не становятся обязательными тестовыми данными.
 - Если доступа или подходящего снимка нет, готовить кейс по доступным требованиям без изображения. При существенном ограничении кратко сообщить вне тела кейса, что скриншот не приложен и почему. Отсутствие изображения само по себе не мешает готовности текстового кейса.
 - Не создавать сущность или менять данные только ради иллюстрации без разрешения на эти действия. Для снимков, полученных при выполнении тестирования, применять правила сохранения и повторного использования доказательств из `task-execution-rules.md`.
-
-**Вторая часть: проверка в API**
-
-- По требованиям, контракту или другим доступным материалам определить все связанные методы в рамках этой операции. Для каждого указать отдельный шаг; не ограничиваться одним удобным методом, если результат должен присутствовать также в других выдачах. Само наличие похожего endpoint не доказывает, что он должен возвращать эту сущность.
-- В `Шаг` указывать документированную операцию: HTTP-метод и относительный endpoint либо другое точное обозначение из контракта. В `Тестовые данные` указывать выбранную API-среду и необходимые параметры пути, запроса или тела, включая идентификаторы и значения из первой части. Доступ и способ авторизации описывать без секретов.
-- Использовать API той же тестовой среды, в которой выполнена настройка в админке. Для переиспользуемого кейса описывать выбор среды и соответствующего базового адреса через подтверждённую конфигурацию проекта; точные адреса брать из текущего контекста, не угадывать и не переносить между проектами.
-- В `Ожидаемый результат` указывать, где найти нужную сущность в ответе, какие конкретные поля возвращаются и с какими введёнными значениями, идентификаторами или связями их сравнить. Проверять документированный статус ответа, когда он определён. Для списков явно задавать способ поиска сущности, а не принимать наличие любого объекта за успех.
-- Проверять поля, относящиеся к результату операции, в каждом методе согласно его собственному контракту. Не требовать одинаковой схемы от всех методов и не заменять критерии фразой "данные возвращаются корректно".
-- Если результат появляется с задержкой, указывать условие готовности и порядок повторного запроса только из подтверждённого контекста. Не придумывать время ожидания или число повторов.
-- Не добавлять переход на пользовательский фронтенд: его отображение и использование контента проверяются зависимым функциональным кейсом.
-
-Если неизвестны связанные методы, схема ответа, ожидаемые значения, соответствие сред или необходимый доступ тестировщика, перечислить конкретные пробелы один раз в `Требуется уточнить` вне тела кейса. Сохранить полезную первую часть как `Черновик`; не выдавать кейс за готовый с молча пропущенной API-частью и не придумывать запросы. Недоступность API автору кейса сама по себе не мешает описать проверки по полному контракту, если у предполагаемого тестировщика есть подтверждённый способ их выполнить; выполнение при этом не заявлять.
 
 ## Shared blocks and variant cases
 
