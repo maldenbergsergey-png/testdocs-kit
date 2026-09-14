@@ -1,6 +1,6 @@
 # Coverage matrix rules
 
-**Status:** proposed transcription of the supplied organizational instructions; pending human review. The source section for integration placement is incomplete and remains unresolved.
+**Status:** active portable baseline; project-specific placeholders remain unresolved until supplied. The source section for integration placement is incomplete and remains unresolved.
 
 The coverage matrix is the primary navigation model of functionality and test coverage. It does not replace test cases and does not contain execution steps. Test cases are created from scenarios recorded in the matrix. Reusable setup procedures are linked dependencies, not matrix scenarios, unless the preparation behavior is independently required and tested.
 

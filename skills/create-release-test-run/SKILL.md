@@ -7,6 +7,8 @@ description: Build a release, smoke, regression, sanity, or hotfix test run from
 
 Build the smallest evidence-backed execution set that matches the release risk and the user's requested depth.
 
+Read [the common contract](../../rules/core.md) once per task. Follow conditional rule links only when their condition applies.
+
 ## Read the source of truth
 
 Before working, read:
@@ -17,7 +19,6 @@ Before working, read:
 - [`../../rules/project-conventions.md`](../../rules/project-conventions.md)
 - [`../../rules/integration-rules.md`](../../rules/integration-rules.md) when Jira or TMS integrations are involved
 - [`../../rules/coverage-matrix-rules.md`](../../rules/coverage-matrix-rules.md) only when missing case coverage must be navigated through a supplied matrix
-- [`../../rules/README.md`](../../rules/README.md) for unresolved project values
 
 Use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) for the exact release, its tasks, linked requirements, and scoped TMS discovery. Keep retrieval read-only until the complete run and Jira-work-item payloads pass preflight.
 

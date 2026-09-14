@@ -7,6 +7,8 @@ description: Turn informal, dictated, or voice-transcribed defect notes into a s
 
 Prepare a source-backed defect draft and optionally create it through the connected Jira capability.
 
+Read [the common contract](../../rules/core.md) once per task. Follow conditional rule links only when their condition applies.
+
 ## Read the source of truth
 
 Before work, read:
@@ -22,7 +24,7 @@ Classify the request as `DRAFT_ONLY` or `CREATE_IN_JIRA` using the write boundar
 
 Identify the target Jira instance and project from an explicit key, URL, project name, approved configuration, or unambiguous current context. Do not search or choose an arbitrary company project. If several instances or projects fit, stop before metadata retrieval and request the target.
 
-Use supplied requirements, issues, links, screenshots, logs, and files only when they are explicitly in scope. Retrieve an anchored Jira issue or knowledge link through `collect-test-context` when it materially defines expected behavior. When the user explicitly asks to find missing material, search only within the named project, space, system, or relations of the supplied anchor. Do not browse an arbitrary company system.
+Use supplied requirements, issues, links, screenshots, logs, and files only when they are explicitly in scope. Retrieve missing or stale content from an anchored Jira issue or knowledge link through `collect-test-context` when it materially defines expected behavior. When the user explicitly asks to find missing material, search only within the named project, space, system, or relations of the supplied anchor. Do not browse an arbitrary company system.
 
 ## Build the semantic draft
 

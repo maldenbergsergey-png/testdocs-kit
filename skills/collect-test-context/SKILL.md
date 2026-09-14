@@ -1,19 +1,19 @@
 ---
 name: collect-test-context
-description: Collect and normalize QA context from an explicitly supplied Jira or GitLab issue/MR, Confluence or knowledge page, Figma node, API source, document, local file, logs, and existing cases in Zephyr Scale, legacy Test Management for Jira, or another TMS. Use before estimating QA effort, explaining or executing task testing, drafting a source-anchored bug report, or generating, reviewing, updating, optimizing, or analyzing test documentation when external context is referenced. Remain read-only and return a traceable context bundle; do not create issues or publish cases.
+description: Retrieve and normalize context from supplied external issue/page/design/API/TMS references or an explicitly scoped search. Use as a read-only helper when another QA workflow needs source retrieval, or when the user asks to collect context itself. Return evidence and gaps to the caller.
 ---
 
 # Collect test context
 
-Build a minimal, traceable context bundle and route it to the appropriate QA skill without coupling the workflow to one MCP server or product schema.
+Build a minimal, traceable context bundle and return it to the calling QA skill without coupling the workflow to one MCP server or product schema.
+
+Read [the common contract](../../rules/core.md) once per task. Follow conditional rule links only when their condition applies.
 
 ## Read the source of truth
 
 Before retrieval, read:
 
 - [`../../rules/integration-rules.md`](../../rules/integration-rules.md)
-- [`../../rules/README.md`](../../rules/README.md)
-- the source-of-truth rule files required by the downstream skill when evaluating sufficiency or conflicts
 
 Read [`../../integrations/README.md`](../../integrations/README.md) only when connection capability or adapter behavior needs explanation.
 
@@ -29,17 +29,13 @@ Accept:
 - a TMS case key, URL, folder, or explicitly scoped search request;
 - plain chat context or local files when no external reference is supplied.
 
-Infer the intent branches from `task-testing-rules.md`: checklist-only, full package, cases-only, task-scoped cases, optimization, review, and targeted scope. Also recognize analyze coverage, update/apply, build a matrix, build a regression model, and prepare or create a release Test Run/Test Cycle. Do not make the user choose internal skills when their intent is clear.
-
-Also recognize advice-only task testing and hands-on execution from `task-execution-rules.md`. Read that rule for either branch.
-
-For QA effort estimation, use `qa-task-estimation-rules.md` to assess context sufficiency. Retrieve existing coverage or history only when it materially affects the estimate; do not start a full TMS audit or demand executable test-case detail for a defensible preliminary estimate.
+Preserve the caller's selected intent and requested output. Do not select or load downstream skills during collection. When directly invoked without a clear result intent, return collected context and material gaps.
 
 For a task/subtask estimate, read the full supplied task, its parent story, the linked tasks and siblings in that feature's scope, and the documents defining their behavior. Map each task's change and dependencies before allocating hours. This feature-scoped completeness is not permission to crawl an entire project; inaccessible or partial sources remain explicit gaps. Parent and sibling context does not make their entire testing effort part of the target subtask.
 
-Also recognize bug-report draft and Jira bug-create intent from `bug-report-standard.md`. Read that rule when this branch is selected.
-
 ## Discover capabilities
+
+Apply the common contract's reuse condition before the retrieval steps below. Collect missing or stale material; an explicit refresh request also requires a new read.
 
 Inspect the tools available in the current host and classify them as issue/change read, issue relations, knowledge read, design read, API workspace read/write, log read, TMS read, or TMS write. Match by documented capability and input/output shape, not by a hard-coded tool name.
 
@@ -64,33 +60,7 @@ When more than one Jira or company connection could satisfy the same key, stop b
 11. Preserve relevant comment evidence with its link or ID, author, date, and evidence type when available. Keep a previous checklist distinct from approved requirements and permanent TMS coverage; preserve its useful scenario text, but do not promote its expected results or execution status to facts without corroboration.
 12. Separate facts, source conflicts, missing permissions, missing capabilities, and missing behavioral information. Use `PARTIAL_CONTEXT` when a page, attachment, table, field list, comment checklist, or relevant linked target was truncated or only partly retrieved.
 13. Normalize the evidence into the context bundle from `integration-rules.md`.
-14. Route sufficient context to the requested downstream skill:
-   - QA effort, planning hours, additional regression/retest, recalculation or comparison with actuals → `qa-task-estimation`;
-   - advice-only “how to test” → `explain-task-testing`;
-   - hands-on task execution → `execute-task-testing`;
-   - checklist-only preparation → `prepare-task-testing` checklist branch;
-   - generic/full task preparation → `prepare-task-testing` full branch;
-   - cases-only or task-scoped cases → `prepare-task-testing` corresponding cases branch;
-   - optimization/refactoring → `prepare-task-testing` optimization branch;
-   - generation → `generate-test-cases`;
-   - coverage or actualization need → `analyze-test-coverage`;
-   - approved update proposal → `update-test-cases`;
-   - case quality review → `review-test-cases`;
-   - bug-report draft or explicit Jira bug creation → `create-bug-report`;
-   - coverage structure → `build-coverage-matrix`;
-   - regression organization → `build-regression-model`;
-   - release Test Run/Test Cycle preparation or creation → `create-release-test-run`.
-15. Return the bundle and downstream result in chat. Do not call an external write tool.
-
-## Actualization path
-
-For a request such as “check whether cases for ISSUE-123 need actualization”:
-
-1. retrieve the current issue and relevant approved requirement context;
-2. retrieve supplied or linked existing cases, current versions, lifecycle statuses, and the latest actualization reason or comment when available;
-3. send the evidence to `analyze-test-coverage` first;
-4. use `update-test-cases` only for cases classified `UPDATE` and only when the current case content is available;
-5. show proposals in chat; do not create versions, save updates, comment, link, move, or change statuses in TMS.
+14. Return the applicable fields of the neutral bundle to the caller. Keep source facts lossless but omit irrelevant capability families and duplicate raw payloads. The caller assesses artifact-specific sufficiency and continues its own workflow.
 
 ## Failure and fallback
 
@@ -103,37 +73,8 @@ For a request such as “check whether cases for ISSUE-123 need actualization”
 
 Continue with the evidence that is available when it is sufficient for a narrower result. Missing Confluence or TMS access must not block a chat-only workflow that already has adequate context.
 
-## Output
+## Output and boundary
 
-```text
-Status: CONTEXT_READY | PARTIAL_CONTEXT | INSUFFICIENT_CONTEXT
-Request intent: ...
-Input mode: ISSUE_ANCHORED | RELEASE_ANCHORED | KNOWLEDGE_ANCHORED | TMS_ANCHORED | MANUAL_CONTEXT
-Scope anchor: ...
+Use the neutral context bundle from [integration rules](../../rules/integration-rules.md), with `CONTEXT_READY`, `PARTIAL_CONTEXT`, or `INSUFFICIENT_CONTEXT`. In an ordinary artifact workflow this bundle stays internal; expose only material source gaps in the final requested result. A direct context-collection request can return the bundle itself.
 
-Issue facts: ...
-Relevant comment evidence: decisions, corrections, unresolved questions, and previous checklist/execution evidence with provenance
-Relevant linked requirements and knowledge: ...
-Relevant source links: ...
-Source field inventory: ...
-Existing test coverage: ...
-Existing coverage discovery:
-  Status: COMPLETE | PARTIAL | UNAVAILABLE
-  Directly linked cases: ...
-  Discovered relevant cases: ...
-  Search scope: ...
-  Limitations: ...
-Source conflicts: ...
-Missing capabilities or permissions: ...
-Missing behavioral context: ...
-Source inventory: ...
-Recommended downstream skill: ...
-
-External writes performed: none
-```
-
-This bundle is internal. In an ordinary task workflow, expose only source-backed QA results and material limitations, not skill routing or raw integration narration.
-
-## Write boundary
-
-Keep this skill read-only. It may route an explicit bug-create request to `create-bug-report`, which must inspect live create metadata and validate the exact target and payload. It may route an explicit Test Run creation request to `create-release-test-run`, which must preflight the exact release, cases, assignments, run target, and Jira work-item payload. It may route an explicit new-case creation request to `generate-test-cases`, which must validate the target and complete content. It may route an explicit correction/apply request to `update-test-cases`, but only that skill and the MCP registry or fingerprint guard can authorize an update. Context collection never authorizes updates, versions, moves, comments, status changes, or deletion.
+Return to the caller after retrieval. Never invoke a downstream skill or an external write from this helper.

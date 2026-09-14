@@ -7,6 +7,8 @@ description: Build or assess a traceable regression coverage model from supplied
 
 Organize persistent test coverage into a maintainable, evidence-backed model.
 
+Read [the common contract](../../rules/core.md) once per task. Follow conditional rule links only when their condition applies.
+
 ## Read the source of truth
 
 Before analysis, read:
@@ -19,7 +21,6 @@ Before analysis, read:
 - [`../../rules/test-case-standard.md`](../../rules/test-case-standard.md) when case executability or reuse affects eligibility
 - [`../../rules/reusable-setup-rules.md`](../../rules/reusable-setup-rules.md) when cases share preparation or administration content
 - [`../../rules/integration-rules.md`](../../rules/integration-rules.md) when the model reads issues, requirements, or TMS data through an integration
-- [`../../rules/README.md`](../../rules/README.md) for placeholder handling
 
 For Zephyr Scale XML, use [`../derive-test-case-standard/scripts/summarize_zephyr_xml.py`](../derive-test-case-standard/scripts/summarize_zephyr_xml.py) to deduplicate keys and inspect lifecycle and field quality before modeling coverage.
 
@@ -29,7 +30,7 @@ Accept scoped case exports, test-case lists, requirements, feature maps, coverag
 
 State which inputs are authoritative and whether the supplied case scope is complete. If status or label meanings are not supplied, preserve their raw values and mark their semantics unresolved.
 
-Use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) first when the request supplies external references. Confirm that the connected capability can read complete TMS cases rather than Jira issues alone.
+Use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) when supplied external references need retrieval under the common contract. Confirm that the connected capability can read complete TMS cases rather than Jira issues alone.
 
 ## Workflow
 

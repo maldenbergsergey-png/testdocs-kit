@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import { verifySkillResources } from "./verify-skills.mjs";
 import { isFigmaDesktop } from "./figma-config.mjs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
-import { getConfigFile, launcherFile, repoRoot } from "./paths.mjs";
+import { getConfigFile, getInstallHome, launcherFile, repoRoot } from "./paths.mjs";
 import { connectionList, hasQaTools, migrateConfig, usesZephyr } from "./config-model.mjs";
 import { validateMaestro } from "./maestro-config.mjs";
 
@@ -59,6 +60,12 @@ function validatePrivateConfig() {
     if (config.qaTools.authMode === "password") assert(config.qaTools.username, "Не заполнен логин QA Tools.");
     assert(config.qaTools.secret, "Не заполнены учётные данные QA Tools.");
   }
+  const clients = config.clients || [];
+  const names = fs.readdirSync(path.join(repoRoot, "skills"), { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  const directories = [];
+  if (clients.some((client) => ["codex", "opencode", "generic"].includes(client))) directories.push(path.join(getInstallHome(), ".agents", "skills"));
+  if (clients.includes("claude")) directories.push(path.join(getInstallHome(), ".claude", "skills"));
+  for (const directory of directories) verifySkillResources(directory, names);
   return config;
 }
 
@@ -146,10 +153,13 @@ async function main() {
       assert(tools.includes("zephyr_get_test_run"), "Jira MCP не отдал проверочное чтение Test Run и назначений.");
       assert(tools.includes("zephyr_list_test_run_folders"), "Jira MCP не отдал поиск папок Test Run.");
     }
-    if (usesZephyr(config, jira.id) && config.enableTestCaseCreation !== false) {
+    if (usesZephyr(config, jira.id) && config.enableTestCaseCreation === true) {
       assert(tools.includes("zephyr_create_test_case"), "Jira MCP не отдал инструмент создания кейса Zephyr.");
       assert(tools.includes("zephyr_update_session_test_case"), "Jira MCP не отдал защищённый инструмент исправления кейса текущей сессии.");
-      assert(tools.includes("zephyr_update_test_case"), "Jira MCP не отдал защищённый инструмент обновления существующего кейса.");
+    }
+    assert(!tools.includes("zephyr_update_test_case"), "MCP нарушает временный запрет обновления существующих кейсов.");
+    if (config.enableTestCaseCreation !== true) {
+      assert(!tools.includes("zephyr_create_test_case") && !tools.includes("zephyr_update_session_test_case"), "Запись кейсов включена без opt-in.");
     }
     if (jira.enableReleaseTestRunCreation === true) {
       assert(tools.includes("jira_create_qa_work_item"), "Jira MCP не отдал защищённое создание QA-задачи Test Run.");

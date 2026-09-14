@@ -1,11 +1,13 @@
 ---
 name: generate-test-checklist
-description: Generate a scope-level QA checklist in copy-ready Jira Wiki Markup from an explicitly scoped task, Confluence page, document, file, or supplied requirements. Use for requests asking what to test, a checklist, or a test plan. Do not turn every check into a permanent test case.
+description: Generate a scope-level QA checklist in copy-ready Jira Wiki Markup from an explicitly scoped task, Confluence page, document, file, or supplied requirements. Use when the user explicitly requests a checklist or a formal test plan. Advice-only "what/how should I test?" uses explain-task-testing; actual verification uses execute-task-testing. Do not turn every check into a permanent test case.
 ---
 
 # Generate test checklist
 
 Create only the requested scope-level checklist. Do not perform permanent coverage classification unless the caller separately requests it.
+
+Read [the common contract](../../rules/core.md) once per task. Follow conditional rule links only when their condition applies.
 
 ## Read the source of truth
 
@@ -13,7 +15,6 @@ Before generating, read:
 
 - [`../../rules/test-checklist-standard.md`](../../rules/test-checklist-standard.md)
 - [`../../rules/integration-rules.md`](../../rules/integration-rules.md) when external context or delivery is requested
-- [`../../rules/README.md`](../../rules/README.md) for placeholder handling
 
 ## Workflow
 
@@ -31,9 +32,9 @@ If context supports only part of the task, generate that safe part and put unres
 
 ## Optional delivery after review
 
-Showing the checklist is the default and performs no write.
+Showing the checklist is the default and performs no write. For either requested destination, read [external write rules](../../rules/external-write-rules.md) and [delivery rules](../../rules/checklist-delivery-rules.md) before writing.
 
 - If the user explicitly asks to publish the finalized checklist to the anchored Jira issue, use `jira_publish_checklist_comment` with the exact issue key, exact displayed Jira Wiki content, and `confirmed: true`. Do not use generic `add_comment`. Return the confirmed comment ID or URL.
-- If the user explicitly asks to send, fill, or open it in QA Report, read [`../../integrations/profiles/qa-report.md`](../../integrations/profiles/qa-report.md) before assessing available tools and apply the delivery rules from `integration-rules.md`. For an open-report request, follow the profile's temporary HTTP workflow and credential handling; otherwise use the configured `qa_report_import_checklist` connector with the exact displayed content and `confirmed: true`.
+- If the user explicitly asks to send, fill, or open it in QA Report, read [`../../integrations/profiles/qa-report.md`](../../integrations/profiles/qa-report.md) before assessing available tools and apply [checklist delivery rules](../../rules/checklist-delivery-rules.md). For an open-report request, follow the profile's temporary HTTP workflow and credential handling; otherwise use the configured `qa_report_import_checklist` connector with the exact displayed content and `confirmed: true`.
 - When QA Report returns its editor URL and the user asked to open it, open it only through an available browser capability in a separate external tab/window. Never embed it. If opening is unavailable, return the clickable URL.
 - Treat the two destinations independently. For temporary API retries, follow the profile's batch receipt and idempotency contract; never duplicate an uncertain write.

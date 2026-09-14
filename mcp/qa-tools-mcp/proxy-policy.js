@@ -1,3 +1,4 @@
+const ALLOWED_WRITES = new Set(["testops_create_testcase"]);
 const READ_PREFIXES = ["testops_find_", "testops_get_", "testops_list_"];
 
 function buildMcpUrl(baseUrl) {
@@ -23,7 +24,7 @@ function isDestructiveTool(name) {
 function exposeTool(tool, writesEnabled) {
   if (isDestructiveTool(tool.name)) return null;
   if (isReadTool(tool.name)) return tool;
-  if (!writesEnabled) return null;
+  if (!writesEnabled || !ALLOWED_WRITES.has(tool.name)) return null;
   const inputSchema = tool.inputSchema && typeof tool.inputSchema === "object"
     ? structuredClone(tool.inputSchema)
     : { type: "object" };
@@ -46,6 +47,7 @@ function prepareCall(name, args, writesEnabled) {
   if (isDestructiveTool(name)) throw new Error(`Destructive QA Tools operation is not exposed: ${name}`);
   if (isReadTool(name)) return { name, arguments: args || {} };
   if (!writesEnabled) throw new Error(`QA Tools write operation is disabled in setup: ${name}`);
+  if (!ALLOWED_WRITES.has(name)) throw new Error(`SESSION_ONLY: QA Tools has no creation registry; this mutation is not exposed: ${name}`);
   if (args?.confirmed !== true) throw new Error(`QA Tools write operation requires confirmed: true: ${name}`);
   const forwarded = { ...(args || {}) };
   delete forwarded.confirmed;

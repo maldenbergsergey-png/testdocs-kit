@@ -21,7 +21,7 @@ Preserve raw field and lifecycle values. Map them to the neutral context bundle 
 
 ## Write capability checklist
 
-Treat create, update, new-version, issue-link, comment, status-change, folder-move, and called-step changes as separate operations. Prepare a concise audit comment for every mutation, but write it only through a separately exposed and authorized comment capability; never hide it in `Цель`. The bundled adapter exposes new-case creation, narrow session correction, and guarded existing-case update. Existing-case update requires an explicit apply request, a fingerprint from a complete baseline read, and a matching immediate pre-write re-read. Keep every other update and destructive operation unavailable.
+Follow [external write rules](../../rules/external-write-rules.md) and the [temporary update restriction](../../rules/update-rules.md). After installer opt-in, the bundled adapter exposes creation and registry-guarded correction of cases created by the current MCP process. Other case updates remain proposal-only, regardless of baseline fingerprints. Use the field mapping below for supported operations.
 
 ## Test Run capability checklist
 

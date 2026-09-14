@@ -7,12 +7,13 @@ description: Derive reusable, project-independent QA test-case rules and style p
 
 Extract evidence-backed conventions from QA documentation and propose focused changes to the shared standard.
 
+Read [the common contract](../../rules/core.md) once per task. Follow conditional rule links only when their condition applies.
+
 ## Read the source of truth
 
 Before analysis, read:
 
 - [`../../rules/standard-derivation-rules.md`](../../rules/standard-derivation-rules.md)
-- [`../../rules/README.md`](../../rules/README.md)
 - every rule file that the proposed change may affect
 
 Do not copy detailed policy into this skill. Keep durable QA policy under `rules/`.

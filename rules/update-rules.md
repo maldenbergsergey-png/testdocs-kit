@@ -1,6 +1,6 @@
 # Update rules
 
-**Status:** proposed organizational standard derived from the supplied instructions; pending human review.
+**Status:** active portable baseline; project-specific placeholders remain unresolved until supplied.
 
 Changes to a test case follow this sequence:
 
@@ -10,7 +10,7 @@ Context → AI analysis → Proposal → Human review → explicit apply request
 
 The proposal must distinguish additions, modifications, removals, and unchanged content, and explain every proposed change. Show the complete proposed case after the diff.
 
-An external write is permitted only after an explicit apply/update request. A session-created case uses the registry guard below. A previously existing case uses the guarded baseline-fingerprint procedure; drafting, reviewing, or showing a proposal never authorizes either write.
+An external write is permitted only after an explicit apply/update request. A session-created case uses the registry guard below. A case created outside the current MCP process remains proposal-only even after an apply request. This temporary restriction can be lifted only by a separate explicit policy change, not by an ordinary case-update request.
 
 ## Source and version procedure
 
@@ -19,7 +19,7 @@ Before proposing an update:
 1. Read the latest TMS comment that explains why actualization is needed.
 2. If no comment exists, inspect the latest version history and identify the person whose change triggered the status; request the reason instead of guessing.
 3. Establish the requirement, design, defect, or approved correction that supports the change.
-4. For a significant change, create a new TMS version so history is preserved rather than editing the current version directly.
+4. For a significant change, propose a new TMS version for the human operator so history is preserved. Do not create that version through the agent while the restriction below is active.
 
 If the supplied lifecycle policy requires a new version but the connector cannot create one safely, stop at the proposal and state that limitation; do not silently replace version creation with an in-place update.
 
@@ -30,22 +30,15 @@ If the team later applies the reviewed update outside this tool:
 3. Move the case to `Готов к ревью`.
 4. Check whether related cases are affected by the same product change.
 
-Reading a comment or history does not authorize a write. The bundled existing-case tool changes only supported content fields after a stale-proposal check. Version creation, comments, links, moves, status changes, retirement, and deletion remain disabled.
+Reading a comment or history does not authorize a write. Only the current-session correction exception below can modify case content. Version creation, comments, links, moves, status changes, retirement, and deletion are not authorized by that exception.
 
 The change comment is required audit context but is not part of `Цель`, preconditions, or steps. Prepare it with every create or update proposal. Apply it only through an explicitly authorized TMS comment capability. When the content write succeeds but the connector cannot add comments, report the missing audit operation separately and do not claim the full documentation workflow completed.
 
-## Guarded existing-case update
+## Temporary restriction on existing cases
 
-After the user explicitly asks to apply a reviewed proposal:
+Cases not created by the current MCP process cannot be updated by the agent. Return the focused diff, complete corrected proposal and change comment for human application. This applies across Zephyr, legacy TM4J and other TMS providers, including explicit requests to apply a proposal.
 
-1. Require the exact case key and complete baseline content used by the proposal.
-2. Use the connector-provided baseline content fingerprint; never invent or recompute it from an incomplete summary.
-3. Send only intended changed fields. If steps change, send the complete final ordered list.
-4. The adapter re-reads the complete case immediately before PUT and compares its fingerprint with the proposal baseline.
-5. On mismatch, stop without writing, report a stale-proposal conflict, retrieve the new baseline, and require a refreshed proposal and new explicit apply request.
-6. After success, report the connector-returned key, full URL, and changed fields.
-
-This operation must not change project, folder, lifecycle status, issue links, comments, or versions, and cannot delete or retire a case.
+Do not fall back to another tool, direct HTTP, browser editing, version creation or replacement-case creation to bypass this restriction. A stored baseline fingerprint does not grant permission. A provider without a server-enforced creation registry cannot offer the session correction exception.
 
 ## Current-session correction exception
 
@@ -111,4 +104,4 @@ The approved Russian Zephyr format in `test-case-standard.md` is the target form
 - Do not silently choose between conflicting requirements.
 - Do not infer unseen fields or reconstruct an unavailable baseline.
 - Label all output as a proposal until the user approves it.
-- Do not use a write tool without a current reviewed proposal and explicit apply request. Never bypass the fingerprint or registry guard.
+- Do not use a write tool without a current reviewed proposal and explicit apply request. Never bypass the current-session registry guard.

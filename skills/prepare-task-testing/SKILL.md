@@ -1,59 +1,24 @@
 ---
 name: prepare-task-testing
-description: Primary intent-based entry point for ordinary QA requests such as preparing a checklist, test cases, a full documentation package, task-only cases outside regression, or a targeted subset from an issue, document, URL, file, or supplied requirement. Return the specifically requested artifact and automatically choose the workflow without requiring skill names.
+description: Prepare a full QA documentation package when explicitly requested, or resolve an ambiguous request to prepare testing. Compose checklist, coverage analysis and case proposals for the full-package branch. Concrete requests for a checklist, cases, advice, execution, review or another artifact select their specialized skill directly; direct calls here still route them correctly.
 ---
 
 # Prepare task testing
 
-Orchestrate the existing portable skills while keeping internal routing invisible in the user-facing result.
+Read [the common contract](../../rules/core.md) once per task and [intent/output rules](../../rules/task-testing-rules.md). Use skill discovery descriptions first; do not preload every skill in the routing table.
 
-## Read the source of truth
+## Choose the result
 
-Before work, read:
+Match the user's requested result using the routing table. If the request names a concrete artifact, invoke its skill directly. Apply task-only or targeted scope without adding other artifacts. If "prepare testing" remains ambiguous, ask one short question about the desired result, without presenting internal skill names. A full package requires explicit intent.
 
-- [`../../rules/task-testing-rules.md`](../../rules/task-testing-rules.md)
-- [`../../rules/test-checklist-standard.md`](../../rules/test-checklist-standard.md)
-- [`../../rules/coverage-rules.md`](../../rules/coverage-rules.md) for the full-package branch
-- [`../../rules/integration-rules.md`](../../rules/integration-rules.md)
-- downstream rule files referenced by every skill actually used
+Use [collect-test-context](../collect-test-context/SKILL.md) only for external retrieval or scoped discovery; use supplied text/files directly. Pass the resulting context onward and reuse it without repeating retrieval unless it is incomplete or stale.
 
-## Route by intent
+## Full package
 
-- A request to test a task or quickly verify a component routes to `execute-task-testing` under `task-execution-rules.md`; live-product inspection for documentation follows "Live product context" in `integration-rules.md` and retains the artifact branch below.
-- An explicit checklist request selects `CHECKLIST_ONLY`.
-- An explicit request for all test documentation or a full package selects `FULL_PACKAGE`. Do not silently expand an otherwise ambiguous “prepare testing” request to every artifact; infer a concrete artifact from the remaining wording or ask one concise result-focused question when it cannot be determined.
-- An explicit request for test cases selects `CASES_ONLY`; do not require phrases such as “без чек-листа” or “только тест-кейсы”.
-- An explicit request for task-only cases or cases outside the regression model selects `TASK_SCOPED_CASES`.
-- A request to optimize or refactor several existing cases selects `OPTIMIZE_EXISTING` and routes to `review-test-cases` for a structural proposal.
-- A request for review only selects `REVIEW_ONLY` and routes to `review-test-cases`.
-- A request limited to a named block, scenario, case type, or task slice applies `TARGETED_SCOPE` to the selected branch.
-- Do not require `$skill-name` or ask the user to choose internal steps.
+1. Generate the task checklist through [generate-test-checklist](../generate-test-checklist/SKILL.md).
+2. Collect targeted existing coverage using [collect-test-context](../collect-test-context/SKILL.md). Record discovery as `COMPLETE`, `PARTIAL` or `UNAVAILABLE` with the actual search boundary.
+3. Apply [analyze-test-coverage](../analyze-test-coverage/SKILL.md) to permanent scenarios.
+4. Use [generate-test-cases](../generate-test-cases/SKILL.md) in `PERMANENT_COVERAGE` for supported `CREATE` decisions; use [update-test-cases](../update-test-cases/SKILL.md) for complete `UPDATE` proposals. Preserve `NO_CHANGE`, `RETIRE_PROPOSAL` and unresolved decisions.
+5. Assemble exactly the full-package output from the intent/output rules. Do not turn partial discovery into proof of missing coverage.
 
-## Shared context collection
-
-Use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) with the selected intent. With a supplied issue key/link, anchor retrieval there. Treat a supplied Confluence URL, document, file, or chat requirement as a valid standalone scope when no issue is supplied. Combine Jira, knowledge pages, comments and user context according to their stated authority; do not infer priority from storage location. Classify previous tester checklists found in comments as practitioner evidence, preserve their provenance, and validate their checks against current requirements before reuse.
-
-## CHECKLIST_ONLY
-
-Route the normalized context to [`../generate-test-checklist/SKILL.md`](../generate-test-checklist/SKILL.md). Avoid broad TMS discovery. Return the Jira Wiki checklist and relevant limitations in Russian.
-
-## FULL_PACKAGE
-
-1. Generate the task checklist.
-2. Perform targeted TMS discovery: direct task links; explicitly cited cases; relevant parent/epic/function relations; focused search by stable page/function/block/scenario terminology; confirmed TMS folder/area. Never use project-wide `get all` by default.
-3. Record discovery as `COMPLETE`, `PARTIAL`, or `UNAVAILABLE`, including search scope and limitations.
-4. Route permanent scenarios to [`../analyze-test-coverage/SKILL.md`](../analyze-test-coverage/SKILL.md).
-5. Generate complete cases only for supported `CREATE` decisions and complete proposals only for `UPDATE`. Show `RETIRE_PROPOSAL` and `NO_CHANGE` explicitly.
-6. Format the result exactly as required by `task-testing-rules.md`.
-
-## CASES_ONLY and TASK_SCOPED_CASES
-
-Route directly to [`../generate-test-cases/SKILL.md`](../generate-test-cases/SKILL.md) with the exact requested scope. For `CASES_ONLY`, leave regression membership unclassified unless requested. For `TASK_SCOPED_CASES`, explicitly keep the generated cases outside the permanent regression model. Do not add a checklist or broad TMS discovery.
-
-## OPTIMIZE_EXISTING and REVIEW_ONLY
-
-Route the supplied complete cases to [`../review-test-cases/SKILL.md`](../review-test-cases/SKILL.md). Optimization may propose consolidation, shared base cases, delta-only variants, splits, and retirement of duplicates for human review. Review-only remains limited to findings and supported corrections. Neither branch writes externally.
-
-Never write to an external system during preparation. Creation, update, retirement/status changes and publication require a separate explicit request under their specialized skill and integration contract.
-
-An explicit same-request instruction such as “подготовь и опубликуй checklist в Jira” or “подготовь и открой в QA Report” includes the corresponding delivery intent. First show/finalize the checklist, then follow the delivery contract in `generate-test-checklist`. It does not authorize any other write.
+Preparation itself performs no external writes. An explicit same-request publication instruction proceeds through the selected artifact's destination contract after its payload is ready; it does not authorize unrelated writes.

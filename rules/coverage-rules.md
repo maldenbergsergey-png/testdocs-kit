@@ -1,6 +1,6 @@
 # Coverage rules
 
-**Status:** proposed organizational baseline derived from the supplied instructions; pending human review.
+**Status:** active portable baseline; project-specific placeholders remain unresolved until supplied.
 
 Use this file to decide whether a change affects permanent test coverage. Record one outcome for each materially distinct scenario:
 

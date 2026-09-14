@@ -1,0 +1,4 @@
+interface:
+  display_name: "Generate Test Checklist"
+  short_description: "Create a scoped, copy-ready Jira checklist"
+  default_prompt: "Use $generate-test-checklist for the testing request and context I supply."

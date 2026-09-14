@@ -21,7 +21,7 @@ In username/password mode, the proxy requests a short-lived Bearer token from `/
 ## Tool exposure
 
 - `testops_find_*`, `testops_get_*`, and `testops_list_*` tools are available for scoped reads.
-- Other vendor tools are hidden unless changing operations were separately enabled during setup.
+- After write opt-in, only `testops_create_testcase` is added. All other vendor mutations are hidden: this proxy has no server-side current-session creation registry, so it cannot safely offer case corrections under the temporary [update policy](../../rules/update-rules.md).
 - Every exposed changing tool receives a required local `confirmed: true` guard; the proxy strips that field before forwarding the vendor payload.
 - Tools whose names contain `delete` or `remove` are never exposed, even when writes are enabled.
 

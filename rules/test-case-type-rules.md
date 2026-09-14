@@ -1,6 +1,6 @@
 # Test case type rules
 
-**Status:** proposed transcription of the supplied organizational instructions; pending human review.
+**Status:** active portable baseline; project-specific placeholders remain unresolved until supplied.
 
 Every test case must have at least one type tag. Multiple type tags are allowed when the case genuinely covers more than one level, for example `block` + `integration`.
 

@@ -1,6 +1,6 @@
 # Regression model rules
 
-**Status:** proposed organizational standard derived from the supplied instructions; pending human review.
+**Status:** active portable baseline; project-specific placeholders remain unresolved until supplied.
 
 A regression model is a traceable map of persistent coverage, not merely a folder or an accumulated list of cases. It connects stable product behavior to reusable cases and makes duplication, gaps, execution constraints, and maintenance decisions visible.
 

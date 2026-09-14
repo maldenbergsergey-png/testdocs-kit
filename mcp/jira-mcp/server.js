@@ -11,8 +11,8 @@ const checklistCommentsEnabled = process.env.TESTDOCS_ENABLE_CHECKLIST_COMMENT_P
 const bugCreationEnabled = process.env.TESTDOCS_ENABLE_BUG_CREATION === "1";
 const releaseTestRunCreationEnabled = process.env.TESTDOCS_ENABLE_RELEASE_TEST_RUN_CREATION === "1";
 const writeTools = new Set(["add_comment", "transition_issue"]);
-const createsEnabled = process.env.TESTDOCS_ENABLE_TEST_CASE_CREATION !== "0";
-const createTools = new Set(["zephyr_create_test_case", "zephyr_update_session_test_case", "zephyr_update_test_case"]);
+const createsEnabled = process.env.TESTDOCS_ENABLE_TEST_CASE_CREATION === "1";
+const createTools = new Set(["zephyr_create_test_case", "zephyr_update_session_test_case"]);
 const sessionCases = createSessionCaseRegistry();
 
 app.use(express.json());
@@ -32,6 +32,10 @@ app.post("/mcp", async (req, res) => {
 
     if (!tools[tool]) {
       return res.status(400).json({ error: `Unknown tool: ${tool}` });
+    }
+
+    if (tool === "zephyr_update_test_case") {
+      return res.status(403).json({ error: "SESSION_ONLY: Existing cases remain proposal-only." });
     }
 
     if (writeTools.has(tool) && !writesEnabled) {
@@ -60,7 +64,7 @@ app.post("/mcp", async (req, res) => {
 
     if (createTools.has(tool) && !createsEnabled) {
       return res.status(403).json({
-        error: "Test-case creation and guarded updates are disabled."
+        error: "Test-case creation and current-session corrections are disabled."
       });
     }
 

@@ -34,7 +34,7 @@ function buildEnvironment(service, connectionId, config) {
   const common = {
     ...process.env,
     TESTDOCS_ENABLE_WRITES: config.enableWrites ? "1" : "0",
-    TESTDOCS_ENABLE_TEST_CASE_CREATION: config.enableTestCaseCreation === false ? "0" : "1",
+    TESTDOCS_ENABLE_TEST_CASE_CREATION: config.enableTestCaseCreation === true ? "1" : "0",
     TESTDOCS_ENABLE_CHECKLIST_COMMENT_PUBLICATION:
       config.enableChecklistCommentPublication === true ? "1" : "0",
     TESTDOCS_ENABLE_BUG_CREATION: config.enableBugCreation === true ? "1" : "0",

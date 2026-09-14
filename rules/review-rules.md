@@ -1,6 +1,6 @@
 # Review rules
 
-**Status:** proposed organizational baseline derived from the supplied instructions; pending human review.
+**Status:** active portable baseline; project-specific placeholders remain unresolved until supplied.
 
 Review against approved rules and supplied requirements. Do not treat personal preference, corpus frequency, or an example as policy.
 
@@ -20,8 +20,8 @@ Review against approved rules and supplied requirements. Do not treat personal p
 - **Technical detail:** the case includes only detail required by its intended test layer and approved verification surfaces.
 - **Reusable setup:** preparation dependencies are explicit, return a defined output, and do not hide the behavior under test or rely on execution order.
 - **Administration dependency:** a supported configurable entity has at most one coherent case per supported creation, update, or deletion operation before justified stage splits; every consumer calls the creation/configuration case first or deliberately skips it when a conforming entity already exists; every administration case has `админка`.
-- **Administration creation/configuration:** apply [Создание и настройка сущности в админке](test-case-standard.md#создание-и-настройка-сущности-в-админке): all required fields, frontend-relevant optional fields, source-backed data constraints, required entity relations, visible confirmation of saving, and a usable output. The case ends in the administration interface without backend/API requests or frontend checks. Missing API context is not a readiness gap; neither is an unavailable screenshot alone.
-- **Configuration hints and links:** apply [Подсказки и ссылки на настройку](test-case-standard.md#подсказки-и-ссылки-на-настройку): a concise `ℹ️` hint belongs in the relevant step's `Тестовые данные`, distinguishes requirement context from a creation/configuration flow, and uses exact named source/case links with verified step references. The first action contains the conditional creation call and its output; later hints do not replace it or duplicate the creation steps. Do not require a TMS information panel when the connector only supports text and links.
+- **Administration creation/configuration:** apply [Создание и настройка сущности в админке](test-case-setup-rules.md#создание-и-настройка-сущности-в-админке): all required fields, frontend-relevant optional fields, source-backed data constraints, required entity relations, visible confirmation of saving, and a usable output. The case ends in the administration interface without backend/API requests or frontend checks. Missing API context is not a readiness gap; neither is an unavailable screenshot alone.
+- **Configuration hints and links:** apply [Подсказки и ссылки на настройку](test-case-setup-rules.md#подсказки-и-ссылки-на-настройку): a concise `ℹ️` hint belongs in the relevant step's `Тестовые данные`, distinguishes requirement context from a creation/configuration flow, and uses exact named source/case links with verified step references. The first action contains the conditional creation call and its output; later hints do not replace it or duplicate the creation steps. Do not require a TMS information panel when the connector only supports text and links.
 - **Reusability:** the case avoids hidden order, transient data, temporary environments, and incidental implementation details that prevent repeated regression execution.
 - **Data safety:** test data is explicit enough to reproduce the scenario and contains no invented secrets, production records, or personal data.
 - **General rule compliance:** the case follows all other applicable approved files under `rules/`.

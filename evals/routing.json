@@ -1,0 +1,163 @@
+[
+  {
+    "id": "advice",
+    "prompt": "Как протестировать это изменение? На странице профиля поле имени обязательно, максимум 40 символов; при успешном сохранении новое имя видно после перезагрузки.",
+    "skill": "explain-task-testing",
+    "artifact": "guidance",
+    "collect": false
+  },
+  {
+    "id": "what_to_check",
+    "prompt": "Что проверить в поиске? По требованиям поиск начинается после ввода трёх символов, при отсутствии совпадений выводится \"Ничего не найдено\".",
+    "skill": "explain-task-testing",
+    "artifact": "guidance",
+    "collect": false
+  },
+  {
+    "id": "checklist",
+    "prompt": "Подготовь чек-лист. Поле имени в профиле обязательно, максимум 40 символов; после сохранения имя должно остаться при перезагрузке.",
+    "skill": "generate-test-checklist",
+    "artifact": "checklist",
+    "collect": false
+  },
+  {
+    "id": "cases",
+    "prompt": "Напиши тест-кейсы для задачи: имя в профиле обязательно, максимум 40 символов, сохраняется после перезагрузки.",
+    "skill": "generate-test-cases",
+    "artifact": "cases",
+    "collect": false
+  },
+  {
+    "id": "task_cases",
+    "prompt": "Сделай кейсы только на разовую миграцию из приложенного описания, в регрессию они не пойдут.",
+    "skill": "generate-test-cases",
+    "artifact": "cases",
+    "collect": false
+  },
+  {
+    "id": "targeted",
+    "prompt": "По этому описанию нужны кейсы только на фильтр статуса, соседние разделы сейчас не рассматриваем.",
+    "skill": "generate-test-cases",
+    "artifact": "cases",
+    "collect": false
+  },
+  {
+    "id": "full_package",
+    "prompt": "Подготовь полный пакет тестовой документации по задаче и сопоставь с существующим покрытием.",
+    "skill": "prepare-task-testing",
+    "artifact": "package",
+    "collect": true
+  },
+  {
+    "id": "ambiguous",
+    "prompt": "Подготовь тестирование этой задачи.",
+    "skill": "prepare-task-testing",
+    "artifact": "clarification",
+    "collect": false
+  },
+  {
+    "id": "execution",
+    "prompt": "Быстро проверь фильтр статуса в уже открытом Android-приложении. По требованиям выбор \"Активные\" скрывает архивные записи.",
+    "skill": "execute-task-testing",
+    "artifact": "execution_report",
+    "collect": false
+  },
+  {
+    "id": "live_matrix",
+    "prompt": "По открытому Android-приложению собери матрицу покрытия экрана заказов.",
+    "skill": "build-coverage-matrix",
+    "artifact": "matrix",
+    "collect": false
+  },
+  {
+    "id": "estimate",
+    "prompt": "Оцени в часах QA для этой задачи, включая повторную проверку после исправлений.",
+    "skill": "qa-task-estimation",
+    "artifact": "estimate",
+    "collect": false
+  },
+  {
+    "id": "review",
+    "prompt": "Проведи ревью этих двух кейсов и предложи, как убрать дубли.",
+    "skill": "review-test-cases",
+    "artifact": "review",
+    "collect": false
+  },
+  {
+    "id": "old_apply",
+    "prompt": "Примени эту исправленную версию к DEMO-T1. Кейс существовал до начала нашей сессии.",
+    "skill": "update-test-cases",
+    "artifact": "proposal",
+    "collect": true
+  },
+  {
+    "id": "session_apply",
+    "prompt": "Исправь имя в DEMO-T2 на \"Профиль. Сохранение имени\". Кейс только что создал наш текущий MCP; реестр подтвердил ключ.",
+    "skill": "update-test-cases",
+    "artifact": "session_correction",
+    "collect": true
+  },
+  {
+    "id": "coverage",
+    "prompt": "Проверь, достаточно ли существующих кейсов для новых требований и нужна ли актуализация.",
+    "skill": "analyze-test-coverage",
+    "artifact": "coverage",
+    "collect": false
+  },
+  {
+    "id": "regression",
+    "prompt": "Организуй постоянную регрессионную модель из переданной матрицы и кейсов.",
+    "skill": "build-regression-model",
+    "artifact": "regression_model",
+    "collect": false
+  },
+  {
+    "id": "derive",
+    "prompt": "Выведи предложение общего стандарта из этого корпуса тест-кейсов.",
+    "skill": "derive-test-case-standard",
+    "artifact": "standard_proposal",
+    "collect": false
+  },
+  {
+    "id": "bug",
+    "prompt": "Составь баг-репорт по видео: после \"Сохранить\" форма закрывается, но имя не меняется. Требование сохранения приложено.",
+    "skill": "create-bug-report",
+    "artifact": "bug_draft",
+    "collect": false
+  },
+  {
+    "id": "release",
+    "prompt": "Подготовь Test Run для релиза 2.4 проекта DEMO, папка /Mobile/Profile; исполнители Иван и Анна.",
+    "skill": "create-release-test-run",
+    "artifact": "run_proposal",
+    "collect": true
+  },
+  {
+    "id": "collect",
+    "prompt": "Собери контекст из указанной Confluence-страницы и связанных в ней требований.",
+    "skill": "collect-test-context",
+    "artifact": "context",
+    "collect": true
+  },
+  {
+    "id": "external_cases",
+    "prompt": "Напиши тест-кейсы по https://jira.example.invalid/browse/DEMO-14.",
+    "skill": "generate-test-cases",
+    "artifact": "cases",
+    "collect": true
+  },
+  {
+    "id": "document_checklist",
+    "prompt": "Из этого standalone-документа сделай checklist; Jira-задачи нет.",
+    "skill": "generate-test-checklist",
+    "artifact": "checklist",
+    "collect": false
+  },
+  {
+    "id": "supplied_source_text",
+    "prompt": "Напиши кейсы по документу https://requirements.example.invalid/profile. Полный актуальный текст документа: \"На странице профиля поле имени обязательно, максимум 40 символов; при успешном сохранении новое имя видно после перезагрузки\".",
+    "skill": "generate-test-cases",
+    "artifact": "cases",
+    "collect": false
+  }
+]

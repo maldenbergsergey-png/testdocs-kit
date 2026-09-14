@@ -2,7 +2,7 @@
 
 Use this optional profile for the QA Report editor documented at [maldenbergsergey-png/qa-report](https://github.com/maldenbergsergey-png/qa-report).
 
-Follow the delivery and metadata rules in [`../../rules/integration-rules.md`](../../rules/integration-rules.md). Choose the channel from the user's request. A supplied temporary connection targets an existing open report; `qa_report_import_checklist` uses a different endpoint and cannot consume that connection.
+Follow the delivery and metadata rules in [`../../rules/checklist-delivery-rules.md`](../../rules/checklist-delivery-rules.md). Choose the channel from the user's request. A supplied temporary connection targets an existing open report; `qa_report_import_checklist` uses a different endpoint and cannot consume that connection.
 
 For a supplied temporary connection, go directly to **Temporary API for an open report**. An available general HTTP/terminal capability can execute this documented protocol under the rules above; the MCP tool inventory is not the full inventory of HTTP capabilities.
 
@@ -65,15 +65,15 @@ After an uncertain network result, read the existing batch receipt. Repeating PO
 
 ### Attaching saved test evidence
 
-Read the task's report and `reports/evidence-index.md` under the capture/reuse rules in [`../../rules/task-execution-rules.md`](../../rules/task-execution-rules.md). Map each selected local file to its checklist row, caption, upload ID, and exact uploaded filename, including evidence for `OK` rows. For an existing checklist, resolve the current section/row/column IDs and hashes from `<url>/context`; use attachment-only cell updates when the text is already correct. For a full checklist, put the uploaded filenames into the corresponding Jira Wiki cells after their result text and include their upload IDs in the batch.
+Read the task's report and `reports/evidence-index.md` under the capture/reuse rules in [`../../rules/execution-evidence-rules.md`](../../rules/execution-evidence-rules.md). Map each selected local file to its checklist row, caption, upload ID, and exact uploaded filename, including evidence for `OK` rows. For an existing checklist, resolve the current section/row/column IDs and hashes from `<url>/context`; use attachment-only cell updates when the text is already correct. For a full checklist, put the uploaded filenames into the corresponding Jira Wiki cells after their result text and include their upload IDs in the batch.
 
-Upload the saved original files using binary PUT requests. A renewed session or a corrected/new batch may require uploading those bytes again because temporary server files are released; this is file delivery, not a new test run. Do not revisit the tested application merely to recreate attachments. Reuse one upload within a batch when the same file supports multiple rows. After `saved`, inspect the QA Report cells when browser viewing is available to check that images load under the right results; report any visual verification limit. Apply the manual-Jira-publication boundary from `integration-rules.md` when that is the user's chosen handoff.
+Upload the saved original files using binary PUT requests. A renewed session or a corrected/new batch may require uploading those bytes again because temporary server files are released; this is file delivery, not a new test run. Do not revisit the tested application merely to recreate attachments. Reuse one upload within a batch when the same file supports multiple rows. After `saved`, inspect the QA Report cells when browser viewing is available to check that images load under the right results; report any visual verification limit. Apply the manual-Jira-publication boundary from `checklist-delivery-rules.md` when that is the user's chosen handoff.
 
 ## Recognizing the empty starter report
 
 The default editor shows **Ссылка на задачу** with an example URL placeholder, **Окружение** set to `STAGE`, **Итог** set to `OK`, an empty introduction with a hint, and **Основные проверки** with two empty rows. Cell hints such as `Проверка`, `Ожидаемый результат`, `Фактический результат`, and `Комментарий` are placeholders; row statuses start as `НЕ ПРОВЕРЕНО`. The summary shows zero checks. These visible defaults are not an existing test report or execution evidence.
 
-For a user-identified new empty report, send the requested full checklist without asking “replace the existing report?”. The editor may still show a replacement dialog in some versions; an available browser capability can accept it for the verified starter template within the user's fill request. Do not infer emptiness from row count or zero summary alone: an unexecuted checklist, introduction, attachments, or entered metadata may exist. The temporary API's cell-only context omits some of that information; use the supplied current report context or inspect the editor when needed. Follow the preservation and replacement rules in `integration-rules.md` for real existing content.
+For a user-identified new empty report, send the requested full checklist without asking “replace the existing report?”. The editor may still show a replacement dialog in some versions; an available browser capability can accept it for the verified starter template within the user's fill request. Do not infer emptiness from row count or zero summary alone: an unexecuted checklist, introduction, attachments, or entered metadata may exist. The temporary API's cell-only context omits some of that information; use the supplied current report context or inspect the editor when needed. Follow the preservation and replacement rules in `checklist-delivery-rules.md` for real existing content.
 
 ## Task link and environment mapping
 
@@ -94,6 +94,4 @@ For a stand link in the introduction, use a named Jira Wiki link such as `Адр
 
 The mapping is based on QA Report's `local-import-server.js` (`validateBatch`), `local-import-client.js` (`context`, `acceptBatch`), `jira-markup-import.js` (`parseJiraMarkup`), and `app.js` (`applyImportedChecklist`, `importedDraftInCurrentReport`).
 
-## Opening behavior
-
-Open the returned URL only after an explicit user request, in a separate external browser tab/window. Do not embed QA Report into the AI client or another page. When browser control is unavailable, show a clickable link for the user.
+For opening the editor, follow [the delivery contract](../../rules/checklist-delivery-rules.md).

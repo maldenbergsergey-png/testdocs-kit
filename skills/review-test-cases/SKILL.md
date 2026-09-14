@@ -7,6 +7,8 @@ description: Review, optimize, or structurally refactor one or more QA test case
 
 Review the supplied cases, report evidence-based findings, and include a complete corrected proposal when supported findings affect content. Do not change external data.
 
+Read [the common contract](../../rules/core.md) once per task. Follow conditional rule links only when their condition applies.
+
 ## Read the source of truth
 
 Before review, read:
@@ -21,7 +23,6 @@ Before review, read:
 - [`../../rules/coverage-rules.md`](../../rules/coverage-rules.md) when coverage is explicitly in scope or a multi-case optimization may consolidate duplicates
 - [`../../rules/regression-model-rules.md`](../../rules/regression-model-rules.md) only when regression-model suitability or suite structure is explicitly in scope
 - [`../../rules/project-conventions.md`](../../rules/project-conventions.md) when a reviewed case uses any company- or project-specific convention
-- [`../../rules/README.md`](../../rules/README.md) for placeholder handling
 
 ## Accept input
 
@@ -29,7 +30,7 @@ Accept one or more complete or partial test cases plus any requirements needed t
 
 Do not require a specific TMS, MCP service, or integration. If content needed for a reliable review is unavailable, identify the gap rather than infer it.
 
-When an external issue, page, or case reference is supplied, use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) first. Review only the case version and requirement content actually retrieved.
+When source content behind an external issue, page, or case reference needs retrieval, use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) first. Review only the case version and requirement content actually available.
 
 ## Workflow
 

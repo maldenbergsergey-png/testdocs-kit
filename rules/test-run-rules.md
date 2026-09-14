@@ -1,6 +1,6 @@
 # Test run rules
 
-**Status:** proposed transcription of the supplied organizational instructions; pending human review.
+**Status:** active portable baseline; project-specific placeholders remain unresolved until supplied.
 
 A Test Run or Test Cycle is an execution plan for a specific release objective. It is not a permanent regression model, a coverage matrix, or evidence that a case passed.
 

@@ -2,16 +2,7 @@
 
 This directory is the source of truth for QA test-documentation policy. Skills define procedures; these files define standards and decision criteria.
 
-## Язык и оформление результатов
-
-Применять к авторскому тексту чек-листов, тест-кейсов, баг-репортов, результатов тестирования, подписей к скриншотам и пояснений пользователю, в том числе при переносе в QA Report и Jira.
-
-- Писать простым рабочим языком тестировщика: что открыть или сделать, что ожидалось и что произошло. Предпочитать короткие предложения с конкретным действием и результатом. Не добавлять канцелярит, повторяющиеся вводные и формальные итоги без полезной информации.
-- Вместо длинного или среднего тире использовать короткий дефис `-`; между частями предложения ставить пробелы: `Факт - окно осталось открытым`.
-- Для названий кнопок, полей и обычных цитируемых слов использовать двойные кавычки: `Нажать "Сохранить"`. Не заменять их апострофами, одинарными кавычками или обратными кавычками. Моноширинное оформление оставлять для кода и технических идентификаторов, когда оно помогает чтению.
-- Убирать служебные фразы вроде "агент выполнил верификацию", "по результатам анализа предоставленного контекста", "зафиксировано наличие" и "функциональность функционирует корректно". Вместо "Зафиксировано успешное выполнение операции сохранения" писать "Изменения сохранились". Не включать в готовый отчёт названия скиллов, ход рассуждений и перечень вызовов инструментов; техническую причину ограничения оставлять, если она нужна для продолжения проверки.
-- Сохранять точность и происхождение фактов: простой стиль не отменяет пометок о непроверенной части, недоступном доказательстве или проверке по материалам пользователя. Не заменять конкретный результат фразами "всё нормально" или "всё работает".
-- Правила знаков относятся к написанной агентом прозе. Не заменять символы внутри кода, команд, URL, идентификаторов, тестовых данных, дословных цитат источника и обязательного синтаксиса Markdown/Jira. Апостроф в проверяемом значении и дефисы в параметре команды сохранять буквально. Перед выдачей перечитать текст как запись коллеге и убрать лишние слова, не меняя смысл.
+Read [core.md](core.md) once per task. This index is for discovery; follow only the rules relevant to the selected workflow.
 
 ## Rule files
 
@@ -23,7 +14,7 @@ This directory is the source of truth for QA test-documentation policy. Skills d
 - [`qa-estimation-team-rules.md`](qa-estimation-team-rules.md) - scoped team criteria, private persistence, recalculation, and estimate-versus-actual comparisons.
 - [`qa-estimation-profile.md`](qa-estimation-profile.md) - published starting process for component checks, documentation, AI validation, environments, and risk analysis.
 - [`qa-estimation-platform-matrix.md`](qa-estimation-platform-matrix.md) - scoped desktop/mobile web, design breakpoints, and native iOS/Android coverage from the supplied matrices.
-- [`task-execution-rules.md`](task-execution-rules.md) — advice-only task research, hands-on execution, evidence, statuses, reports, and local task history.
+- [`task-execution-rules.md`](task-execution-rules.md) — execution workflow with conditional surface, report and evidence contracts.
 - [`test-case-type-rules.md`](test-case-type-rules.md) — E2E, overview, block, cross-page, integration, and platform classification.
 - [`test-case-lifecycle-rules.md`](test-case-lifecycle-rules.md) — lifecycle statuses, review readiness, and task linkage.
 - [`reusable-setup-rules.md`](reusable-setup-rules.md) — shared preparation procedures, administration content, dependency outputs, and cleanup.
@@ -37,17 +28,11 @@ This directory is the source of truth for QA test-documentation policy. Skills d
 - [`standard-derivation-rules.md`](standard-derivation-rules.md) — evidence and approval rules for deriving shared policy from a documentation corpus.
 - [`project-conventions.md`](project-conventions.md) — cross-company isolation rules for runtime-only project conventions.
 
-## Placeholder policy
 
-Items marked **PLACEHOLDER** require team-specific decisions. Until a placeholder is replaced with approved policy:
+## Conditional rule modules
 
-1. Do not infer a company convention.
-2. Preserve any convention explicitly supplied in the task context.
-3. Otherwise label the decision as unresolved and use a neutral, clearly stated assumption only when the user permits it.
-4. Never present an example as a binding rule.
-
-Update rules here first. If a workflow changes, update the relevant skill after the rule change has been reviewed.
-
-## Evidence precedence
-
-Approved requirements and instructions take precedence over examples. Curated examples may support a candidate pattern but do not become policy automatically. Project-specific conventions remain scoped to their project unless they pass the generalization test in `standard-derivation-rules.md`.
+- [task-explanation-rules.md](task-explanation-rules.md): advice-only requests.
+- [test-case-format.md](test-case-format.md): rendering complete cases; [test-case-setup-rules.md](test-case-setup-rules.md): administration assertions and property-specific hints.
+- [execution-web-rules.md](execution-web-rules.md), [execution-native-rules.md](execution-native-rules.md), [execution-media-rules.md](execution-media-rules.md): selected surface only.
+- [execution-report-rules.md](execution-report-rules.md): statuses and report; [execution-evidence-rules.md](execution-evidence-rules.md): capture, reuse and local history.
+- [tms-integration-rules.md](tms-integration-rules.md): TMS compatibility; [external-write-rules.md](external-write-rules.md): requested writes; [checklist-delivery-rules.md](checklist-delivery-rules.md): requested Jira/QA Report delivery.

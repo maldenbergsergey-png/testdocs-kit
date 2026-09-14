@@ -7,6 +7,8 @@ description: Build or update a hierarchical QA coverage matrix from requirements
 
 Create a navigation model of functionality and map supported scenarios to existing or proposed test cases.
 
+Read [the common contract](../../rules/core.md) once per task. Follow conditional rule links only when their condition applies.
+
 ## Read the source of truth
 
 Before analysis, read:
@@ -17,7 +19,6 @@ Before analysis, read:
 - [`../../rules/regression-model-rules.md`](../../rules/regression-model-rules.md) when the matrix will feed a regression model
 - [`../../rules/reusable-setup-rules.md`](../../rules/reusable-setup-rules.md) when scenarios consume shared administration or data preparation
 - [`../../rules/integration-rules.md`](../../rules/integration-rules.md) when retrieving external context or inspecting a live product/supplied media; follow "Live product context"
-- [`../../rules/README.md`](../../rules/README.md) for placeholder handling
 
 ## Accept input
 
@@ -25,7 +26,7 @@ Accept requirements, analysis, product navigation, page or screen inventories, `
 
 Prefer requirements and analysis. For an existing product, use its actual navigation and page structure. Use designs as a structural source only when analysis is unavailable; do not infer unsupported behavior or expected results from appearance.
 
-Use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) first when the scope is anchored by an external issue, page, or TMS reference. Do not infer complete project coverage from a partial external search.
+Use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) when content behind an external issue, page, or TMS reference needs retrieval. Do not infer complete project coverage from a partial external search.
 
 ## Workflow
 

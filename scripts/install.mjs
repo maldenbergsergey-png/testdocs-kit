@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { installSkillSet } from "./install-skills.mjs";
 
 import fs from "node:fs";
 import { applyFigmaMode, defaultFigmaMode, isFigmaDesktop } from "./figma-config.mjs";
@@ -66,6 +67,7 @@ function parseArgs(argv) {
     else if (arg === "--maestro-mode") result.maestroMode = argv[++index];
     else if (arg === "--maestro-command") result.maestroCommand = argv[++index];
     else if (arg === "--ca-file") result.caFile = argv[++index];
+    else if (arg === "--enable-test-case-writes") result.enableTestCaseWrites = true;
     else if (arg === "--enable-jira-writes") result.enableJiraWrites = true;
     else if (arg === "--enable-release-test-run-writes") result.enableReleaseTestRunWrites = true;
     else if (arg === "--force") result.force = true;
@@ -94,6 +96,7 @@ function showHelp() {
   --maestro-mode auto|on|off               Локальный Maestro MCP (по умолчанию auto)
   --maestro-command /absolute/path/maestro Путь к установленному Maestro CLI
   --ca-file /path/to/ca-bundle.pem         Дополнительные доверенные CA в формате PEM
+  --enable-test-case-writes                Разрешить создание кейсов и исправление созданных в текущей MCP-сессии
   --enable-jira-writes                     Разрешить создание Bug, публикацию checklist,
                                           Test Run и связанной QA-задачи
                                           для сохранённых Jira-подключений
@@ -718,7 +721,7 @@ async function collectConfig(args, clients, existing = null) {
   }
   previous.version = 3;
   previous.enableWrites = false;
-  previous.enableTestCaseCreation = true;
+  previous.enableTestCaseCreation = previous.enableTestCaseCreation === true;
   return validateAnswers(previous);
 }
 
@@ -831,42 +834,13 @@ function pathEntryExists(target) {
   }
 }
 
-function installSkillSet(destinationRoot, force) {
-  fs.mkdirSync(destinationRoot, { recursive: true });
-  const sourceRoot = path.join(repoRoot, "skills");
-  const skills = fs.readdirSync(sourceRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory());
-
-  for (const skill of skills) {
-    const source = path.join(sourceRoot, skill.name);
-    const destination = path.join(destinationRoot, skill.name);
-    if (pathEntryExists(destination)) {
-      try {
-        if (fs.realpathSync(destination) === fs.realpathSync(source)) continue;
-      } catch { /* Это другой или повреждённый путь. */ }
-      if (!force) {
-        console.warn(`Пропущен существующий скилл: ${destination}. Используйте --force для резервной копии.`);
-        continue;
-      }
-      backupPath(destination);
-    }
-
-    try {
-      fs.symlinkSync(source, destination, process.platform === "win32" ? "junction" : "dir");
-    } catch {
-      fs.cpSync(source, destination, { recursive: true });
-      console.warn(`Ссылка недоступна, скилл скопирован: ${skill.name}`);
-    }
-  }
-  console.log(`Скиллы подключены: ${destinationRoot}`);
-}
-
 function installSkills(clients, force) {
   const home = getInstallHome();
   if (clients.some((client) => ["codex", "opencode", "generic"].includes(client))) {
-    installSkillSet(path.join(home, ".agents", "skills"), force);
+    installSkillSet({ repoRoot, destinationRoot: path.join(home, ".agents", "skills"), storageRoot: path.join(getConfigDir(), "skill-pack"), force });
   }
   if (clients.includes("claude")) {
-    installSkillSet(path.join(home, ".claude", "skills"), force);
+    installSkillSet({ repoRoot, destinationRoot: path.join(home, ".claude", "skills"), storageRoot: path.join(getConfigDir(), "skill-pack"), force });
   }
 }
 
@@ -891,9 +865,9 @@ function configuredServers(config) {
       tools.push(
         "zephyr_get_projects", "zephyr_get_project", "zephyr_search_test_cases",
         "zephyr_get_test_plans", "zephyr_get_test_plan", "zephyr_get_iterations",
-        "zephyr_get_test_case", "zephyr_get_all_test_cases", "zephyr_get_issue_test_cases", "zephyr_get_test_run", "zephyr_list_test_run_folders", "zephyr_create_test_case",
-        "zephyr_update_session_test_case", "zephyr_update_test_case"
+        "zephyr_get_test_case", "zephyr_get_all_test_cases", "zephyr_get_issue_test_cases", "zephyr_get_test_run", "zephyr_list_test_run_folders"
       );
+      if (config.enableTestCaseCreation === true) tools.push("zephyr_create_test_case", "zephyr_update_session_test_case");
       if (jira.enableReleaseTestRunCreation === true) tools.push("zephyr_create_test_run", "zephyr_assign_test_run_item");
     }
     servers.push({ name: serverName("jira", jira.id, jiraItems.length), service: "jira", id: jira.id, tools });
@@ -1295,7 +1269,7 @@ async function main() {
   config.version = 3;
   config.clients = clients;
   config.enableWrites = false;
-  config.enableTestCaseCreation = true;
+  config.enableTestCaseCreation = args.enableTestCaseWrites || config.enableTestCaseCreation === true;
   if (args.enableJiraWrites) {
     const jiraConnections = connectionList(config, "jira");
     if (!jiraConnections.length) {

@@ -1,6 +1,6 @@
 # Test case lifecycle rules
 
-**Status:** proposed transcription of the supplied organizational instructions; pending human review.
+**Status:** active portable baseline; project-specific placeholders remain unresolved until supplied.
 
 ## Active lifecycle
 

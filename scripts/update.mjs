@@ -9,11 +9,12 @@ const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptsDir, "..");
 
 function parseArgs(argv) {
-  const supported = new Set(["--enable-jira-writes", "--enable-release-test-run-writes"]);
+  const supported = new Set(["--enable-test-case-writes", "--enable-jira-writes", "--enable-release-test-run-writes"]);
   for (const arg of argv) {
     if (!supported.has(arg)) throw new Error(`Неизвестный аргумент: ${arg}`);
   }
   return {
+    enableTestCaseWrites: argv.includes("--enable-test-case-writes"),
     enableJiraWrites: argv.includes("--enable-jira-writes"),
     enableReleaseTestRunWrites: argv.includes("--enable-release-test-run-writes")
   };
@@ -30,6 +31,7 @@ try {
   console.log("Обновляю Testdocs Kit без изменения сохранённых подключений...");
   run("git", ["pull", "--ff-only"]);
   const installArgs = [path.join(scriptsDir, "install.mjs"), "--reuse", "--skip-browser-auth"];
+  if (args.enableTestCaseWrites) installArgs.push("--enable-test-case-writes");
   if (args.enableJiraWrites) installArgs.push("--enable-jira-writes");
   if (args.enableReleaseTestRunWrites) installArgs.push("--enable-release-test-run-writes");
   run(process.execPath, installArgs);

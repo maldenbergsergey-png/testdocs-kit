@@ -42,4 +42,4 @@ The bundled Jira MCP implements read compatibility for installations that expose
 
 ## Writes
 
-The bundled adapter may create a new case through `POST /rest/atm/1.0/testcase` only after an explicit create/publication request and only when one approved demonstration proves that endpoint on the installation. Keep updates, versions, moves, status changes, relation changes, and deletions unavailable. Never infer those workflows from the modern profile.
+The bundled adapter may create a new case through `POST /rest/atm/1.0/testcase` only after an explicit create/publication request and only when one approved demonstration proves that endpoint on the installation. Only a case created by the current MCP process may be corrected through its registry-guarded session tool after explicit user intent and installer opt-in, under [update rules](../../rules/update-rules.md). Keep all other updates, versions, moves, status changes, relation changes, and deletions unavailable. Never infer those workflows from the modern profile.

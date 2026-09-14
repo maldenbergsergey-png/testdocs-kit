@@ -1,6 +1,6 @@
 # Reusable setup rules
 
-**Status:** proposed organizational standard based on the user-supplied workflow for preparing content through administration interfaces; pending human review.
+**Status:** active portable baseline; project-specific placeholders remain unresolved until supplied.
 
 A reusable setup procedure prepares deterministic data or system state for one or more test cases. It reduces duplication but must not hide the behavior that a downstream case is intended to verify.
 
@@ -15,7 +15,7 @@ Create a reusable setup procedure when:
 
 Keep preparation inline when it is short, unique to one case, or is itself the action being verified.
 
-When the preparation surface is an administration interface and entity creation/configuration has stable supported behavior, prefer the linked administration creation case under `test-case-standard.md` over an unverified helper. Such a case follows [Создание и настройка сущности в админке](test-case-standard.md#создание-и-настройка-сущности-в-админке) and ends with confirmation of saved fields and relations through that interface. Use a pure setup procedure when only state preparation is supported and administration behavior itself cannot be asserted.
+When the preparation surface is an administration interface and entity creation/configuration has stable supported behavior, prefer the linked administration creation case under `test-case-standard.md` over an unverified helper. Such a case follows [Создание и настройка сущности в админке](test-case-setup-rules.md#создание-и-настройка-сущности-в-админке) and ends with confirmation of saved fields and relations through that interface. Use a pure setup procedure when only state preparation is supported and administration behavior itself cannot be asserted.
 
 ## Procedure contract
 
@@ -76,7 +76,7 @@ Do not make a case depend silently on an earlier case or execution order. A setu
 
 For an administration-case dependency, use a clickable stable TMS link. State that the call is executed only when a conforming entity is absent; if a suitable entity already exists, deliberately skip the call and identify the selected entity. The conditional skip must not change the functional assertions that follow.
 
-Apply [Подсказки и ссылки на настройку](test-case-standard.md#подсказки-и-ссылки-на-настройку) for named case or step links and property-specific `ℹ️` hints. Keep the creation call in the first action and the relevant entity/tab or configuration-step hint beside the consuming action. A requirement link alone does not supply a missing creation flow.
+Apply [Подсказки и ссылки на настройку](test-case-setup-rules.md#подсказки-и-ссылки-на-настройку) for named case or step links and property-specific `ℹ️` hints. Keep the creation call in the first action and the relevant entity/tab or configuration-step hint beside the consuming action. A requirement link alone does not supply a missing creation flow.
 
 ## Cleanup and reuse
 

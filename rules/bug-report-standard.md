@@ -1,8 +1,8 @@
 # Bug-report standard
 
-**Status:** proposed portable standard; pending human review.
+**Status:** active portable baseline; project-specific placeholders remain unresolved until supplied.
 
-Apply the shared [output language and punctuation rules](README.md#язык-и-оформление-результатов) to the summary, reproduction steps, results, and evidence captions.
+Apply the shared [output language and punctuation rules](core.md#язык-и-оформление-результатов) to the summary, reproduction steps, results, and evidence captions.
 
 ## Evidence and sufficiency
 

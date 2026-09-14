@@ -7,6 +7,8 @@ description: Analyze how a supplied product or requirement change affects perman
 
 Assess permanent coverage without creating, changing, or publishing test cases.
 
+Read [the common contract](../../rules/core.md) once per task. Follow conditional rule links only when their condition applies.
+
 ## Read the source of truth
 
 Before analysis, read:
@@ -18,7 +20,6 @@ Before analysis, read:
 - [`../../rules/test-case-standard.md`](../../rules/test-case-standard.md) only when existing case structure affects the decision
 - [`../../rules/reusable-setup-rules.md`](../../rules/reusable-setup-rules.md) when a change affects shared data or administration preparation
 - [`../../rules/integration-rules.md`](../../rules/integration-rules.md) when issue, knowledge, or TMS context is retrieved externally
-- [`../../rules/README.md`](../../rules/README.md) for placeholder handling
 
 ## Accept input
 
@@ -26,7 +27,7 @@ Use supplied changed behavior, requirements, affected areas, risk information, a
 
 Do not require a particular tracker, TMS, issue key, or MCP service. Do not interpret missing case data as proof of missing coverage.
 
-When the request supplies an issue key, external page, or TMS reference, use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) first. A Jira-only connection cannot establish existing TMS coverage unless cases are actually retrieved.
+When source content behind an issue key, external page, or TMS reference needs retrieval, use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) first. A Jira-only connection cannot establish existing TMS coverage unless cases are actually retrieved.
 
 ## Workflow
 

@@ -1265,40 +1265,11 @@ async function zephyrUpdateSessionTestCase(input) {
   }, testCaseKey);
 }
 
-async function zephyrUpdateTestCase(input) {
-  const { confirmed, testCaseKey, expectedBaselineHash, ...changes } = input;
-  if (confirmed !== true) {
-    throw new Error("Explicit user confirmation is required to update an existing test case.");
-  }
-  if (!testCaseKey || !expectedBaselineHash) {
-    throw new Error("testCaseKey and expectedBaselineHash from a complete baseline read are required.");
-  }
-
-  const current = await zephyrGetTestCase({ testCaseKey });
-  if (current?._testdocs?.complete !== true || !current._testdocs.contentHash) {
-    throw new Error("Existing-case update requires a complete direct baseline read; metadata-only content is unsafe.");
-  }
-  if (current._testdocs.contentHash !== expectedBaselineHash) {
-    const error = new Error(
-      `STALE_PROPOSAL: Test case ${testCaseKey} changed after the proposal baseline was read. No update was applied.`
-    );
-    error.code = "STALE_PROPOSAL";
-    throw error;
-  }
-
-  const result = await zephyrUpdateSessionTestCase({
-    confirmed: true,
-    testCaseKey,
-    ...changes
-  });
-  return {
-    ...result,
-    _testdocs: {
-      ...(result?._testdocs || {}),
-      baselineVerified: true,
-      changedFields: Object.keys(changes)
-    }
-  };
+// Kept as a rejecting compatibility entry for older HTTP clients. Not advertised via MCP.
+async function zephyrUpdateTestCase() {
+  const error = new Error("SESSION_ONLY: Existing cases remain proposal-only. Only cases created by the current MCP process can be corrected through its registry-guarded session tool.");
+  error.code = "SESSION_ONLY";
+  throw error;
 }
 
 module.exports = {

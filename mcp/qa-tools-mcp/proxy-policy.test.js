@@ -31,3 +31,10 @@ test("strips local confirmation before forwarding an approved write", () => {
   assert.throws(() => prepareCall("testops_create_testcase", { projectId: 7 }, true), /confirmed/);
   assert.throws(() => prepareCall("testops_delete_testcases", { confirmed: true }, true), /Destructive/);
 });
+
+test("existing-case and unknown writes cannot bypass the session restriction through QA Tools", () => {
+  for (const name of ["testops_update_testcase", "testops_patch_testcase", "testops_bulk_import", "testops_set_steps"]) {
+    assert.equal(exposeTool({ name }, true), null);
+    assert.throws(() => prepareCall(name, { confirmed: true, testCaseId: 42 }, true), /SESSION_ONLY/);
+  }
+});

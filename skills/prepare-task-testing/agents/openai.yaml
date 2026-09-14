@@ -1,0 +1,4 @@
+interface:
+  display_name: "Prepare Task Testing"
+  short_description: "Prepare full QA packages or resolve output intent"
+  default_prompt: "Use $prepare-task-testing for the testing request and context I supply."

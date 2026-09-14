@@ -53,7 +53,9 @@ try {
   fs.writeFileSync(answersFile, JSON.stringify(answers), "utf8");
   const env = {
     ...process.env,
-    HOME: testRoot,
+    XDG_DATA_HOME: path.join(testRoot, ".local", "share"),
+    XDG_STATE_HOME: path.join(testRoot, ".local", "state"),
+    XDG_CACHE_HOME: path.join(testRoot, ".cache"),
     XDG_CONFIG_HOME: path.join(testRoot, ".config"),
     TESTDOCS_INSTALL_ROOT: testRoot,
     TESTDOCS_CONFIG_DIR: path.join(testRoot, "private-config"),
@@ -98,7 +100,7 @@ try {
   const savedPrivateConfig = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
   assert(savedPrivateConfig.version === 3, "Старый конфиг не мигрирован в version 3.");
   assert(savedPrivateConfig.caFile?.endsWith("globalsign-gcc-r3-dv-tls-ca-2020.pem"), "Не сохранён CA-файл.");
-  assert(savedPrivateConfig.enableTestCaseCreation === true, "Не включены создание и защищённое исправление кейса Zephyr.");
+  assert(savedPrivateConfig.enableTestCaseCreation === false, "Запись кейсов должна быть отключена без opt-in.");
   assert(savedPrivateConfig.connections.jira[0].enableBugCreation === true, "Не включено создание багов Jira по явному запросу.");
   assert(savedPrivateConfig.connections.jira[0].enableChecklistCommentPublication === true, "Не включена явная публикация checklist в Jira.");
   assert(savedPrivateConfig.connections.jira[0].enableReleaseTestRunCreation === true, "Не включено защищённое создание Test Run и связанной QA-задачи.");
@@ -140,6 +142,13 @@ try {
   assert(fs.readFileSync(codexConfig, "utf8").includes("testdocs_delivery"), "Codex не получил QA Report MCP.");
   assert(JSON.parse(fs.readFileSync(genericConfig, "utf8")).mcpServers?.testdocs_delivery, "Generic client не получил QA Report MCP.");
 
+  const caseOptIn = spawnSync(process.execPath, [path.join(scriptsDir, "install.mjs"), "--reuse", "--enable-test-case-writes", "--skip-dependencies", "--no-cli"], { cwd: repoRoot, env, encoding: "utf8", timeout: 30000 });
+  assert(caseOptIn.status === 0, caseOptIn.stdout + caseOptIn.stderr);
+  assert(JSON.parse(fs.readFileSync(privateConfig, "utf8")).enableTestCaseCreation === true, "Case opt-in was not saved.");
+  const caseToolsConfig = fs.readFileSync(codexConfig, "utf8");
+  assert(caseToolsConfig.includes('"zephyr_create_test_case"') && caseToolsConfig.includes('"zephyr_update_session_test_case"'), "Case opt-in did not register session-safe tools.");
+  assert(!caseToolsConfig.includes('"zephyr_update_test_case"'), "Existing-case update leaked into client configuration.");
+
   const openCode = JSON.parse(fs.readFileSync(openCodeConfig, "utf8"));
   assert(openCode.mcp?.testdocs_jira, "Не добавлен OpenCode stable Jira MCP.");
   assert(openCode.mcp?.testdocs_confluence, "Не добавлен OpenCode stable Confluence MCP.");
@@ -147,11 +156,11 @@ try {
   assert(!openCode.permissions, "В stable-конфиг попало несовместимое поле permissions.");
   if (spawnSync("opencode", ["--version"], { env, stdio: "ignore" }).status === 0) {
     const validation = spawnSync("opencode", ["debug", "config"], {
-      cwd: repoRoot,
+      cwd: testRoot,
       env,
-      stdio: "ignore"
+      encoding: "utf8"
     });
-    assert(validation.status === 0, "OpenCode отклонил stable-конфиг установщика.");
+    assert(validation.status === 0, `OpenCode отклонил stable-конфиг установщика: ${validation.stderr || validation.error || ""}`);
   }
 
   // Конфиг, созданный ошибочной версией установщика, должен мигрировать в stable.
@@ -182,9 +191,9 @@ try {
   assert(!migratedOpenCode.permissions, "После миграции осталось поле permissions.");
   if (spawnSync("opencode", ["--version"], { env, stdio: "ignore" }).status === 0) {
     const migratedValidation = spawnSync("opencode", ["debug", "config"], {
-      cwd: repoRoot,
+      cwd: testRoot,
       env,
-      stdio: "ignore"
+      encoding: "utf8"
     });
     assert(migratedValidation.status === 0, "OpenCode отклонил исправленный stable-конфиг.");
   }
