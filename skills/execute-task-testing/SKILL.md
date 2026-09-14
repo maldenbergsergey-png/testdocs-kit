@@ -35,8 +35,8 @@ Do not load profiles for systems that are not relevant.
 2. Show the initial empty checklist before test actions; keep quick component checks minimal. Apply the preparation, app-handoff and fallback rules without an extra plan-approval pause when scope and access are clear.
 3. Before saving evidence, initialize the local workspace with `node scripts/task-workspace.mjs init --project <project> --task <task>` from the installed kit. Use a descriptive local task slug when no issue key exists. Write task data only inside the returned path.
 4. Execute reachable checks; continue independent rows when another is blocked. Preserve each observed result, allowed status and evidence provenance under `task-execution-rules.md`, including saved screenshots for successful UI checks and their row-to-file index.
-5. Save the completed report in `reports/` and return it with a concise summary and limitations in chat. Follow the report and evidence rules, including visual verification when HTML is requested.
-6. Deliver the finalized report only to an explicitly requested external destination. For QA Report, apply its profile and [delivery rules](../../rules/checklist-delivery-rules.md) for the chosen channel, metadata, attachments and saved receipts.
+5. Review all result and comment cells under the report's language and evidence rules, then save the completed report in `reports/` and return it with a concise summary and limitations in chat. Follow visual verification when HTML is requested.
+6. Deliver the finalized report only to an explicitly requested external destination. For QA Report, apply its profile and [delivery rules](../../rules/checklist-delivery-rules.md) to choose inline text or files, resolve evidence destination cells, and verify content, metadata and saved receipts.
 
 For a later attachment/delivery request, resume from the saved report and evidence index. Follow «Повторное использование при прикреплении» in `execution-evidence-rules.md`; do not restart the test workflow just to attach files.
 

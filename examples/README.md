@@ -28,3 +28,5 @@ Example labels such as item names and case IDs are fictional.
 ## Workflow examples
 
 The anonymized examples under [`workflows/`](workflows/) demonstrate checklist-only, compact single-section checklist, full-package, no-change, create/update/retire, bugfix, insufficient-context, and review-with-fix outputs. They illustrate the rules but do not define policy.
+
+[`workflows/task-execution-report.md`](workflows/task-execution-report.md) shows plain-language results, an unobserved UI criterion, inline JSON, and a screenshot in the actual-result cell.
