@@ -2,6 +2,7 @@
 import { installSkillSet } from "./install-skills.mjs";
 
 import fs from "node:fs";
+import atlassianHttp from "../mcp/atlassian-http.cjs";
 import { applyFigmaMode, defaultFigmaMode, isFigmaDesktop } from "./figma-config.mjs";
 import path from "node:path";
 import process from "node:process";
@@ -47,6 +48,7 @@ function parseArgs(argv) {
     add: null,
     openCodeFormat: null,
     caFile: null,
+    insecureAtlassianTls: null,
     browserMode: null,
     maestroMode: null,
     maestroCommand: null,
@@ -67,6 +69,8 @@ function parseArgs(argv) {
     else if (arg === "--maestro-mode") result.maestroMode = argv[++index];
     else if (arg === "--maestro-command") result.maestroCommand = argv[++index];
     else if (arg === "--ca-file") result.caFile = argv[++index];
+    else if (arg === "--insecure-atlassian-tls") result.insecureAtlassianTls = true;
+    else if (arg === "--verify-atlassian-tls") result.insecureAtlassianTls = false;
     else if (arg === "--enable-test-case-writes") result.enableTestCaseWrites = true;
     else if (arg === "--enable-jira-writes") result.enableJiraWrites = true;
     else if (arg === "--enable-release-test-run-writes") result.enableReleaseTestRunWrites = true;
@@ -76,6 +80,9 @@ function parseArgs(argv) {
     else if (arg === "--skip-browser-auth") result.skipBrowserAuth = true;
     else if (arg === "--help" || arg === "-h") result.help = true;
     else throw new Error(`Неизвестный аргумент: ${arg}`);
+  }
+  if (argv.includes("--insecure-atlassian-tls") && argv.includes("--verify-atlassian-tls")) {
+    throw new Error("Выберите только один TLS-флаг: --insecure-atlassian-tls или --verify-atlassian-tls.");
   }
   return result;
 }
@@ -89,6 +96,7 @@ function showHelp() {
   --reuse                                 Применить сохранённые настройки без вопросов
   --configure jira|confluence|eva|tms|delivery|integrations|figma|browser|maestro|all
                                           Перенастроить только выбранную часть
+  --configure sp-secret                   Задать/заменить/удалить X-Sp-Secret для Jira/Confluence
   --add jira|confluence|eva               Добавить подключение, сохранив существующие
   --opencode-format stable|v2              Явно выбрать формат OpenCode
   --figma-mode browser|desktop|remote|off          Режим Figma MCP без ручной правки JSON
@@ -96,6 +104,8 @@ function showHelp() {
   --maestro-mode auto|on|off               Локальный Maestro MCP (по умолчанию auto)
   --maestro-command /absolute/path/maestro Путь к установленному Maestro CLI
   --ca-file /path/to/ca-bundle.pem         Дополнительные доверенные CA в формате PEM
+  --insecure-atlassian-tls                 Временно отключить проверку TLS для Jira/Confluence с Basic/PAT
+  --verify-atlassian-tls                   Вернуть проверку TLS для Jira/Confluence с Basic/PAT
   --enable-test-case-writes                Разрешить создание кейсов и исправление созданных в текущей MCP-сессии
   --enable-jira-writes                     Разрешить создание Bug, публикацию checklist,
                                           Test Run и связанной QA-задачи
@@ -148,7 +158,8 @@ async function confirm(question, fallback = true) {
 
 async function askSecret(question, previous = "") {
   if (!process.stdin.isTTY || typeof process.stdin.setRawMode !== "function") {
-    return ask(question, previous);
+    const keepHint = previous ? " (Enter — оставить текущее значение)" : "";
+    return (await ask(`${question}${keepHint}`)) || previous;
   }
 
   const keepHint = previous ? " (Enter — оставить текущее значение)" : "";
@@ -221,6 +232,11 @@ async function chooseClients(args) {
   return mapping[value] || normalizeClients(value.split(","));
 }
 
+async function collectSpSecret(label, previous = "") {
+  const value = await askSecret(`X-Sp-Secret для ${label} (необязательно; '-' — удалить)`, previous);
+  return atlassianHttp.validateSpSecret(value === "-" ? "" : value);
+}
+
 async function collectJira(previous = {}, id = "jira-main") {
   const enabled = await confirm("Подключить Jira", previous.enabled ?? true);
   if (!enabled) return { ...previous, id, enabled: false };
@@ -247,6 +263,7 @@ async function collectJira(previous = {}, id = "jira-main") {
   const testCaseUrlTemplate = !previous.testCaseUrlTemplate || previous.testCaseUrlTemplate === previousDefaultTemplate
     ? `${url}/secure/Tests.jspa#/testCase/{key}`
     : previous.testCaseUrlTemplate;
+  const spSecret = await collectSpSecret(`Jira ${id}`, previous.url === url ? previous.spSecret || "" : "");
   if (preset.authMode === "browser_session") {
     return {
       id,
@@ -256,6 +273,7 @@ async function collectJira(previous = {}, id = "jira-main") {
       username: "",
       secret: "",
       testCaseUrlTemplate,
+      spSecret,
       insecureTls: false
     };
   }
@@ -277,7 +295,8 @@ async function collectJira(previous = {}, id = "jira-main") {
     username,
     secret,
     testCaseUrlTemplate,
-    insecureTls: false
+    spSecret,
+    insecureTls: previous.insecureTls === true
   };
 }
 
@@ -295,6 +314,7 @@ async function collectConfluence(previous = {}, id = "confluence-main") {
     previous.baseUrl || "",
     "https://confluence.company.example"
   )).replace(/\/+$/, "");
+  const spSecret = await collectSpSecret(`Confluence ${id}`, previous.baseUrl === baseUrl ? previous.spSecret || "" : "");
   if (authMode === "browser_session") {
     return {
       id,
@@ -304,6 +324,7 @@ async function collectConfluence(previous = {}, id = "confluence-main") {
       username: "",
       secret: "",
       authMode,
+      spSecret,
       insecureTls: false
     };
   }
@@ -325,7 +346,8 @@ async function collectConfluence(previous = {}, id = "confluence-main") {
     username,
     secret,
     authMode,
-    insecureTls: false
+    spSecret,
+    insecureTls: previous.insecureTls === true
   };
 }
 
@@ -528,6 +550,7 @@ function validateAnswers(config) {
       throw new Error(`Не полностью настроена Jira ${jira.id}.`);
     }
     validateUrl(jira.url, `Адрес Jira ${jira.id}`);
+    atlassianHttp.validateSpSecret(jira.spSecret);
     if (jira.testCaseUrlTemplate) {
       if (typeof jira.testCaseUrlTemplate !== "string" || !jira.testCaseUrlTemplate.includes("{key}")) {
         throw new Error(`testCaseUrlTemplate Jira ${jira.id} должен содержать {key}.`);
@@ -552,6 +575,7 @@ function validateAnswers(config) {
       throw new Error(`Не полностью настроен Confluence ${confluence.id}.`);
     }
     validateUrl(confluence.baseUrl, `Адрес Confluence ${confluence.id}`);
+    atlassianHttp.validateSpSecret(confluence.spSecret);
   }
   for (const eva of connectionList(config, "eva")) {
     if (!eva.baseUrl || !eva.secret || eva.authMode !== "api_token") {
@@ -644,8 +668,17 @@ async function collectConfig(args, clients, existing = null) {
   if (args.add && !["jira", "confluence", "eva"].includes(args.add)) {
     throw new Error("--add поддерживает jira, confluence или eva.");
   }
-  if (!["jira", "confluence", "eva", "tms", "delivery", "integrations", "figma", "browser", "maestro", "all"].includes(target)) {
+  if (!["jira", "confluence", "eva", "tms", "delivery", "integrations", "figma", "browser", "maestro", "sp-secret", "all"].includes(target)) {
     throw new Error("Неизвестный раздел настройки.");
+  }
+  if (target === "sp-secret") {
+    const entries = ["jira", "confluence"].flatMap((service) => connectionList(previous, service)
+      .map((entry) => ({ service, entry })));
+    if (!entries.length) throw new Error("Сначала настройте подключение Jira или Confluence.");
+    for (const { service, entry } of entries) {
+      entry.spSecret = await collectSpSecret(`${service} ${entry.id}`, entry.spSecret || "");
+    }
+    return validateAnswers(previous);
   }
   const mode = args.add ? "add" : args.configure && args.configure !== "all" ? "configure" : "all";
   const freshFullSetup = target === "all" && !connectionList(previous, "jira").length && !connectionList(previous, "confluence").length && !connectionList(previous, "eva").length;
@@ -1299,6 +1332,15 @@ async function main() {
     jira.testRunUrlTemplate ||= `${jira.url}/secure/Tests.jspa#/testCycle/{key}`;
   }
   applyCaFile(config, args.caFile);
+  if (args.insecureAtlassianTls !== null) {
+    const connections = ["jira", "confluence"].flatMap((service) => connectionList(config, service))
+      .filter((entry) => ["basic", "bearer"].includes(entry.authMode));
+    if (!connections.length) throw new Error("Не найдены включённые Jira/Confluence-подключения с Basic или PAT.");
+    for (const entry of connections) entry.insecureTls = args.insecureAtlassianTls;
+    console.log(args.insecureAtlassianTls
+      ? "Проверка TLS-сертификатов Jira/Confluence с Basic/PAT отключена для диагностики. Возврат: --verify-atlassian-tls."
+      : "Проверка TLS-сертификатов Jira/Confluence с Basic/PAT включена.");
+  }
 
   savePrivateConfig(config);
   installDependencies(args.skipDependencies, config);

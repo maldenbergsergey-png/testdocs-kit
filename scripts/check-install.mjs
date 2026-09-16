@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import atlassianHttp from "../mcp/atlassian-http.cjs";
 import { verifySkillResources } from "./verify-skills.mjs";
 import { isFigmaDesktop } from "./figma-config.mjs";
 import path from "node:path";
@@ -26,12 +27,14 @@ function validatePrivateConfig() {
   }
 
   for (const jira of connectionList(config, "jira")) {
+    atlassianHttp.validateSpSecret(jira.spSecret);
     assert(jira.url && jira.authMode, `Неполные настройки Jira ${jira.id}.`);
     if (jira.authMode !== "browser_session") {
       assert(jira.secret, `Не заполнены учётные данные Jira ${jira.id}.`);
     }
   }
   for (const confluence of connectionList(config, "confluence")) {
+    atlassianHttp.validateSpSecret(confluence.spSecret);
     assert(confluence.baseUrl && confluence.authMode, `Неполные настройки Confluence ${confluence.id}.`);
     if (confluence.authMode !== "browser_session") {
       assert(confluence.secret, `Не заполнены учётные данные Confluence ${confluence.id}.`);

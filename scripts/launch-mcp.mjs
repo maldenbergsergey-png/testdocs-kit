@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import atlassianHttp from "../mcp/atlassian-http.cjs";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -60,6 +61,7 @@ function buildEnvironment(service, connectionId, config) {
       JIRA_URL: jira.url,
       JIRA_EMAIL: jira.username || "",
       JIRA_TOKEN: jira.secret || "",
+      JIRA_SP_SECRET: atlassianHttp.validateSpSecret(jira.spSecret),
       JIRA_AUTH_MODE: jira.authMode || "basic",
       JIRA_SESSION_FILE: getSessionFile(sessionKey("jira", jira.id, connectionList(config, "jira").length)),
       JIRA_API_VERSION: String(jira.apiVersion || "2"),
@@ -132,6 +134,7 @@ function buildEnvironment(service, connectionId, config) {
     CONFLUENCE_BASE_URL: confluence.baseUrl,
     CONFLUENCE_USERNAME: confluence.username || "",
     CONFLUENCE_API_TOKEN: confluence.secret || "",
+    CONFLUENCE_SP_SECRET: atlassianHttp.validateSpSecret(confluence.spSecret),
     CONFLUENCE_AUTH_MODE: confluence.authMode || "basic",
     CONFLUENCE_SESSION_FILE: getSessionFile(sessionKey("confluence", confluence.id, connectionList(config, "confluence").length)),
     CONFLUENCE_INSECURE_TLS: confluence.insecureTls ? "1" : "0"

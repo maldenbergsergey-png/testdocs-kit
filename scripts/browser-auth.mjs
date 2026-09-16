@@ -13,6 +13,7 @@ import { connectionList, findConnection, migrateConfig, sessionKey } from "./con
 const currentFile = fileURLToPath(import.meta.url);
 const require = createRequire(import.meta.url);
 const { getCookieHeader } = require("../mcp/session-auth.cjs");
+const { fetchWithSpSecret } = require("../mcp/atlassian-http.cjs");
 const service = process.argv[2];
 const connectionId = process.argv.slice(3).find((value) => !value.startsWith("--"));
 const force = process.argv.includes("--force");
@@ -113,7 +114,7 @@ function cookiesForService(cookies, baseUrl) {
   });
 }
 
-async function probe(baseUrl, cookies) {
+async function probe(baseUrl, cookies, spSecret) {
   let cookieHeader;
   try {
     cookieHeader = cookieHeaderFromCookies(cookies, baseUrl);
@@ -123,10 +124,10 @@ async function probe(baseUrl, cookies) {
   const probePath = service === "jira" ? "/rest/api/2/myself" : "/rest/api/user/current";
   let response;
   try {
-    response = await fetch(`${baseUrl}${probePath}`, {
+    response = await fetchWithSpSecret(`${baseUrl}${probePath}`, {
       redirect: "manual",
       headers: { Cookie: cookieHeader, Accept: "application/json" }
-    });
+    }, spSecret);
   } catch {
     return false;
   }
@@ -222,7 +223,7 @@ class CdpClient {
   }
 }
 
-async function authenticate(baseUrl, sessionFile) {
+async function authenticate(baseUrl, sessionFile, spSecret) {
   const browser = findBrowser();
   const profileDir = path.join(getConfigDir(), "browser-profiles", service);
   const portFile = path.join(profileDir, "DevToolsActivePort");
@@ -251,7 +252,7 @@ async function authenticate(baseUrl, sessionFile) {
     while (Date.now() < deadline) {
       const { cookies = [] } = await cdp.send("Storage.getCookies");
       const serviceCookies = cookiesForService(cookies, baseUrl);
-      if (await probe(baseUrl, serviceCookies)) {
+      if (await probe(baseUrl, serviceCookies, spSecret)) {
         saveSession(sessionFile, baseUrl, serviceCookies);
         console.log(`Сессия ${service} сохранена: ${sessionFile}`);
         await cdp.send("Browser.close").catch(() => {});
@@ -278,11 +279,11 @@ async function main() {
   const { entry, baseUrl } = configuredService(config);
   const sessionFile = getSessionFile(sessionKey(service, entry.id, connectionList(config, service).length));
   const storedCookies = readStoredCookies(sessionFile, baseUrl);
-  if (!force && storedCookies.length && await probe(baseUrl, storedCookies)) {
+  if (!force && storedCookies.length && await probe(baseUrl, storedCookies, entry.spSecret)) {
     console.log(`Сессия ${service} действует. Повторный вход не требуется.`);
     return;
   }
-  await authenticate(baseUrl, sessionFile);
+  await authenticate(baseUrl, sessionFile, entry.spSecret);
 }
 
 main().catch((error) => fail(error.message));

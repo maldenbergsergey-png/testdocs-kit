@@ -36,6 +36,7 @@ const client = new ConfluenceClient(
   CONFLUENCE_API_TOKEN ?? "",
   CONFLUENCE_AUTH_MODE,
   CONFLUENCE_SESSION_FILE,
+  process.env.CONFLUENCE_SP_SECRET ?? "",
 );
 
 const server = new McpServer({

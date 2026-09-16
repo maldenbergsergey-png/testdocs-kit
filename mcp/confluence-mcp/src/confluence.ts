@@ -49,6 +49,11 @@ const {
 
 export type AuthMode = "basic" | "bearer" | "browser_session";
 
+const { fetchWithSpSecret, redactSpSecret } = require("../../atlassian-http.cjs") as {
+  fetchWithSpSecret: (url: string, options: RequestInit, secret?: string) => Promise<Response>;
+  redactSpSecret: (message: string, secret?: string) => string;
+};
+
 export class ConfluenceClient {
   private baseUrl: string;
   private authHeader?: string;
@@ -59,6 +64,7 @@ export class ConfluenceClient {
     apiToken: string,
     authMode: AuthMode = "basic",
     private sessionFile?: string,
+    private spSecret = "",
   ) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
 
@@ -84,17 +90,17 @@ export class ConfluenceClient {
       const authentication: Record<string, string> = this.authHeader
         ? { Authorization: this.authHeader }
         : { Cookie: getCookieHeader(this.sessionFile, url.toString(), "confluence") };
-      res = await fetch(url.toString(), {
-        redirect: "manual",
+      res = await fetchWithSpSecret(url.toString(), {
+        redirect: this.authHeader ? "follow" : "manual",
         headers: {
           ...authentication,
           Accept: "application/json",
         },
-      });
+      }, this.spSecret);
     } catch (error) {
       const cause = (error as { cause?: { code?: string; message?: string }; message?: string });
       const details = cause.cause?.code ?? cause.cause?.message ?? cause.message ?? "unknown network error";
-      throw new Error(`Confluence network request failed for ${url.origin}${url.pathname}: ${details}`);
+      throw new Error(redactSpSecret(`Confluence network request failed for ${url.origin}${url.pathname}: ${details}`, this.spSecret));
     }
 
     const body = await res.text();
@@ -106,18 +112,18 @@ export class ConfluenceClient {
     }
 
     if (!res.ok) {
-      throw new Error(
-        `Confluence API error ${res.status}: ${res.statusText}\n${body}`
-      );
+      throw new Error(redactSpSecret(
+        `Confluence API error ${res.status}: ${res.statusText}\n${body}`, this.spSecret
+      ));
     }
 
     try {
       return JSON.parse(body) as Record<string, unknown>;
     } catch (error) {
-      const details = error instanceof Error ? error.message : String(error);
-      throw new Error(
-        `Confluence returned invalid JSON (${res.status}) for ${url.origin}${url.pathname}: ${details}`
-      );
+      const details = this.spSecret ? "JSON parse error" : error instanceof Error ? error.message : String(error);
+      throw new Error(redactSpSecret(
+        `Confluence returned invalid JSON (${res.status}) for ${url.origin}${url.pathname}: ${details}`, this.spSecret
+      ));
     }
   }
 

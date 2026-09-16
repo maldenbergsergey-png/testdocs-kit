@@ -4,7 +4,7 @@ import fs from "node:fs";
 import { defaultFigmaMode, isFigmaDesktop } from "./figma-config.mjs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
@@ -26,6 +26,7 @@ const answers = {
     url: "https://jira.example.invalid",
     username: "tester",
     secret: "dummy-jira-password",
+    spSecret: "dummy-jira-gateway",
     authMode: "basic",
     apiVersion: "2",
     insecureTls: false
@@ -36,6 +37,7 @@ const answers = {
     baseUrl: "https://confluence.example.invalid",
     username: "tester",
     secret: "dummy-confluence-password",
+    spSecret: "dummy-confluence-gateway",
     authMode: "basic",
     insecureTls: false
   },
@@ -47,6 +49,26 @@ const answers = {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function configureSpSecrets(env, values) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [
+      path.join(scriptsDir, "install.mjs"), "--configure", "sp-secret", "--skip-dependencies", "--no-cli", "--skip-browser-auth"
+    ], { cwd: repoRoot, env, stdio: ["pipe", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    let sent = 0;
+    const timer = setTimeout(() => { child.kill(); reject(new Error("X-Sp-Secret prompt timed out.")); }, 30000);
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+      const prompts = [...stdout.matchAll(/X-Sp-Secret для (?:jira|confluence) [^\r\n]*?\): /g)].length;
+      while (sent < prompts && sent < values.length) child.stdin.write(`${values[sent++]}\n`);
+    });
+    child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
+    child.on("error", (error) => { clearTimeout(timer); reject(error); });
+    child.on("close", (status) => { clearTimeout(timer); resolve({ status, stdout, stderr, sent }); });
+  });
 }
 
 try {
@@ -100,6 +122,45 @@ try {
   const savedPrivateConfig = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
   assert(savedPrivateConfig.version === 3, "Старый конфиг не мигрирован в version 3.");
   assert(savedPrivateConfig.caFile?.endsWith("globalsign-gcc-r3-dv-tls-ca-2020.pem"), "Не сохранён CA-файл.");
+  for (const [values, expected] of [
+    [["", "dummy-confluence-replaced"], ["dummy-jira-gateway", "dummy-confluence-replaced"]],
+    [["-", "-"], ["", ""]],
+    [["dummy-jira-gateway", "dummy-confluence-gateway"], ["dummy-jira-gateway", "dummy-confluence-gateway"]]
+  ]) {
+    const result = await configureSpSecrets(env, values);
+    assert(result.status === 0 && result.sent === 2, `Не настроены X-Sp-Secret: ${result.stderr}`);
+    const actual = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
+    const expectedConnections = structuredClone(savedPrivateConfig.connections);
+    expectedConnections.jira[0].spSecret = expected[0];
+    expectedConnections.confluence[0].spSecret = expected[1];
+    assert(JSON.stringify(actual.connections) === JSON.stringify(expectedConnections), "Изменение X-Sp-Secret затронуло другие настройки подключения.");
+    for (const secret of ["dummy-jira-gateway", "dummy-confluence-gateway", "dummy-confluence-replaced"]) {
+      assert(!(result.stdout + result.stderr).includes(secret), "X-Sp-Secret попал в вывод установщика.");
+    }
+  }
+  // TLS diagnostics must survive reuse and have an explicit rollback without changing credentials.
+  for (const [flag, expected] of [["--insecure-atlassian-tls", true], [null, true], ["--verify-atlassian-tls", false]]) {
+    const result = spawnSync(process.execPath, [
+      path.join(scriptsDir, "install.mjs"), "--reuse", "--skip-dependencies", "--no-cli", "--skip-browser-auth",
+      ...(flag ? [flag] : [])
+    ], { cwd: repoRoot, env, encoding: "utf8" });
+    assert(result.status === 0, `Не применена настройка TLS ${flag || "reuse"}: ${result.stderr}`);
+    const actual = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
+    const expectedConnections = structuredClone(savedPrivateConfig.connections);
+    for (const service of ["jira", "confluence"]) {
+      for (const entry of expectedConnections[service]) entry.insecureTls = expected;
+    }
+    assert(JSON.stringify(actual.connections) === JSON.stringify(expectedConnections), "TLS-настройка изменила реквизиты или не сохранилась.");
+    assert(actual.caFile === savedPrivateConfig.caFile, "TLS-флаг удалил настроенный CA.");
+  }
+  const beforeConflict = fs.readFileSync(privateConfig, "utf8");
+  for (const script of ["install.mjs", "update.mjs"]) {
+    const result = spawnSync(process.execPath, [
+      path.join(scriptsDir, script), "--insecure-atlassian-tls", "--verify-atlassian-tls"
+    ], { cwd: repoRoot, env, encoding: "utf8" });
+    assert(result.status !== 0 && result.stderr.includes("Выберите только один TLS-флаг"), "Конфликтующие TLS-флаги не отклонены до установки/обновления.");
+    assert(fs.readFileSync(privateConfig, "utf8") === beforeConflict, "Конфликтующие флаги изменили конфигурацию.");
+  }
   assert(savedPrivateConfig.enableTestCaseCreation === false, "Запись кейсов должна быть отключена без opt-in.");
   assert(savedPrivateConfig.connections.jira[0].enableBugCreation === true, "Не включено создание багов Jira по явному запросу.");
   assert(savedPrivateConfig.connections.jira[0].enableChecklistCommentPublication === true, "Не включена явная публикация checklist в Jira.");
@@ -131,6 +192,7 @@ try {
   const publicConfigs = [codexConfig, openCodeConfig, genericConfig].map((file) => fs.readFileSync(file, "utf8")).join("\n");
   assert(!publicConfigs.includes("dummy-jira-password"), "Секрет Jira попал в клиентскую конфигурацию.");
   assert(!publicConfigs.includes("dummy-confluence-password"), "Секрет Confluence попал в клиентскую конфигурацию.");
+  assert(!publicConfigs.includes("dummy-jira-gateway") && !publicConfigs.includes("dummy-confluence-gateway"), "X-Sp-Secret попал в клиентскую конфигурацию.");
   assert(
     fs.readFileSync(codexConfig, "utf8").split("# BEGIN testdocs-kit").length - 1 === 1,
     "Повторный запуск продублировал Codex-конфигурацию."
