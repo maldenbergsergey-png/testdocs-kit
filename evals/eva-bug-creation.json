@@ -1,0 +1,282 @@
+[
+  {
+    "id": "eva_route_open",
+    "messages": [
+      "Заведи баг в Еве: Android, в профиле после ввода нового имени и нажатия \"Сохранить\" имя осталось старым. Ожидаю новое имя. В обсуждении DEMO-42 похожая проблема."
+    ],
+    "context": {
+      "source_task": {
+        "key": "DEMO-42",
+        "text": "Обсуждение профиля"
+      },
+      "current_tab": "DEMO-42",
+      "browser": "enabled, signed in as tester"
+    }
+  },
+  {
+    "id": "eva_feature_target",
+    "messages": [
+      "Этот баг относится к фиче. Создай его подзадачей в Еве: iOS, после сохранения имени профиль показывает старое имя вместо нового."
+    ],
+    "context": {
+      "project": "MOBILE",
+      "browser": "enabled, signed in as tester"
+    }
+  },
+  {
+    "id": "eva_backlog_target",
+    "messages": [
+      "Заведи этот баг в бэклог Евы. Android, после сохранения имени профиль показывает старое имя вместо нового."
+    ],
+    "context": {
+      "connections": [
+        "eva-main",
+        "eva-other"
+      ],
+      "projects": [
+        "MOBILE",
+        "PORTAL"
+      ],
+      "browser": "enabled, signed in as tester"
+    }
+  },
+  {
+    "id": "eva_backlog_header",
+    "messages": [
+      "Создай в Еве баг в бэклог проекта MOBILE на https://eva.example.invalid. Android 15, сборка 8.1.42. Открыть профиль, изменить имя с \"Иван\" на \"Пётр\", нажать \"Сохранить\". Ожидаю имя \"Пётр\", вижу \"Иван\"."
+    ],
+    "context": {
+      "browser_enabled": true,
+      "current_user": {
+        "id": "person-7",
+        "name": "Тестировщик"
+      },
+      "project": {
+        "id": "project-mobile",
+        "name": "MOBILE"
+      },
+      "observed_ui": {
+        "header_action": "Создать задачу",
+        "form_is_not_open": true,
+        "current_page_project": "PORTAL"
+      },
+      "sources_complete": true
+    }
+  },
+  {
+    "id": "eva_subtask_form",
+    "messages": [
+      "Создай баг подзадачей DEMO-42 в Еве. iOS 18, сборка 8.1.42. Открыть профиль, ввести \"Пётр\" вместо \"Иван\", нажать \"Сохранить\". Ожидание - имя \"Пётр\", факт - имя \"Иван\". Прикрепи переданный снимок и добавь релевантный фрагмент кода из материалов."
+    ],
+    "context": {
+      "browser_enabled": true,
+      "current_user": {
+        "id": "person-7",
+        "name": "Тестировщик"
+      },
+      "parent": {
+        "key": "DEMO-42",
+        "project": "MOBILE",
+        "assignee": "Разработчик",
+        "priority": "Высокий"
+      },
+      "form": {
+        "server_draft_id": "draft-17",
+        "parent": "DEMO-42",
+        "type_options": [
+          "Задача",
+          "Ошибка"
+        ],
+        "fields": [
+          {
+            "label": "Название",
+            "required": true
+          },
+          {
+            "label": "Описание",
+            "editor": "rich text with heading, numbered list and code controls"
+          },
+          {
+            "label": "Исполнитель",
+            "allowed": [
+              "Тестировщик",
+              "Разработчик"
+            ]
+          },
+          {
+            "label": "Постановщик",
+            "allowed": [
+              "Тестировщик"
+            ]
+          },
+          {
+            "label": "Приоритет",
+            "required": false
+          }
+        ],
+        "dedicated_result_fields": [],
+        "attachments": "file control available, PNG upload allowed"
+      },
+      "evidence": [
+        {
+          "path": "/tmp/eva-fixture/profile.png",
+          "readable": true,
+          "type": "image/png",
+          "caption": "Имя после сохранения"
+        },
+        {
+          "source": "profile.ts:12",
+          "code": "return cachedProfile.name;",
+          "interpretation": "Фрагмент из предоставленного обработчика; причина ещё не доказана."
+        }
+      ]
+    }
+  },
+  {
+    "id": "eva_draft_only",
+    "messages": [
+      "Оформи только черновик бага в бэклог MOBILE в Еве. iOS: после сохранения нового имени профиль показывает старое; должно показываться новое."
+    ],
+    "context": {
+      "browser_enabled": true,
+      "current_user": "Тестировщик",
+      "current_page": "MOBILE backlog",
+      "creation_form_open": false
+    }
+  },
+  {
+    "id": "eva_required_field",
+    "messages": [
+      "Создай баг в бэклог проекта MOBILE в Еве. Android, после сохранения имени профиль показывает старое имя вместо нового."
+    ],
+    "context": {
+      "browser_enabled": true,
+      "current_user": "Тестировщик",
+      "form": {
+        "server_draft_id": "draft-18",
+        "project": "MOBILE",
+        "type": "Ошибка",
+        "assignee": "Тестировщик",
+        "reporter": "Тестировщик",
+        "fields": [
+          {
+            "label": "Направление",
+            "required": true,
+            "default": null,
+            "allowed": [
+              "B2B",
+              "B2C"
+            ]
+          }
+        ],
+        "semantic_fields": "Description only"
+      },
+      "source_has_direction": false
+    }
+  },
+  {
+    "id": "eva_identity",
+    "messages": [
+      "Создай баг подзадачей DEMO-42 в Еве. Я Анна, баг на iOS: профиль после сохранения показывает старое имя вместо нового."
+    ],
+    "context": {
+      "browser_enabled": true,
+      "api_current_user": "Анна",
+      "browser_current_user": "svc-integration",
+      "parent": "DEMO-42",
+      "form_is_not_open": true
+    }
+  },
+  {
+    "id": "eva_denied",
+    "messages": [
+      "Создай баг в бэклог MOBILE в Еве: Android, профиль после сохранения показывает старое имя вместо нового."
+    ],
+    "context": {
+      "browser_enabled": true,
+      "target_verified": true,
+      "write_result": "Client permission denied",
+      "mcp": "read-only Eva tools",
+      "other_http_client": "available"
+    }
+  },
+  {
+    "id": "eva_partial",
+    "messages": [
+      "Создай баг в бэклог MOBILE в Еве: iOS, профиль после сохранения показывает старое имя вместо нового. Приложи снимок."
+    ],
+    "context": {
+      "save_result": {
+        "key": "MOBILE-77",
+        "url": "https://eva.example.invalid/project/Task/MOBILE-77",
+        "type": "Ошибка",
+        "project": "MOBILE",
+        "backlog": true,
+        "feature_parent": null,
+        "assignee": "Тестировщик",
+        "reporter": "Тестировщик",
+        "content": "saved and verified"
+      },
+      "attachment_upload_result": "timeout, outcome unknown",
+      "screenshot": "profile.png"
+    }
+  },
+  {
+    "id": "eva_dedicated",
+    "messages": [
+      "Создай баг подзадачей DEMO-42 в Еве. Android, открыть профиль, сменить имя на \"Пётр\", нажать \"Сохранить\". Факт: \"Иван\". Ожидание: \"Пётр\"."
+    ],
+    "context": {
+      "browser_enabled": true,
+      "current_user": "Тестировщик",
+      "form": {
+        "parent": "DEMO-42",
+        "type": "Ошибка",
+        "assignee": "Тестировщик",
+        "reporter": "Тестировщик",
+        "fields": [
+          {
+            "id": "title",
+            "label": "Название"
+          },
+          {
+            "id": "text",
+            "label": "Описание"
+          },
+          {
+            "id": "cf_steps",
+            "label": "Шаги воспроизведения",
+            "required": false
+          },
+          {
+            "id": "cf_expected",
+            "label": "Ожидаемый результат",
+            "required": false
+          },
+          {
+            "id": "cf_actual",
+            "label": "Фактический результат",
+            "required": false
+          }
+        ],
+        "complete": true
+      }
+    }
+  },
+  {
+    "id": "jira_bug",
+    "messages": [
+      "Создай самостоятельный баг в Jira DEMO: FE, открыть профиль, сменить имя на \"Пётр\", нажать \"Сохранить\"; показывается \"Иван\", должно \"Пётр\"."
+    ],
+    "context": {
+      "connector": "jira",
+      "tools": [
+        "jira_get_bug_create_metadata",
+        "jira_create_bug",
+        "get_issue"
+      ],
+      "bug_write_opt_in": true,
+      "metadata_not_read": true
+    }
+  }
+]

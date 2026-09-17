@@ -126,6 +126,27 @@
     "collect": false
   },
   {
+    "id": "eva_bug_route",
+    "prompt": "Заведи в Еве баг: на iOS после сохранения имени экран профиля закрывается, но имя остаётся старым. Должно показываться новое имя. Принадлежность к фиче или бэклогу ещё не выбрана.",
+    "skill": "create-bug-report",
+    "artifact": "bug_draft",
+    "collect": false
+  },
+  {
+    "id": "eva_backlog_draft",
+    "prompt": "Подготовь только черновик бага в бэклог проекта MOBILE в EvaTeam. Android: на экране профиля после сохранения имени остаётся старое имя, ожидается новое. Все данные здесь, ссылки искать не нужно.",
+    "skill": "create-bug-report",
+    "artifact": "bug_draft",
+    "collect": false
+  },
+  {
+    "id": "eva_feature_bug",
+    "prompt": "Создай в EvaProject баг подзадачей к https://eva.example.invalid/project/Task/DEMO-42. На iOS экран профиля после сохранения показывает старое имя. Ожидаемое поведение и материалы есть в этой задаче.",
+    "skill": "create-bug-report",
+    "artifact": "bug_draft",
+    "collect": true
+  },
+  {
     "id": "release",
     "prompt": "Подготовь Test Run для релиза 2.4 проекта DEMO, папка /Mobile/Profile; исполнители Иван и Анна.",
     "skill": "create-release-test-run",

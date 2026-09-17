@@ -23,6 +23,7 @@ Identify integrations by capability rather than product name or MCP tool name:
 | Jira checklist comment | Publish finalized Jira Wiki checklist to the anchored issue as the authenticated user | Optional and approval-gated |
 | Jira create metadata | Read the authenticated user and exact project/type field schema needed for a bug draft | Only for Jira bug creation |
 | Jira bug create | Create one validated defect issue and return its key and URL | Optional and approval-gated |
+| Eva bug creation | Live form and `Ошибка` creation in the tester-selected feature or backlog route | Optional; [Eva profile](../integrations/profiles/eva.md), explicit create intent and target required even to open the form |
 | Jira QA work-item metadata | Read the exact non-defect work-item schema and authenticated user | Only for linked Test Run work-item creation |
 | Jira QA work-item create | Create one validated non-defect QA work item and attach the created Test Run | Optional and approval-gated |
 | QA Report delivery | Import a finalized checklist or fill an open report through its temporary API, including supported metadata and attachments | Optional and approval-gated |
