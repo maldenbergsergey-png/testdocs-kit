@@ -6,7 +6,7 @@ The official Desktop endpoint `http://127.0.0.1:3845/mcp` and Remote endpoint `h
 
 ## Browser reading and screenshots
 
-- Open only the supplied file/frame link in the connected browser. Reuse its legitimate signed-in session or ask the user to finish sign-in in that browser; do not request credentials in chat.
+- Open only the supplied file/frame link in the user's selected connected browser under [session reuse](../../rules/browser-session-rules.md). Readable designs do not require a separate MCP/OAuth login.
 - Use visible browser controls and actual screenshots for the canvas. The accessibility/DOM snapshot alone may omit the design. Inspect the screenshot before any coordinate action, use the current tool schema and avoid editing the design.
 - Frame the requested screen at a readable zoom and preserve its source link. Prefer an allowed frame export for a clean image; otherwise capture the visible frame with enough context to establish its identity. Respect file access and export restrictions. Include the design image in the report under the evidence rules below.
 - Report only observed visual properties. Do not infer hidden layers, variables, exact design dimensions from scaled screenshots, or states that were not supplied. If the client/model cannot inspect images, request usable exported evidence or mark the visual comparison unavailable; do not claim that reading the page title constitutes reading the design.

@@ -37,11 +37,13 @@ For a task/subtask estimate, read the full supplied task, its parent story, the 
 
 Apply the common contract's reuse condition before the retrieval steps below. Collect missing or stale material; an explicit refresh request also requires a new read.
 
+Before browser retrieval, follow [session reuse](../../rules/browser-session-rules.md) to select the user's browser and read accessible content without initializing another login.
+
 Inspect the tools available in the current host and classify them as issue/change read, issue relations, knowledge read, design read, API workspace read/write, log read, TMS read, or TMS write. Match by documented capability and input/output shape, not by a hard-coded tool name.
 
 When setup selected QA Tools, use its `testops_find_*`, `testops_get_*`, or `testops_list_*` capabilities for scoped TMS reads. When setup selected Zephyr Scale / Test Management for Jira, use only the Zephyr-compatible capabilities from the Jira connection. Do not search an unselected second TMS.
 
-A QA Tools UI URL matching `/project/{projectId}/test-cases/{testCaseId}` is a direct TMS scope anchor, not a generic web page. Extract both identifiers and call `testops_find_testcases` once with the exact project and case scope accepted by its live schema. Do not broaden to a library search, try WebFetch first, or ask for a manual export while `testdocs_qa_tools` read tools are available.
+A QA Tools UI URL matching `/project/{projectId}/test-cases/{testCaseId}` is a direct TMS scope anchor. Unless the user explicitly selected browser reading, extract both identifiers and call `testops_find_testcases` once with the exact project and case scope accepted by its live schema. Do not broaden to a library search, try WebFetch first, or ask for a manual export while `testdocs_qa_tools` read tools are available.
 
 When more than one Jira or company connection could satisfy the same key, stop before retrieval and request the intended instance. Never choose a company environment from key shape alone.
 
@@ -64,7 +66,7 @@ When more than one Jira or company connection could satisfy the same key, stop b
 
 ## Failure and fallback
 
-- `AUTH_REQUIRED`: ask the user to complete the exact browser-auth command returned by the connector, then retry the original read once. Never request or display cookies.
+- `AUTH_REQUIRED`: apply [session reuse](../../rules/browser-session-rules.md) before requesting connector authentication.
 - `NOT_FOUND`: report the exact reference and instance checked.
 - `PERMISSION_DENIED`: report the missing access without claiming absence.
 - `CAPABILITY_UNAVAILABLE`: name the missing capability and request manual content or an export.

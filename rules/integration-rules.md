@@ -120,9 +120,9 @@ Keep raw external values alongside any neutral interpretation. Do not silently t
 
 ## Browser-session authentication
 
-Treat `AUTH_REQUIRED` as a recoverable authentication state, not as missing capability. Ask the user to complete the exact `npm run auth -- jira|confluence` browser flow returned by the connector, then retry the original read once.
+For browser retrieval or an authentication error, follow [browser session reuse](browser-session-rules.md). Readable content in the user's selected browser is sufficient for that read; a separate connector's `AUTH_REQUIRED` does not require another login.
 
-Do not repeatedly open authentication while the stored session remains valid. Do not expose, request in chat, summarize, or log browser cookies or session-file contents. A normal `403` with an authenticated JSON response means insufficient permission and must not be treated as an expired session. Reauthenticate only for `401`, an authentication redirect, an explicit authentication-denied signal, a missing session, or a user-requested forced refresh.
+When capturing source images, apply [evidence framing and verification](execution-evidence-rules.md#полнота-и-контекст-кадра). Capturing requirements does not start a test run or require an execution report.
 
 ## Tool-call discipline and recovered errors
 

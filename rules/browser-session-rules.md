@@ -1,0 +1,17 @@
+# Browser session reuse
+
+Apply when reading sources through a browser, selecting a browser connection, or handling an authentication error. This includes tasks, requirements, documentation, designs, and the tested web application.
+
+## Select and reuse the accessible session
+
+- Honor the user's chosen browser. A request for their Chrome means the connected user Chrome session, not an in-app browser or a new isolated profile. Use an existing matching tab when available; otherwise open the scoped URL in that same connection. Follow the live tool's connection instructions. If it cannot access that Chrome session, report the connection limitation and request only the required tab/extension connection, not another website login. Do not silently substitute a different browser or change client configuration.
+- Inspect the actual target content before requesting authentication. If the required task, document section, or design is visible and readable, continue in that session without a login check, OAuth setup, `npm run auth`, or another 2FA prompt. A successful navigation, page title, login shell, or blank canvas alone does not prove the content was read. Jira access does not establish access to a linked Confluence page or design; inspect each required source in the same selected connection.
+- Browser and MCP/API authentication are separate. An absent connector session or its `AUTH_REQUIRED` does not invalidate readable browser content. For source reading, use that content and preserve its URL/provenance; do not initialize another session merely to retrieve the same information. Missing fields or states remain specific gaps, not proof that the whole source needs reauthentication.
+- Keep using the working connection and profile across the task and later reads while available. Do not log out, clear cookies, reset a profile, force-refresh authentication, or open a fresh profile for each source. Reuse does not promise that a corporate session never expires. Never copy cookies from the user's browser or substitute its private profile directory into an isolated automation session.
+
+## Recover only the access needed
+
+- Request sign-in/SSO/2FA only when the required browser content actually presents that challenge, or when an indispensable MCP/API operation lacks a valid session and the browser cannot supply what that operation needs. Name the blocked source or operation and ask the user to complete only the necessary step in its normal browser flow. Never request passwords, one-time codes, tokens, cookies, or session-file contents in chat or logs.
+- For a necessary connector returning `AUTH_REQUIRED`, use the exact recovery command it returned, including the connection ID; after the user completes it, retry the original operation once. If authentication still fails, report the remaining limitation instead of reopening login in a loop. An explicit user request to refresh authentication may use the supported refresh flow; do not add `--force` otherwise.
+- A normal authenticated `403`/"Request access" means missing permission, not an expired session. A network, TLS, VPN, browser-launch or tab-connection failure does not establish missing website authentication. Keep these failures separate and do not request 2FA to fix them.
+- Browser fallback here permits reading. It does not replace required live metadata for writes, bypass client approval or policy restrictions, or authorize a different write path. Apply the destination's write contract when a requested operation truly requires a separately authenticated connector.

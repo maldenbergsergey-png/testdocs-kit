@@ -34,5 +34,6 @@ Read [core.md](core.md) once per task. This index is for discovery; follow only 
 - [task-explanation-rules.md](task-explanation-rules.md): advice-only requests.
 - [test-case-format.md](test-case-format.md): rendering complete cases; [test-case-setup-rules.md](test-case-setup-rules.md): administration assertions and property-specific hints.
 - [execution-web-rules.md](execution-web-rules.md), [execution-native-rules.md](execution-native-rules.md), [execution-media-rules.md](execution-media-rules.md): selected surface only.
+- [browser-session-rules.md](browser-session-rules.md): browser selection, reuse of readable sources and necessary authentication recovery.
 - [execution-report-rules.md](execution-report-rules.md): statuses and report; [execution-evidence-rules.md](execution-evidence-rules.md): capture, reuse and local history.
 - [tms-integration-rules.md](tms-integration-rules.md): TMS compatibility; [external-write-rules.md](external-write-rules.md): requested writes; [checklist-delivery-rules.md](checklist-delivery-rules.md): requested Jira/QA Report delivery.
