@@ -46,6 +46,8 @@ Use the shortest executable reproduction path. Keep one action per step when sep
 
 Describe the actual result as observable symptoms. Put a suspected cause only in a separately marked hypothesis. Expected result is mandatory for a create-ready bug and must come from a requirement, analytics, design, accepted behavior, or an explicit user statement. If it cannot be established, prepare a draft but stop before Jira creation and request clarification.
 
+Keep actual and expected results a short, directly comparable pair under the same conditions. Preserve clear requirement wording, terms and values; describe the essential behavior so the reader does not need to open a source. Use a list only when needed for clarity. Keep document/design links in `Материалы` (or the checklist's `Комментарий`), not in result prose. Omit other checks, scope-negotiation history and tool narration. Apply [evidence rules](execution-evidence-rules.md) to captures, expected/actual pairs and relevant response excerpts; these rules do not initiate a new test run when only drafting a bug.
+
 Do not duplicate a semantic block in both a dedicated Jira field and `Описание`. If Jira exposes dedicated fields for steps, actual result, expected result, environment, or reproducibility, use those fields according to their live schema. Put the remaining blocks in `Описание`. When dedicated fields do not exist, use this structure in `Описание`:
 
 ```text
@@ -87,10 +89,10 @@ Add only materials relevant to the defect type:
 
 - Visual mismatch: direct design link or requirement, screenshot of the actual UI with the mismatch identifiable, expected design state or screenshot when available, and relevant resolution.
 - Behavioral UI defect: screenshot when sufficient; otherwise a screen recording that shows the starting state and reproduction sequence.
-- Backend, logical, or server defect: sanitized request such as cURL, structured response body and status, correlation/request ID, and a direct time-bounded log or observability link for the same environment when available.
+- Backend, logical, or server defect: minimal sanitized request context and the actual response excerpt showing the relevant field/value and status. Keep enough structure to interpret it; add correlation/request ID or time-bounded logs only when useful for localization. Do not paste an unrelated full response or log into the result.
 - Crash or mobile defect: crash trace or diagnostic log, platform, app version/build, and reproduction recording when useful.
 
-Preserve code and JSON formatting. Remove or mask credentials, cookies, authorization headers, tokens, personal data, and unrelated production payloads. Never fabricate a log, screenshot, recording, request, response, or design link. When a connector cannot upload a supplied file, include its accessible direct link if available and list the attachment as a manual follow-up after issue creation.
+Keep short requests, responses and code excerpts readable inline under [text and attachment delivery rules](checklist-delivery-rules.md#текстовые-данные-и-вложения): use `{code}...{code}` or `{code:json}...{code}` for Jira Wiki, not a downloadable file or Markdown fences. Other renderers use their supported code blocks. Preserve formatting and significant data characters. Remove or mask credentials, cookies, authorization headers, tokens, personal data, and unrelated production payloads. Never fabricate a log, screenshot, recording, request, response, or design link. When a connector cannot upload a supplied file, include its accessible direct link if available and list the attachment as a manual follow-up after issue creation.
 
 ## Supplied attachments and previews
 

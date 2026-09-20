@@ -19,11 +19,11 @@ Before generating, read:
 ## Workflow
 
 1. Accept normalized task or document context from chat, files, or `collect-test-context`. Select the delivery mode before formatting: default chat output or explicitly requested [direct API delivery](../../rules/checklist-delivery-rules.md#direct-api-delivery). For the latter, read the destination contract, preflight the target and initialize task data with `node scripts/task-workspace.mjs init --project <project> --task <task>` from the installed kit before saving the canonical plan/payloads. It does not authorize test execution.
-2. Inventory requirements, criteria, fields, roles, states, errors and supported surfaces before drafting.
+2. Inventory requirements, criteria, fields, roles, states, errors and supported surfaces within the requested scope before drafting.
 3. Classify relevant comments as decisions, clarifications, unresolved questions, or previous tester checklists/execution evidence. Treat previous checklists as practitioner evidence, validate their scenarios against current requirements, and preserve the comment link or ID plus author/date when available.
-4. Derive observable checks without inventing missing behavior. Group small related assertions into one executable row when they share the same setup, action, screen or functional block; split independent roles, states, actions, outcomes, errors, or rerun units.
+4. Decompose the selected requirements under the standard's source-wording and one-outcome rules; merge duplicate criteria and split independently assessed outcomes.
 5. Group rows by the natural meaning and type of the affected behavior. Choose section names from the actual content; for a small homogeneous checklist use one section. Do not force `Основные проверки` and `Дополнительные проверки`.
-6. For every row materially derived from a previous Jira-comment checklist, fill `Комментарий` with the provenance format required by the standard. Leave actual result and status empty.
+6. Place source references in `Комментарий` under the standard, including the required provenance for a previous Jira-comment checklist. Leave actual result and status empty.
 7. Add `Требует уточнения` only for genuine conflicts or missing expected behavior. Omit it entirely when the context is sufficient.
 8. Run the language, completeness, decomposition and provenance self-check from the standard. Validate all seven logical fields, including source comments. Apply its Jira Wiki checks and format validator when serializing to Jira; direct API delivery uses the documented destination schema.
 9. By default return a short scope note, the copy-ready checklist in one fenced `text` block, and material limitations, then finish the preparation turn. Direct API delivery instead writes the validated plan under the destination rules and returns its link and any gaps without a duplicate table. Jira publication still follows [delivery rules](../../rules/checklist-delivery-rules.md).

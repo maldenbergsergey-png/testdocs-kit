@@ -21,6 +21,14 @@ function cells(row) {
   let current = "";
   for (let index = 1; index < row.length - 1; index += 1) {
     const char = row[index];
+    if (char === "[" && row[index - 1] !== "\\") {
+      const link = row.slice(index).match(/^\[(?:[^\[\]|\r\n]+\|)?https?:\/\/[^\s\[\]|]+\]/);
+      if (link) {
+        current += link[0];
+        index += link[0].length - 1;
+        continue;
+      }
+    }
     if (char === "|" && row[index - 1] !== "\\") {
       result.push(current);
       current = "";

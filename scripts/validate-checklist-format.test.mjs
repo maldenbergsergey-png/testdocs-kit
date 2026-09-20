@@ -10,6 +10,16 @@ test("accepts empty execution cells and a source in column 6", () => {
   check("|1.|Закрытие окна|Нажать крестик|Окно закрыто| |Источник для сверки: checklist из комментария Jira 123| |");
 });
 
+test("accepts named source links in a comment without escaping Jira link syntax", () => {
+  check('|1.|Закрытие окна|Нажать крестик|Окно закрыто| |[Требования: Окно|https://requirements.example.test/modal#close]| |');
+  check('|1.|Закрытие окна|Нажать крестик|Окно закрыто| |[Требования|https://requirements.example.test/modal] и [Макет|https://design.example.test/modal?node-id=1-2]| |');
+});
+
+test("source links do not conceal extra cells or an unclosed link", () => {
+  assert.throws(() => check('|1.|Закрытие окна|Нажать крестик|Окно закрыто| |[Требования|https://requirements.example.test/modal]|Лишняя колонка| |'), /ожидалось 7 колонок, получено 8/);
+  assert.throws(() => check('|1.|Закрытие окна|Нажать крестик|Окно закрыто| |[Требования|https://requirements.example.test/modal| |'), /ожидалось 7 колонок, получено 8/);
+});
+
 test("rejects the screenshot failure: extra empty cell before expected result", () => {
   assert.throws(() => check("|1.|Закрытие окна|Нажать крестик| |Окно закрыто| |Источник для сверки: checklist из комментария Jira 123| |"), /ожидалось 7 колонок, получено 8/);
 });
