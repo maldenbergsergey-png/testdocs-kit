@@ -107,7 +107,7 @@ function showHelp() {
   --ca-file /path/to/ca-bundle.pem         Дополнительные доверенные CA в формате PEM
   --insecure-atlassian-tls                 Временно отключить проверку TLS для Jira/Confluence с Basic/PAT
   --verify-atlassian-tls                   Вернуть проверку TLS для Jira/Confluence с Basic/PAT
-  --enable-test-case-writes                Разрешить создание кейсов и исправление созданных в текущей MCP-сессии
+  --enable-test-case-writes                Устаревший совместимый флаг; создание и исправление новых кейсов доступны без него
   --enable-jira-writes                     Разрешить создание Bug, публикацию checklist,
                                           Test Run и связанной QA-задачи
                                           для сохранённых Jira-подключений
@@ -755,7 +755,7 @@ async function collectConfig(args, clients, existing = null) {
   }
   previous.version = 3;
   previous.enableWrites = false;
-  previous.enableTestCaseCreation = previous.enableTestCaseCreation === true;
+  delete previous.enableTestCaseCreation;
   return validateAnswers(previous);
 }
 
@@ -901,7 +901,7 @@ function configuredServers(config) {
         "zephyr_get_test_plans", "zephyr_get_test_plan", "zephyr_get_iterations",
         "zephyr_get_test_case", "zephyr_get_all_test_cases", "zephyr_get_issue_test_cases", "zephyr_get_test_run", "zephyr_list_test_run_folders"
       );
-      if (config.enableTestCaseCreation === true) tools.push("zephyr_create_test_case", "zephyr_update_session_test_case");
+      tools.push("zephyr_create_test_case", "zephyr_update_session_test_case");
       if (jira.enableReleaseTestRunCreation === true) tools.push("zephyr_create_test_run", "zephyr_assign_test_run_item");
     }
     servers.push({ name: serverName("jira", jira.id, jiraItems.length), service: "jira", id: jira.id, tools });
@@ -1305,7 +1305,7 @@ async function main() {
   config.version = 3;
   config.clients = clients;
   config.enableWrites = false;
-  config.enableTestCaseCreation = args.enableTestCaseWrites || config.enableTestCaseCreation === true;
+  delete config.enableTestCaseCreation;
   if (args.enableJiraWrites) {
     const jiraConnections = connectionList(config, "jira");
     if (!jiraConnections.length) {

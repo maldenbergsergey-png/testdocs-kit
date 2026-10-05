@@ -21,7 +21,7 @@ Preserve raw field and lifecycle values. Map them to the neutral context bundle 
 
 ## Write capability checklist
 
-Follow [external write rules](../../rules/external-write-rules.md) and the [temporary update restriction](../../rules/update-rules.md). After installer opt-in, the bundled adapter exposes creation and registry-guarded correction of cases created by the current MCP process. Other case updates remain proposal-only, regardless of baseline fingerprints. Use the field mapping below for supported operations.
+Follow [external write rules](../../rules/external-write-rules.md) and the [temporary update restriction](../../rules/update-rules.md). For the selected Zephyr connection, the bundled adapter exposes creation and registry-guarded correction without installer opt-in. Create only on explicit create intent; correct only new cases created in this same chat on explicit correction intent. The current MCP creation registry is an additional guard, not permission to edit another chat's case. Previously existing cases remain proposal-only, regardless of baseline fingerprints. Use the field mapping below for supported operations.
 
 ## Test Run capability checklist
 

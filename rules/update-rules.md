@@ -10,7 +10,9 @@ Context → AI analysis → Proposal → Human review → explicit apply request
 
 The proposal must distinguish additions, modifications, removals, and unchanged content, and explain every proposed change. Show the complete proposed case after the diff.
 
-An external write is permitted only after an explicit apply/update request. A session-created case uses the registry guard below. A case created outside the current MCP process remains proposal-only even after an apply request. This temporary restriction can be lifted only by a separate explicit policy change, not by an ordinary case-update request.
+An external write is permitted only after an explicit apply/update request. A new case created earlier in this chat may be corrected without setup opt-in or a second confirmation when the requested correction is clear, source-supported and passes the registry guard below. Previously existing cases, including cases created in another chat, remain proposal-only even after an apply request. This temporary restriction can be lifted only by a separate explicit policy change, not by an ordinary case-update request.
+
+This restriction concerns updating old cases, not creating new ones. In a mixed package, continue explicitly requested creation of new cases under [write rules](external-write-rules.md); the old-case proposals do not block it.
 
 ## Source and version procedure
 
@@ -36,13 +38,13 @@ The change comment is required audit context but is not part of `Цель`, prec
 
 ## Temporary restriction on existing cases
 
-Cases not created by the current MCP process cannot be updated by the agent. Return the focused diff, complete corrected proposal and change comment for human application. This applies across Zephyr, legacy TM4J and other TMS providers, including explicit requests to apply a proposal.
+Previously existing cases and cases not created in this chat cannot be updated by the agent. For bundled Zephyr, the exact key must also be present in the current MCP process's creation registry. Otherwise return the focused diff, complete corrected proposal and change comment for human application. This applies across Zephyr, legacy TM4J and other TMS providers, including explicit requests to apply a proposal.
 
 Do not fall back to another tool, direct HTTP, browser editing, version creation or replacement-case creation to bypass this restriction. A stored baseline fingerprint does not grant permission. A provider without a server-enforced creation registry cannot offer the session correction exception.
 
 ## Current-session correction exception
 
-A user may explicitly request an immediate correction to a case that the connected MCP process created earlier in the same running session. Apply the correction only when the server-side in-memory registry contains that exact returned case key. This exception is intended for fixing a just-created draft before handoff.
+A user may explicitly request a correction to a new case created earlier in the same chat. Prepare and validate the complete corrected payload, then apply it in that turn without a separate setup flag or repeated approval. Verify its creation in this chat's history and the exact returned key in the server-side in-memory registry. Another chat's case is not eligible merely because the MCP process knows its key. This exception does not depend on the correction being immediate or before handoff.
 
 - Read the just-created case or use its complete returned/current content as the baseline.
 - Apply only the requested, source-supported correction and preserve omitted fields.

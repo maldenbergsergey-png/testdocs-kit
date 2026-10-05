@@ -34,7 +34,7 @@
 | [`collect-test-context`](skills/collect-test-context/SKILL.md) | Собрать контекст из Jira, Confluence, TMS, чата или файлов. |
 | [`generate-test-cases`](skills/generate-test-cases/SKILL.md) | Создать новые тест-кейсы. |
 | [`analyze-test-coverage`](skills/analyze-test-coverage/SKILL.md) | Определить пробелы и необходимость создания или обновления кейсов. |
-| [`update-test-cases`](skills/update-test-cases/SKILL.md) | Показать diff и полную предлагаемую версию; применить можно только исправление кейса, созданного текущим MCP-процессом. |
+| [`update-test-cases`](skills/update-test-cases/SKILL.md) | Предложить актуализацию старых кейсов; по явному запросу применить исправление нового кейса из этого же чата с проверкой реестра MCP. |
 | [`review-test-cases`](skills/review-test-cases/SKILL.md) | Проверить качество и сразу показать исправленную proposal-версию при замечаниях. |
 | [`build-coverage-matrix`](skills/build-coverage-matrix/SKILL.md) | Построить матрицу тестового покрытия. |
 | [`build-regression-model`](skills/build-regression-model/SKILL.md) | Собрать переиспользуемую регрессионную модель. |

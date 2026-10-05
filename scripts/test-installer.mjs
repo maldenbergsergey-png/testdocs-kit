@@ -161,7 +161,7 @@ try {
     assert(result.status !== 0 && result.stderr.includes("Выберите только один TLS-флаг"), "Конфликтующие TLS-флаги не отклонены до установки/обновления.");
     assert(fs.readFileSync(privateConfig, "utf8") === beforeConflict, "Конфликтующие флаги изменили конфигурацию.");
   }
-  assert(savedPrivateConfig.enableTestCaseCreation === false, "Запись кейсов должна быть отключена без opt-in.");
+  assert(!Object.hasOwn(savedPrivateConfig, "enableTestCaseCreation"), "Устаревший opt-in создания кейсов остался в конфигурации.");
   assert(savedPrivateConfig.connections.jira[0].enableBugCreation === true, "Не включено создание багов Jira по явному запросу.");
   assert(savedPrivateConfig.connections.jira[0].enableChecklistCommentPublication === true, "Не включена явная публикация checklist в Jira.");
   assert(savedPrivateConfig.connections.jira[0].enableReleaseTestRunCreation === true, "Не включено защищённое создание Test Run и связанной QA-задачи.");
@@ -201,14 +201,16 @@ try {
   assert(fs.readFileSync(codexConfig, "utf8").includes("jira_create_bug"), "Codex не получил разрешённый tool создания багов.");
   assert(fs.readFileSync(codexConfig, "utf8").includes("zephyr_create_test_run"), "Codex не получил разрешённый tool создания Test Run.");
   assert(fs.readFileSync(codexConfig, "utf8").includes("jira_create_qa_work_item"), "Codex не получил разрешённый tool создания связанной QA-задачи.");
+  assert(fs.readFileSync(codexConfig, "utf8").includes('"zephyr_create_test_case"'), "Создание новых кейсов должно быть доступно без opt-in.");
+  assert(fs.readFileSync(codexConfig, "utf8").includes('"zephyr_update_session_test_case"'), "Исправление новых кейсов должно быть доступно без opt-in.");
   assert(fs.readFileSync(codexConfig, "utf8").includes("testdocs_delivery"), "Codex не получил QA Report MCP.");
   assert(JSON.parse(fs.readFileSync(genericConfig, "utf8")).mcpServers?.testdocs_delivery, "Generic client не получил QA Report MCP.");
 
-  const caseOptIn = spawnSync(process.execPath, [path.join(scriptsDir, "install.mjs"), "--reuse", "--enable-test-case-writes", "--skip-dependencies", "--no-cli"], { cwd: repoRoot, env, encoding: "utf8", timeout: 30000 });
-  assert(caseOptIn.status === 0, caseOptIn.stdout + caseOptIn.stderr);
-  assert(JSON.parse(fs.readFileSync(privateConfig, "utf8")).enableTestCaseCreation === true, "Case opt-in was not saved.");
+  const caseCompatibility = spawnSync(process.execPath, [path.join(scriptsDir, "install.mjs"), "--reuse", "--enable-test-case-writes", "--skip-dependencies", "--no-cli"], { cwd: repoRoot, env, encoding: "utf8", timeout: 30000 });
+  assert(caseCompatibility.status === 0, caseCompatibility.stdout + caseCompatibility.stderr);
+  assert(!Object.hasOwn(JSON.parse(fs.readFileSync(privateConfig, "utf8")), "enableTestCaseCreation"), "Legacy flag restored an obsolete case-creation gate.");
   const caseToolsConfig = fs.readFileSync(codexConfig, "utf8");
-  assert(caseToolsConfig.includes('"zephyr_create_test_case"') && caseToolsConfig.includes('"zephyr_update_session_test_case"'), "Case opt-in did not register session-safe tools.");
+  assert(caseToolsConfig.includes('"zephyr_create_test_case"') && caseToolsConfig.includes('"zephyr_update_session_test_case"'), "Legacy flag changed the session-safe case tools.");
   assert(!caseToolsConfig.includes('"zephyr_update_test_case"'), "Existing-case update leaked into client configuration.");
 
   const openCode = JSON.parse(fs.readFileSync(openCodeConfig, "utf8"));

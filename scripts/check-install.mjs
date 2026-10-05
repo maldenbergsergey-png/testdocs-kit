@@ -155,15 +155,12 @@ async function main() {
       assert(tools.includes("zephyr_get_issue_test_cases"), "Jira MCP не отдал чтение кейсов, связанных с задачей.");
       assert(tools.includes("zephyr_get_test_run"), "Jira MCP не отдал проверочное чтение Test Run и назначений.");
       assert(tools.includes("zephyr_list_test_run_folders"), "Jira MCP не отдал поиск папок Test Run.");
-    }
-    if (usesZephyr(config, jira.id) && config.enableTestCaseCreation === true) {
-      assert(tools.includes("zephyr_create_test_case"), "Jira MCP не отдал инструмент создания кейса Zephyr.");
+      assert(tools.includes("zephyr_create_test_case"), "Jira MCP не отдал создание новых кейсов Zephyr.");
       assert(tools.includes("zephyr_update_session_test_case"), "Jira MCP не отдал защищённый инструмент исправления кейса текущей сессии.");
+    } else {
+      assert(!tools.includes("zephyr_create_test_case") && !tools.includes("zephyr_update_session_test_case"), "Zephyr write-tools доступны при другом TMS.");
     }
     assert(!tools.includes("zephyr_update_test_case"), "MCP нарушает временный запрет обновления существующих кейсов.");
-    if (config.enableTestCaseCreation !== true) {
-      assert(!tools.includes("zephyr_create_test_case") && !tools.includes("zephyr_update_session_test_case"), "Запись кейсов включена без opt-in.");
-    }
     if (jira.enableReleaseTestRunCreation === true) {
       assert(tools.includes("jira_create_qa_work_item"), "Jira MCP не отдал защищённое создание QA-задачи Test Run.");
       if (usesZephyr(config, jira.id)) {

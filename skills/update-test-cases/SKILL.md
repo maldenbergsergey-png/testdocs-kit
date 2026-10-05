@@ -1,6 +1,6 @@
 ---
 name: update-test-cases
-description: Propose changes to a specific existing QA test case, including a focused diff and complete corrected case. Apply a correction only to a case created by the current MCP process after an explicit request; all other cases remain proposal-only under the temporary policy.
+description: Propose changes to a specific QA test case, including a focused diff and complete corrected case. Apply an explicitly requested correction to a new case created earlier in this same chat, with the current MCP creation registry guard; previously existing and other-chat cases remain proposal-only.
 ---
 
 # Update test cases
@@ -51,9 +51,9 @@ When the current source or case version needs retrieval from an external referen
 
 ## Existing cases
 
-Apply the [temporary restriction](../../rules/update-rules.md): for a case created outside the current MCP session, return the complete proposal even when the user asks to apply it. Do not invoke an update tool or substitute another write channel.
+Apply the [temporary restriction](../../rules/update-rules.md): for a previously existing case or one created in another chat, return the complete proposal even when the user asks to apply it. Do not invoke an update tool or substitute another write channel.
 
-## Apply a correction to a just-created case
+## Apply a correction to a new case from this chat
 
 Read [external write rules](../../rules/external-write-rules.md). Apply the correction without a second confirmation only when all conditions hold:
 

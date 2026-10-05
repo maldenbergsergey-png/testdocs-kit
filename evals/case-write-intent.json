@@ -1,0 +1,66 @@
+[
+  {
+    "id": "mixed_new_and_old",
+    "prompt": "Создай в Zephyr два новых кейса из готового пакета. Изменения старого кейса не применяй.",
+    "context": "Офлайн-репетиция. Целевой Zephyr DEMO, папка /API/Profile, папка и mappings проверены. Два новых кейса полностью подготовлены и валидированы по стандарту; payloads ниже готовы. Старый DEMO-T1 имеет только предложение актуализации. Есть tools zephyr_create_test_case и zephyr_update_session_test_case; общие writes выключены, старый enableTestCaseCreation=false. Создание не выполнялось, returned keys пока нет, audit-comment tool отсутствует.",
+    "payloads": [
+      {
+        "confirmed": true,
+        "projectKey": "DEMO",
+        "folder": "/API/Profile",
+        "name": "Профиль. Сохранение имени",
+        "objective": "Проверить сохранение имени после запроса.",
+        "precondition": "Доступен тестовый профиль.",
+        "labels": [
+          "block",
+          "API"
+        ],
+        "status": "Draft",
+        "priority": "Normal",
+        "steps": [
+          {
+            "description": "Отправить PATCH /api/profile с name",
+            "testData": "{\"name\":\"Анна\"}",
+            "expectedResult": "HTTP 200, name равен Анна"
+          }
+        ]
+      },
+      {
+        "confirmed": true,
+        "projectKey": "DEMO",
+        "folder": "/API/Profile",
+        "name": "Профиль. Пустое имя",
+        "objective": "Проверить обязательность имени.",
+        "precondition": "Доступен тестовый профиль.",
+        "labels": [
+          "block",
+          "API"
+        ],
+        "status": "Draft",
+        "priority": "Normal",
+        "steps": [
+          {
+            "description": "Отправить PATCH /api/profile с пустым name",
+            "testData": "{\"name\":\"\"}",
+            "expectedResult": "HTTP 400, имя не изменилось"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "same_chat_new_correction",
+    "prompt": "В кейсе DEMO-T2, который только что создали в этом чате, поменяй название на \"Профиль. Сохранение имени\". Остальные поля не меняй.",
+    "context": "Создание DEMO-T2 в этом чате подтверждено возвращённым ключом и полным ответом MCP. Текущий name=Имя профиля; остальные поля и шаги готовы и не меняются. Пользователь явно попросил переименование. Реестр текущего MCP содержит DEMO-T2; tool zephyr_update_session_test_case доступен. Общие writes выключены и setup opt-in не включался. URL из ответа https://jira.example.invalid/secure/Tests.jspa#/testCase/DEMO-T2. Записи в этой репетиции не выполнять; подготовить точный payload и следующий шаг."
+  },
+  {
+    "id": "previously_existing_case",
+    "prompt": "Примени переименование DEMO-T1 в \"Профиль. Сохранение имени\".",
+    "context": "DEMO-T1 существовал до этого чата, найден чтением Zephyr. Его текущий name=Имя профиля. Запрошен только name, остальное содержание и источник известны, их менять не нужно. Реестр текущего MCP не содержит ключ. Tool исправления новых кейсов доступен, но прежние кейсы остаются proposal-only. Офлайн: дай реальный ответ и план следующего действия, без внешних вызовов."
+  },
+  {
+    "id": "other_chat_case_in_registry",
+    "prompt": "Переименуй DEMO-T3 в \"Профиль. Сохранение имени\".",
+    "context": "DEMO-T3 создали в другом чате, не в этом. Общий MCP-процесс всё ещё хранит ключ в реестре. В этом чате его прочитали: name=Имя профиля, остальные поля не меняются. Данные достаточны для предложения rename, пользователь просит применить. Офлайн: запись не выполнять, дай реальный ответ и следующий шаг."
+  }
+]

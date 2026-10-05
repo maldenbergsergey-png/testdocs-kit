@@ -24,7 +24,6 @@ async function main() {
   const releaseTestRunCreationEnabled = process.env.TESTDOCS_ENABLE_RELEASE_TEST_RUN_CREATION === "1";
   const qaReportImportEnabled = process.env.TESTDOCS_ENABLE_QA_REPORT_IMPORT === "1";
   const deliveryOnly = process.env.TESTDOCS_DELIVERY_ONLY === "1";
-  const createsEnabled = process.env.TESTDOCS_ENABLE_TEST_CASE_CREATION === "1";
   const zephyrEnabled = (process.env.TESTDOCS_TMS_PROVIDER || "zephyr_scale") === "zephyr_scale";
   const sessionCases = createSessionCaseRegistry();
   const server = new McpServer({
@@ -402,7 +401,6 @@ async function main() {
     );
   }
 
-  if (createsEnabled) {
     server.registerTool(
       "zephyr_create_test_case",
       {
@@ -446,7 +444,7 @@ async function main() {
     server.registerTool(
       "zephyr_update_session_test_case",
       {
-        description: "Correct a Zephyr/TM4J test case only if this MCP process created it during the current session and the user explicitly asks to apply the correction. Previously existing, discovered, or created-in-another-session cases are rejected. Omitted fields are preserved. If steps are supplied, pass the complete final ordered step list because it replaces the current script; omit testData where no data is consumed and never send 'Не требуется' or 'Не требуются'. Send two or more independent items as one '•' item per newline; the adapter converts those newlines to Zephyr-visible line breaks. The result includes _testdocs.webUrl.",
+        description: "Correct a Zephyr/TM4J test case created earlier in this chat by this MCP process, only when the user explicitly asks to apply the correction. Previously existing, discovered, created-in-another-chat, or created-in-another-session cases are not eligible. The server rejects keys absent from its creation registry. Omitted fields are preserved. If steps are supplied, pass the complete final ordered step list because it replaces the current script; omit testData where no data is consumed and never send 'Не требуется' or 'Не требуются'. Send two or more independent items as one '•' item per newline; the adapter converts those newlines to Zephyr-visible line breaks. The result includes _testdocs.webUrl.",
         inputSchema: z.object({
           confirmed: z.literal(true).describe("Set true only after the user explicitly asks to apply this correction now."),
           testCaseKey: z.string().min(1).describe("Key returned by zephyr_create_test_case during this MCP session."),
@@ -481,7 +479,6 @@ async function main() {
         return toTextResult(await tools.zephyr_update_session_test_case(input));
       }
     );
-  }
   }
 
   const transport = new StdioServerTransport();
