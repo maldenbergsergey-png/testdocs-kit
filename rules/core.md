@@ -7,6 +7,7 @@ Read once per task before applying a kit skill. Load other rules only under the 
 - Existing-document changes are complete proposals for human review. External writes require explicit intent and the applicable destination contract. Test cases created outside the current MCP session remain proposal-only under [update rules](update-rules.md), including when the user asks to apply a proposal. Do not bypass this temporary restriction through another connector, HTTP or UI.
 - Preserve project boundaries under [project conventions](project-conventions.md) whenever project-specific names, environments, roles or mappings are used.
 - Use integrations only as needed. Use `collect-test-context` when an external anchor needs retrieval. Reuse complete, current source text or a context bundle already supplied for this task; a provenance link alone does not require fetching that same content again. Retrieve material gaps or stale sources, and preserve any mandatory live preflight for external writes. Missing integration access does not invalidate sufficient manual context. Jira, knowledge and TMS access are independent.
+- For saved or cross-task context, follow [context reuse](context-reuse-rules.md). For explicitly enabled model delegation, follow [model roles](model-routing-rules.md).
 
 ## Язык и оформление результатов
 

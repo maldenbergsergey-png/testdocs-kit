@@ -41,6 +41,15 @@ test("fallback exports all actual skills with working rule links and runnable wo
   assert(JSON.parse(child.stdout).path.startsWith(path.join(f.root, "data")));
   assert(!fs.existsSync(path.join(manifest.resources, ".git")));
   assert(!fs.existsSync(path.join(manifest.resources, "MCP-OLD")));
+  const save = spawnSync(process.execPath, [path.join(manifest.resources, "scripts", "context-store.mjs"), "save", "--file", path.join(manifest.resources, "examples", "good", "reusable-feature-context.json")], {
+    cwd: f.root, env: { ...process.env, TESTDOCS_DATA_DIR: path.join(f.root, "data") }, encoding: "utf8"
+  });
+  assert.equal(save.status, 0, save.stderr);
+  const savedContext = JSON.parse(save.stdout);
+  const contextFile = path.join(savedContext.path, "name-rule.md");
+  const beforeUpdate = fs.readFileSync(contextFile, "utf8");
+  installSkillSet({ ...f, repoRoot: repo, link: noLinks });
+  assert.equal(fs.readFileSync(contextFile, "utf8"), beforeUpdate);
 });
 
 test("managed copies update automatically, edited copies survive, and forced backups stay outside discovery", (t) => {
