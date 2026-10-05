@@ -183,9 +183,10 @@ async function main() {
     server.registerTool(
       "jira_publish_checklist_comment",
       {
-        description: "Publish the exact reviewed checklist as a Jira issue comment only after the user explicitly asks to publish it. Accepts Jira Wiki Markup and converts it to ADF for Jira API v3. Does not edit or delete comments.",
+        description: "Publish the exact checklist previously shown in chat as a Jira issue comment, only after the user approves publishing that version to that issue. A request to prepare/generate a checklist or a supplied issue URL is not approval: show the full draft and stop first. confirmed is an agent assertion, not a user approval mechanism; respect the client's tool approval. Accepts Jira Wiki Markup and converts it to ADF for Jira API v3. Does not edit or delete comments.",
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
         inputSchema: z.object({
-          confirmed: z.literal(true),
+          confirmed: z.literal(true).describe("True only after the user approves publishing this already displayed content to this exact issue; never infer from a preparation request."),
           key: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*-\d+$/),
           content: z.string().min(1)
         })

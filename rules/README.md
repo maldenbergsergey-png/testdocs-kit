@@ -37,5 +37,6 @@ Read [core.md](core.md) once per task. This index is for discovery; follow only 
 - [browser-session-rules.md](browser-session-rules.md): browser selection, reuse of readable sources and necessary authentication recovery.
 - [context-reuse-rules.md](context-reuse-rules.md): scoped saved context, source freshness and cross-platform applicability.
 - [model-routing-rules.md](model-routing-rules.md): explicitly enabled model roles and bounded delegation.
+- [execution-design-rules.md](execution-design-rules.md): design access and the user decision before frontend, mobile or other visual test execution.
 - [execution-report-rules.md](execution-report-rules.md): statuses and report; [execution-evidence-rules.md](execution-evidence-rules.md): capture, reuse and local history.
 - [tms-integration-rules.md](tms-integration-rules.md): TMS compatibility; [external-write-rules.md](external-write-rules.md): requested writes; [checklist-delivery-rules.md](checklist-delivery-rules.md): requested Jira/QA Report delivery.

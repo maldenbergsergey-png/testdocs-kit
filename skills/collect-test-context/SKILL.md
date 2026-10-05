@@ -77,7 +77,7 @@ For continuation, related tasks or substantive reusable context, follow [saved-c
 - `AMBIGUOUS_INSTANCE`: list the candidate connections without opening either one further.
 - `INSUFFICIENT_CONTEXT`: list the missing behavioral facts required by the downstream skill.
 
-Continue with the evidence that is available when it is sufficient for a narrower result. Missing Confluence or TMS access must not block a chat-only workflow that already has adequate context.
+Continue with the evidence that is available when it is sufficient for a narrower result. For visual execution, return design gaps and access attempts immediately for [design readiness](../../rules/execution-design-rules.md); collection does not authorize a reduced run. Missing Confluence or TMS access must not block a chat-only workflow that already has adequate context.
 
 ## Output and boundary
 

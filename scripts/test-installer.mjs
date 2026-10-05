@@ -216,6 +216,7 @@ try {
   assert(openCode.mcp?.testdocs_confluence, "Не добавлен OpenCode stable Confluence MCP.");
   assert(openCode.mcp?.testdocs_delivery, "Не добавлен OpenCode stable QA Report MCP.");
   assert(!openCode.permissions, "В stable-конфиг попало несовместимое поле permissions.");
+  assert(openCode.permission?.testdocs_jira_jira_publish_checklist_comment === "ask", "Публикация checklist в OpenCode не требует подтверждения клиента.");
   if (spawnSync("opencode", ["--version"], { env, stdio: "ignore" }).status === 0) {
     const validation = spawnSync("opencode", ["debug", "config"], {
       cwd: testRoot,
@@ -223,7 +224,20 @@ try {
       encoding: "utf8"
     });
     assert(validation.status === 0, `OpenCode отклонил stable-конфиг установщика: ${validation.stderr || validation.error || ""}`);
+    assert(JSON.parse(validation.stdout).permission?.testdocs_jira_jira_publish_checklist_comment === "ask", "Клиент не загрузил правило подтверждения публикации.");
   }
+
+  // JSONC fallback must carry the same gate without rewriting user configuration.
+  const jsonc = '{\n// user config\n"mcp": {}\n}\n';
+  fs.writeFileSync(openCodeConfig, jsonc);
+  const fallbackResult = spawnSync(process.execPath, [
+    path.join(scriptsDir, "install.mjs"), "--clients", "opencode", "--answers", answersFile,
+    "--skip-dependencies", "--no-cli", "--skip-browser-auth"
+  ], { cwd: repoRoot, env, encoding: "utf8" });
+  assert(fallbackResult.status === 0, `Не подготовлен JSONC-фрагмент: ${fallbackResult.stderr}`);
+  assert(fs.readFileSync(openCodeConfig, "utf8") === jsonc, "Перезаписана JSONC-конфигурация пользователя.");
+  const fallback = JSON.parse(fs.readFileSync(path.join(testRoot, "private-config", "client-snippets", "opencode-stable.json"), "utf8"));
+  assert(fallback.permission?.testdocs_jira_jira_publish_checklist_comment === "ask", "JSONC-фрагмент не содержит подтверждения публикации.");
 
   // Конфиг, созданный ошибочной версией установщика, должен мигрировать в stable.
   fs.writeFileSync(openCodeConfig, JSON.stringify({
@@ -251,6 +265,7 @@ try {
   assert(migratedOpenCode.mcp?.testdocs_jira, "После миграции не добавлен stable Jira MCP.");
   assert(!migratedOpenCode.mcp?.servers, "После миграции осталось поле mcp.servers.");
   assert(!migratedOpenCode.permissions, "После миграции осталось поле permissions.");
+  assert(migratedOpenCode.permission?.testdocs_jira_jira_publish_checklist_comment === "ask", "Миграция потеряла подтверждение публикации checklist.");
   if (spawnSync("opencode", ["--version"], { env, stdio: "ignore" }).status === 0) {
     const migratedValidation = spawnSync("opencode", ["debug", "config"], {
       cwd: testRoot,
@@ -281,7 +296,8 @@ try {
   const v2OpenCode = JSON.parse(fs.readFileSync(openCodeConfig, "utf8"));
   assert(v2OpenCode.mcp?.servers?.existing_server, "Потерян существующий OpenCode V2 MCP.");
   assert(v2OpenCode.mcp?.servers?.testdocs_jira, "Не добавлен OpenCode V2 Jira MCP.");
-  assert(!v2OpenCode.permissions, "В OpenCode V2 без необходимости добавлено поле permissions.");
+  assert(v2OpenCode.permissions?.some((rule) => rule.action === "testdocs_jira_jira_publish_checklist_comment" && rule.resource === "*" && rule.effect === "ask"), "OpenCode V2 не требует подтверждения публикации checklist.");
+  assert(!v2OpenCode.permission, "В OpenCode V2 попало stable-поле permission.");
 
   // Browser-session mode must not require a password and must not open a browser in test mode.
   fs.writeFileSync(answersFile, JSON.stringify({

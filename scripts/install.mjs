@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { installSkillSet } from "./install-skills.mjs";
+import { withChecklistPublicationApproval } from "./opencode-checklist-permissions.mjs";
 
 import fs from "node:fs";
 import atlassianHttp from "../mcp/atlassian-http.cjs";
@@ -1023,11 +1024,12 @@ function openCodeServerConfig(server, format) {
 
 function openCodeSnippet(config, format) {
   const servers = {};
-  for (const server of configuredServers(config)) servers[server.name] = openCodeServerConfig(server, format);
-  return {
+  const configured = configuredServers(config);
+  for (const server of configured) servers[server.name] = openCodeServerConfig(server, format);
+  return withChecklistPublicationApproval({
     $schema: "https://opencode.ai/config.json",
     mcp: format === "v2" ? { servers } : servers
-  };
+  }, format, configured);
 }
 
 function writeJsonWithBackup(target, value) {
@@ -1149,6 +1151,7 @@ function mergeOpenCodeConfig(config, args) {
     removeManaged(data.mcp.servers);
     for (const server of configured) data.mcp.servers[server.name] = openCodeServerConfig(server, format);
   }
+  data = withChecklistPublicationApproval(data, format, configured);
   writeJsonWithBackup(target, data);
   console.log(`OpenCode настроен (${format}): ${target}`);
   validateOpenCodeConfig(format, args.noCli);

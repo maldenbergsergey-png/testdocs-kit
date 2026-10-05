@@ -37,3 +37,5 @@ Figma write tools are unrelated to ordinary QA comparison and must not be called
 ## Fallback
 
 If official Figma MCP is unavailable, try the supplied frame in the available browser first. If browser access or image inspection is also unavailable, request the exact Figma selection link and an exported frame or screenshot at the relevant viewport. Mark missing variables, interaction details and inaccessible states as limitations.
+
+For test execution, return the actual read result and remaining gaps to [design readiness](../../rules/execution-design-rules.md) before testing. This fallback does not itself authorize continuing a run without the required designs.

@@ -28,7 +28,7 @@ Identify integrations by capability rather than product name or MCP tool name:
 | Jira QA work-item create | Create one validated non-defect QA work item and attach the created Test Run | Optional and approval-gated |
 | QA Report delivery | Import a finalized checklist or fill an open report through its temporary API, including supported metadata and attachments | Optional and approval-gated |
 | Source/change read | Retrieve an explicitly supplied GitLab issue, MR, commit, diff or pipeline result | Optional |
-| Design read | Retrieve a supplied Figma file/node, render and supported design metadata | Optional |
+| Design read | Retrieve a supplied design/frame, render and supported design metadata | Optional transport; visual execution requires [design readiness](execution-design-rules.md) |
 | API workspace read | Retrieve a supplied Postman workspace, collection, specification, request or example | Optional |
 | API workspace write | Create or update a Postman collection/specification/mock/monitor | Optional and approval-gated |
 | Log read | Run a time- and environment-bounded Elastic/Kibana query and return sanitized evidence | Optional |
@@ -80,7 +80,7 @@ Relevant comment evidence: evidence type, relevant content, exact comment link o
 Relevant linked requirements and knowledge: stable ID/link, title, version when available, relevant content
 Relevant source links: exact URL, readable purpose, source location, retrieval status, and whether it influenced the requested QA result
 Change context: GitLab object URL, stable ID/SHA, changed behavior surface, pipeline result and retrieval status
-Design context: Figma file/node URL, viewport/state, retrieved properties/render and limitations
+Design context: exact source/frame URL or supplied file, viewport/state, actual content retrieved, access attempts and limitations; for visual execution, unresolved design gaps or the user's explicit scope decision and its source
 Product context when applicable: navigation path, platform/device type, known OS/build/environment, observed structure, evidence provenance and limits
 API context: Postman workspace/collection/request IDs, environment identity without secrets, contract/example provenance
 Log context: environment, time zone/window, service/correlation scope, query, sanitized result and retrieval status
@@ -108,6 +108,7 @@ Keep raw external values alongside any neutral interpretation. Do not silently t
 - Retrieve only fields and attachments relevant to the QA task. Avoid collecting credentials, personal data, or unrelated comments.
 - Inventory URLs in the primary issue and every scoped knowledge page. Follow only links that can materially define the requested behavior, especially linked requirements, designs/mockups, API contracts, attachments, and related decision documents. Record the exact URL, visible label or retrieved title, source location, and retrieval status. Do not recursively crawl unrelated navigation or an entire knowledge space.
 - A discovered link is not evidence that its target was read. Mark inaccessible targets as unavailable. Include such a link in a case only when its purpose is identifiable from authoritative source text; otherwise raise the missing context instead of inventing a label.
+- For frontend, mobile or other visual execution, apply [design readiness](execution-design-rules.md) before any test actions. Return unresolved design gaps to the executing workflow immediately; sufficient functional text does not silently authorize a reduced run.
 - When the source describes a form, entity, table, API object, or configurable screen, enumerate every explicitly defined field and its supported properties before summarizing. Do not collapse unprocessed rows into “other fields” or silently omit a field because it looks secondary.
 - Do not imply that linked pages or cases were checked when a tool, permission, or relation was unavailable.
 
