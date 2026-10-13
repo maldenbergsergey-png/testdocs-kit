@@ -34,6 +34,7 @@ Read [core.md](core.md) once per task. This index is for discovery; follow only 
 - [task-explanation-rules.md](task-explanation-rules.md): advice-only requests.
 - [test-case-format.md](test-case-format.md): rendering complete cases; [test-case-setup-rules.md](test-case-setup-rules.md): administration assertions and property-specific hints.
 - [execution-web-rules.md](execution-web-rules.md), [execution-native-rules.md](execution-native-rules.md), [execution-media-rules.md](execution-media-rules.md): selected surface only.
+- [terminal-access-rules.md](terminal-access-rules.md): macOS/Windows terminals, SSH test-server diagnostics, command scope and credentials.
 - [browser-session-rules.md](browser-session-rules.md): browser selection, reuse of readable sources and necessary authentication recovery.
 - [context-reuse-rules.md](context-reuse-rules.md): scoped saved context, source freshness and cross-platform applicability.
 - [model-routing-rules.md](model-routing-rules.md): explicitly enabled model roles and bounded delegation.

@@ -2,6 +2,8 @@
 
 Read [report rules](execution-report-rules.md) for every execution report and [evidence rules](execution-evidence-rules.md) before capturing or reusing evidence. Read only the applicable surface: [web](execution-web-rules.md), [native](execution-native-rules.md), or [supplied media](execution-media-rules.md). Native control also uses the [Maestro profile](../integrations/profiles/maestro.md).
 
+For OS commands and SSH diagnostics, read [terminal access](terminal-access-rules.md).
+
 ## Выполнение тестирования
 
 ### 1. Подготовка

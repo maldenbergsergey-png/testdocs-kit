@@ -23,7 +23,7 @@ Accept:
 
 - a Jira issue key or URL plus a QA intent;
 - a GitLab issue, merge request, commit, pipeline, or repository URL;
-- a Figma node URL, Postman object URL, or scoped log/observability reference;
+- a Figma node URL, Postman object URL, or scoped log/server reference;
 - an exact release version, Jira project/connection, and Test Run intent;
 - a Confluence or knowledge-page link;
 - a TMS case key, URL, folder, or explicitly scoped search request;
@@ -39,7 +39,7 @@ Apply the common contract's reuse condition before the retrieval steps below. Co
 
 Before browser retrieval, follow [session reuse](../../rules/browser-session-rules.md) to select the user's browser and read accessible content without initializing another login.
 
-Inspect the tools available in the current host and classify them as issue/change read, issue relations, knowledge read, design read, API workspace read/write, log read, TMS read, or TMS write. Match by documented capability and input/output shape, not by a hard-coded tool name.
+Inspect current host tools for issue/change read, issue relations, knowledge/design/log reads, API workspace and TMS read/write, and [terminal access](../../rules/terminal-access-rules.md). Match documented capabilities and input/output shapes, not tool names.
 
 When setup selected QA Tools, use its `testops_find_*`, `testops_get_*`, or `testops_list_*` capabilities for scoped TMS reads. When setup selected Zephyr Scale / Test Management for Jira, use only the Zephyr-compatible capabilities from the Jira connection. Do not search an unselected second TMS.
 

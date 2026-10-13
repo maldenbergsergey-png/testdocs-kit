@@ -32,6 +32,7 @@ Identify integrations by capability rather than product name or MCP tool name:
 | API workspace read | Retrieve a supplied Postman workspace, collection, specification, request or example | Optional |
 | API workspace write | Create or update a Postman collection/specification/mock/monitor | Optional and approval-gated |
 | Log read | Run a time- and environment-bounded Elastic/Kibana query and return sanitized evidence | Optional |
+| Terminal/server diagnostics | Use OS terminals or SSH for scoped reads under [terminal access](terminal-access-rules.md) | Optional; scoped by the request |
 | Local mobile control | Inspect the selected Android/iOS app for product context or execute scoped tests and capture evidence | Optional; scoped by the request |
 
 Do not assume a capability exists because a server is named Jira, Confluence, Zephyr, or TMS. Inspect the tools exposed by the current connection. Preserve separate error states for unavailable capability, permission denied, not found, ambiguous instance, and empty result.
