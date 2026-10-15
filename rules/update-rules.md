@@ -8,7 +8,7 @@ Changes to a test case follow this sequence:
 Context → AI analysis → Proposal → Human review → explicit apply request
 ```
 
-The proposal must distinguish additions, modifications, removals, and unchanged content, and explain every proposed change. Show the complete proposed case after the diff.
+Show a focused diff with a source-backed reason, then the complete proposed case. Include additions, modifications and removals only when present; mention unchanged content only when needed to show a preserved boundary. Do not repeat the same reason in a separate summary and conclusion.
 
 An external write is permitted only after an explicit apply/update request. A new case created earlier in this chat may be corrected without setup opt-in or a second confirmation when the requested correction is clear, source-supported and passes the registry guard below. Previously existing cases, including cases created in another chat, remain proposal-only even after an apply request. This temporary restriction can be lifted only by a separate explicit policy change, not by an ordinary case-update request.
 

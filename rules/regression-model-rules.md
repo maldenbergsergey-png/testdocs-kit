@@ -113,7 +113,7 @@ Missing context: ...
 Recommended action: ...
 ```
 
-When organizational lifecycle values are available, show the raw TMS status alongside the normalized analytical lifecycle. Never normalize unresolved `Draft` automatically.
+The record lists possible dimensions, not mandatory prose headings. Combine related facts in a compact table; omit inapplicable metadata and empty notes. Preserve the case, behavior, source, lifecycle and supported maintenance decision. When organizational lifecycle values are available, show the raw TMS status alongside the normalized analytical lifecycle. Never normalize unresolved `Draft` automatically.
 
 ## Reuse across projects
 

@@ -4,6 +4,8 @@ This directory is the source of truth for QA test-documentation policy. Skills d
 
 Read [core.md](core.md) once per task. This index is for discovery; follow only the rules relevant to the selected workflow.
 
+[Shared quality criteria](core.md#качество-всех-qa-артефактов) apply to every artifact: minimum sufficient detail, reproducibility, confirmed facts and a content check before delivery.
+
 ## Rule files
 
 - [`test-case-standard.md`](test-case-standard.md) — test-case content and writing standard.

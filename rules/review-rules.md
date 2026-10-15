@@ -40,17 +40,9 @@ Review against approved rules and supplied requirements. Do not treat personal p
 
 ## Finding format
 
-Every confirmed issue must contain:
+For each confirmed issue, identify its field or step, the problem and focused correction, and the applicable rule section. Explain the impact in the same short entry when it is not obvious. A compact table is sufficient; do not repeat the finding in a separate rationale, recommendation and summary.
 
-```text
-Location: field or step identifier
-Rule: repository rule and section
-Problem: what does not conform
-Why it matters: execution, coverage, maintenance, or interpretation impact
-Recommendation: focused correction
-```
-
-Keep confirmed violations, unresolved-policy gaps, and optional suggestions separate. Recommendations identify a focused correction. When a content-affecting finding exists, follow the findings with a complete corrected proposal in the approved Russian Zephyr format. Preserve unaffected content.
+Apply [shared quality criteria](core.md#качество-всех-qa-артефактов) during review, including unnecessary steps, repeated text and technical detail. Keep confirmed violations, unresolved gaps and optional suggestions distinct. When findings affect content, follow them with a complete corrected proposal in the approved Russian Zephyr format. Preserve unaffected content.
 
 ## Overall status
 

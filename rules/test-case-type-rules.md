@@ -16,6 +16,8 @@ Every test case must have at least one type tag. Multiple type tags are allowed 
 
 Type and priority are separate decisions. Type defines the case's purpose and depth; priority reflects business and user impact.
 
+Step-count ranges below are decomposition hints, never a target or minimum. A short complete scenario may use one step. Do not add navigation, input confirmations or duplicate assertions to reach a range.
+
 ## E2E
 
 Use `e2e` only for a completed user business process that changes system state or creates a recorded business entity. Include:

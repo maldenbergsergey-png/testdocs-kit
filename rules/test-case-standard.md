@@ -6,35 +6,9 @@ Use this standard to create executable test cases from supported requirements. R
 
 Read [test-case-format.md](test-case-format.md) whenever drafting or rendering a complete case. Read [test-case-setup-rules.md](test-case-setup-rules.md) when a case configures an entity in administration or consumes such configuration; it owns property-specific hints and administration assertions. Read [reusable-setup-rules.md](reusable-setup-rules.md) when shared preparation or dependencies exist.
 
-## Core qualities
-
-Every case must be:
-
-- **traceable** — its behavior is supported by a supplied requirement, contract, defect, or approved instruction;
-- **focused** — it has one primary verification intent and one coherent execution path;
-- **repeatable** — another tester can recreate the initial state and actions;
-- **observable** — expected results can be verified through the intended public interface or an approved diagnostic surface;
-- **diagnosable** — a failed result identifies the affected behavior rather than only stating that something failed;
-- **maintainable** — it excludes incidental detail that is likely to change without changing behavior;
-- **self-explanatory** — a tester who has access but no prior project knowledge can find the starting point, perform the actions, and recognize the result from the case itself;
-- **independent where practical** — it does not rely on hidden execution order or the side effects of another case.
-
 ## First-pass executability
 
-Write for a competent tester who is unfamiliar with the project. Do not rely on oral explanations, team memory, or knowledge of where a feature is usually located.
-
-The case is self-explanatory only when the tester can determine from it:
-
-- which product surface and environment entry point to use;
-- which role, access, state, and data are required;
-- how to reach the first tested screen or operation;
-- what action to perform at each step;
-- what visible or otherwise approved result to compare with the actual result;
-- what data or state must remain available for dependent scenarios.
-
-Links to requirements and designs support the case but do not replace executable instructions. Do not force the tester to reconstruct the path or expected behavior from attachments when the essential information fits in the case.
-
-Apply the minimum-sufficient-detail rule: include a detail when omitting it would create a real choice, ambiguity, or reproducibility problem; omit it when it merely explains the implementation or repeats an obvious visible state. Simplicity means low cognitive load, not missing setup or vague results.
+Apply [shared quality criteria](core.md#качество-всех-qa-артефактов). A tester unfamiliar with the project must be able to find the starting point, prepare the necessary role, state and data, perform the actions and compare the observable result. State dependencies and cleanup when they affect another run. Links support these instructions, not replace them.
 
 ## Source-field completeness
 
@@ -70,7 +44,7 @@ If behavioral requirements are unavailable, label correctness as unverified rath
 
 ## Preconditions
 
-Describe every condition and preparatory action that must be completed before execution, including relevant access, configuration, environment state, navigation, and existing data. Move setup that is not itself under verification into this field. Do not hide expected outcomes inside preconditions. Omit a precondition that is neither required nor supported by the source.
+Include only access, initial state, data and preparation required for this scenario. Describe each condition once; do not repeat it in the first step unless the step tests the transition. Keep expected outcomes out of preconditions. Do not add generic conditions such as internet access unless they affect this check.
 
 State the required role or permission without embedding credentials. When the initial data is prepared through an administration interface or another support surface, reference the reusable setup procedure and identify the output that the case consumes. Follow `reusable-setup-rules.md`.
 
@@ -118,13 +92,10 @@ Write numbered actions in execution order.
 - Keep the action, data, and expected result in separate table cells.
 - Put data consumed by the action and, when useful, its property-specific `ℹ️` setup/source hint in `Тестовые данные`; leave the cell empty when neither is needed.
 - Format two or more independent items in one cell as a vertical bullet list. Preserve one item per line when sending the case to a TMS; do not flatten it into a comma- or semicolon-separated sentence.
-- Begin each step with an unambiguous action.
-- Include the target and necessary input or selection.
-- Use the stable visible name of a section, field, or control when it is needed to find the target.
-- Keep an action atomic enough that its result can be attributed and diagnosed.
-- Make the step answer “What should be done?”
+- Name the action, its target and needed input using stable visible labels.
+- Group routine input and confirmation actions when they lead to one result. Split when an intermediate state is itself tested or a failure would otherwise be unclear. Do not add a row merely to confirm that text was entered or a page opened.
 - Include navigation only when it establishes required state or is part of the behavior under test.
-- In an `overview` case, explicitly show the visual transition to the next block being checked.
+- In an `overview` case, include scrolling or navigation only when the next block cannot otherwise be found.
 - Do not rely on “as usual,” “if necessary,” “do everything required,” or hidden tester knowledge.
 - Do not make an essential action depend only on “repeat step N”; restate a short action or call a named reusable setup procedure.
 - Avoid interface coordinates, transient element positions, internal method names, or other implementation details unless the requirement makes them significant.
@@ -144,11 +115,7 @@ Describe the observable state, response, persisted effect, or externally visible
 
 ## Technical detail
 
-Choose detail according to the public behavior and intended test layer. UI cases may name stable visible controls; API cases may name the documented operation, request properties, status, and response contract. Include storage, logs, queues, or internal components only when they are explicitly in scope and observable to the intended tester.
-
-Prefer behavioral language over implementation language. A refactor that preserves the observable contract should not require rewriting the case.
-
-For UI and administration-interface cases, verify the state a tester can observe through that interface by default. Do not add HTTP methods, endpoints, database writes, internal parameter names, queues, jobs, or implementation flags merely to explain how the interface works. Move useful implementation context to a source note, or create a separate API or integration case when the technical contract itself is under test.
+Describe behavior at the intended test layer. For UI, use visible controls and results; for API, retain the documented method, address, needed inputs, status and fields. Internal components, storage, logs and queues belong only to explicitly scoped checks with an approved observation method. Omit implementation explanations that do not help execute or assess the check; do not move them into another section just to retain them.
 
 For administration cases that create or configure content for later use, apply [Создание и настройка сущности в админке](test-case-setup-rules.md#создание-и-настройка-сущности-в-админке). End with confirmation of the saved entity through the administration interface. API responses and downstream frontend behavior belong to separately scoped cases; knowledge of related endpoints does not add them to the creation scenario.
 
@@ -201,9 +168,7 @@ Derive scenarios from requirements, contracts, risk, and known failure modes. In
 
 Apply the shared [output language and punctuation rules](core.md#язык-и-оформление-результатов) to case prose, including short hyphens and double quotation marks.
 
-Use consistent terminology from the authoritative context. Prefer concise declarative wording, parallel step structure, and explicit observable outcomes. Define or avoid abbreviations that are not established in the supplied material.
-
-Preserve an approved project vocabulary when writing for that project, but do not turn product names or local labels into universal rules.
+Use the authoritative context's terms and the shared quality check. Keep approved project vocabulary scoped to its project.
 
 For Russian-language cases, use a consistent neutral pattern unless an approved project style says otherwise:
 
