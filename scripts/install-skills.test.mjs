@@ -114,3 +114,28 @@ test("installation verification rejects legacy copies whose shared rules were no
   fs.writeFileSync(path.join(f.destinationRoot, "demo", "SKILL.md"), "[rules](../../rules/core.md)");
   assert.throws(() => verifySkillResources(f.destinationRoot, ["demo"]), /недоступен ресурс/);
 });
+
+test("automatic release migration updates managed copies and shared resources and retires only owned skills", (t) => {
+  const f = fixture(t);
+  const oldRoot = path.join(f.root, "old-release");
+  fs.mkdirSync(path.join(oldRoot, "skills", "demo"), { recursive: true });
+  fs.mkdirSync(path.join(oldRoot, "skills", "retired"), { recursive: true });
+  fs.mkdirSync(path.join(oldRoot, "rules"));
+  fs.writeFileSync(path.join(oldRoot, "rules", "core.md"), "rule v1");
+  fs.writeFileSync(path.join(oldRoot, "skills", "demo", "SKILL.md"), "v1\n[rule](../../rules/core.md)\n");
+  fs.writeFileSync(path.join(oldRoot, "skills", "retired", "SKILL.md"), "retired\n");
+  installSkillSet({ ...f, repoRoot: oldRoot, link: noLinks });
+  const newRoot = path.join(f.root, "new-release");
+  fs.cpSync(oldRoot, newRoot, { recursive: true });
+  fs.writeFileSync(path.join(newRoot, "rules", "core.md"), "rule v2");
+  fs.writeFileSync(path.join(newRoot, "skills", "demo", "SKILL.md"), "v2\n[rule](../../rules/core.md)\n");
+  fs.rmSync(path.join(newRoot, "skills", "retired"), { recursive: true });
+  installSkillSet({ ...f, repoRoot: newRoot, previousRepoRoot: oldRoot, strict: true, prune: true, link: noLinks });
+  const installed = path.join(f.destinationRoot, "demo", "SKILL.md");
+  assert.match(fs.readFileSync(installed, "utf8"), /^v2/);
+  assert.equal(fs.readFileSync(links(installed)[0], "utf8"), "rule v2");
+  assert.equal(fs.existsSync(path.join(f.destinationRoot, "retired")), false);
+  fs.appendFileSync(installed, "User edit\n");
+  assert.throws(() => installSkillSet({ ...f, repoRoot: oldRoot, previousRepoRoot: newRoot, strict: true, link: noLinks }), /скилл изменён/);
+  assert.match(fs.readFileSync(installed, "utf8"), /User edit/);
+});

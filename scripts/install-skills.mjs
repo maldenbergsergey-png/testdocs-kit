@@ -75,7 +75,7 @@ function copySkill(destination, bundleRoot, name) {
   }
 }
 
-export function installSkillSet({ repoRoot, destinationRoot, storageRoot, force = false,
+export function installSkillSet({ repoRoot, destinationRoot, storageRoot, force = false, previousRepoRoot, strict = false, prune = false,
   link = fs.symlinkSync, log = console.log, warn = console.warn }) {
   fs.mkdirSync(destinationRoot, { recursive: true });
   let bundleRoot;
@@ -87,13 +87,15 @@ export function installSkillSet({ repoRoot, destinationRoot, storageRoot, force 
       const stat = fs.lstatSync(destination);
       if (stat.isSymbolicLink()) {
         try { if (fs.realpathSync(destination) === fs.realpathSync(source)) continue; } catch { /* Broken link: explicit replacement only. */ }
+        if (previousRepoRoot) managed = path.resolve(path.dirname(destination), fs.readlinkSync(destination)) === path.join(previousRepoRoot, "skills", skill.name);
       } else if (stat.isDirectory()) {
         try {
           const manifest = JSON.parse(fs.readFileSync(path.join(destination, manifestName), "utf8"));
-          managed = manifest.pack === "testdocs-kit" && manifest.source === source && manifest.hash === treeHash(destination);
+          managed = manifest.pack === "testdocs-kit" && [source, previousRepoRoot && path.join(previousRepoRoot, "skills", skill.name)].includes(manifest.source) && manifest.hash === treeHash(destination);
         } catch { /* Unknown or locally edited copy: preserve unless forced. */ }
       }
       if (!managed && !force) {
+        if (strict) throw new Error(`Автообновление остановлено: скилл изменён или принадлежит другому пакету: ${destination}`);
         warn(`Скилл не обновлён (чужой или изменённый): ${destination}. Для замены с резервной копией используйте --force.`);
         continue;
       }
@@ -125,6 +127,27 @@ export function installSkillSet({ repoRoot, destinationRoot, storageRoot, force 
       }
       if (bundleRoot) log(`Скилл установлен с ресурсами: ${skill.name}`);
     } finally { fs.rmSync(stagingRoot, { recursive: true, force: true }); }
+  }
+  if (prune && previousRepoRoot && previousRepoRoot !== repoRoot) {
+    const current = new Set(fs.readdirSync(path.join(repoRoot, "skills")));
+    for (const name of fs.readdirSync(path.join(previousRepoRoot, "skills"))) {
+      const destination = path.join(destinationRoot, name);
+      if (current.has(name) || !exists(destination)) continue;
+      const previousSource = path.join(previousRepoRoot, "skills", name);
+      const stat = fs.lstatSync(destination);
+      let managed = stat.isSymbolicLink() && path.resolve(path.dirname(destination), fs.readlinkSync(destination)) === previousSource;
+      if (stat.isDirectory() && !stat.isSymbolicLink()) {
+        try {
+          const manifest = JSON.parse(fs.readFileSync(path.join(destination, manifestName), "utf8"));
+          managed = manifest.pack === "testdocs-kit" && manifest.source === previousSource && manifest.hash === treeHash(destination);
+        } catch { /* Foreign or edited skill: preserve. */ }
+      }
+      if (managed) {
+        const backup = path.join(storageRoot, "backups", `${name}-retired-${crypto.randomUUID()}`);
+        fs.mkdirSync(path.dirname(backup), { recursive: true });
+        fs.renameSync(destination, backup);
+      }
+    }
   }
   verifySkillResources(destinationRoot, fs.readdirSync(path.join(repoRoot, "skills"), { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name));
   log(`Скиллы подключены: ${destinationRoot}`);
