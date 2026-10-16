@@ -15,6 +15,8 @@ Do not reuse custom-field IDs between Jira instances or projects. Return the cre
 
 When a defect may be a subtask, metadata must expose the available subtask issue type and parent field. Do not create a subtask without an exact source-backed parent key. If only standalone creation is supported, report that limitation instead of changing the intended relationship silently.
 
+For the bundled `jira_create_bug`, Server/DC evidence requires a confirmed Wiki renderer and explicit `descriptionFormat: "wiki"`. The adapter uploads `attachments` and then inserts `!filename|thumbnail!` for images or `[^filename]` for other files using the returned names. Missing/plain format fails before creation; attachment URLs are not a preview fallback. Cloud non-image files use named ADF links; Cloud images fail preflight because this adapter cannot obtain Media Services IDs or insert media. Use a capable media connector or return the draft under the [attachment contract](../../rules/bug-report-standard.md#supplied-attachments-and-previews).
+
 ### Jira issue read
 
 Given an explicit issue key or URL, retrieve when available:

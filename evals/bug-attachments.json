@@ -1,0 +1,44 @@
+[
+  {
+    "id": "wiki_images_and_files",
+    "messages": [
+      "Заведи баг в Jira DEMO: Android, после открытия каталога список товаров пуст, хотя по требованию в нём должны быть товары. Приложил два скриншота, запись, лог и архив диагностики."
+    ],
+    "context": "Офлайн-репетиция, никаких живых вызовов. Уже прочитана полная create-metadata: Jira Server/DC, тип Bug id=1, standalone, обязательны только project/issuetype/summary; Description использует Wiki renderer, отдельных полей шагов/результатов нет. Текущий пользователь tester, назначение поддерживается. Подготовь точные аргументы следующего jira_create_bug и текст раздела Материалы после успешной загрузки. Доступен bundled connector с opt-in; файлы проверены и читаемы: /task/evidence/clipboard.png загружается как 03-android-listing-not-rendered.png (image/png), /task/evidence/expected.jpg как expected.jpg (image/jpeg), /task/evidence/reproduction.mp4 (video/mp4), /task/evidence/server.log (text/plain), /task/evidence/diagnostics.zip (application/zip). Все файлы относятся к дефекту, лимиты соблюдены. Если загрузка выполнится, Jira сохранит именно эти имена и вернёт отдельный ID/content URL каждого файла. Фактическая загрузка ещё не выполнялась."
+  },
+  {
+    "id": "plain_renderer_only",
+    "messages": [
+      "Создай баг в DEMO: FE, в профиле после сохранения формы отображается старое имя вместо введённого нового. Вот скриншот."
+    ],
+    "context": "Офлайн, живые вызовы запрещены. Полная create-metadata прочитана: Server/DC, Bug id=1, обязательные значения известны, assignee tester, отдельных полей шагов/результатов нет. Файл /task/evidence/profile.png (image/png) доступен и просмотрен. Description подтверждённо использует только plain text, Wiki renderer отсутствует. Доступный connector умеет создать баг, загрузить файл и вставить его content URL, но не встроить изображение другим способом. Баг ещё не создавался. Дай реальный ответ пользователю и дальнейшие действия."
+  },
+  {
+    "id": "cloud_without_media",
+    "messages": [
+      "Заведи в Jira DEMO баг: FE, баннер товара показывает 750 ₽, а карточка этого же товара 790 ₽. Ожидаю одинаковую цену. Приложил оба скрина."
+    ],
+    "context": "Офлайн, живые вызовы запрещены. Полная схема Cloud API v3 уже прочитана, обязательные значения известны, тип Bug id=1, пользователь tester. Файлы /task/evidence/banner.png и /task/evidence/card.png (image/png) проверены. Доступен только bundled jira_create_bug с upload и ADF text/link; доступа к Media Services и поддержки ADF media у него нет. Баг ещё не создавался. Дай ответ и решение о следующем вызове."
+  },
+  {
+    "id": "partial_creation",
+    "messages": [
+      "Заведи баг DEMO о пустом каталоге Android с этими тремя скриншотами. По требованию после открытия каталога должны отображаться товары."
+    ],
+    "context": "Офлайн, следующие вызовы не выполнять. Создание уже было разрешено, поля и Wiki renderer проверены. jira_create_bug вернул key=DEMO-9, webUrl=https://jira.example.invalid/browse/DEMO-9, summary=Android. Каталог - список товаров пуст после открытия, assignee=reporter=tester. В receipt partialFailure=true, previews=not_inserted. first.png uploaded id=71, url=https://jira.example.invalid/secure/attachment/71/first.png; second.png failed_or_uncertain из-за таймаута; third.png pending. Description остался исходным, миниатюр нет. Дай итоговый ответ и следующие действия."
+  },
+  {
+    "id": "draft_with_evidence",
+    "messages": [
+      "Покажи черновик бага для Jira: FE, после сохранения имени форма остаётся открытой, хотя должна закрыться. Скриншот profile.png и лог server.log приложены. Пока ничего не создавай."
+    ],
+    "context": "Офлайн, внешние вызовы запрещены. Присланные материалы просмотрены и подтверждают наблюдение; /task/evidence/profile.png (image/png) и /task/evidence/server.log (text/plain) доступны локально, в Jira ещё не загружены. Проект не выбран. Подготовь реальный ответ без выдуманных upload ID, ссылок и заявлений о загрузке."
+  },
+  {
+    "id": "cloud_files_without_images",
+    "messages": [
+      "Создай в DEMO баг: BE, GET /catalog отвечает 500 вместо 200. Приложи исходный лог server.log и архив diagnostics.zip."
+    ],
+    "context": "Офлайн, живые вызовы запрещены. Полная схема Cloud API v3 прочитана: Bug id=1, обязательные значения известны, пользователь tester, отдельных полей шагов/результатов нет. Доступен bundled jira_create_bug с opt-in; файлы /task/evidence/server.log (text/plain) и /task/evidence/diagnostics.zip (application/zip) проверены и доступны, лимиты соблюдены. Это единственные материалы, изображений нет. Дай точные аргументы следующего вызова и план размещения файлов после загрузки."
+  }
+]
