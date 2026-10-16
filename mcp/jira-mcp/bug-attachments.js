@@ -7,6 +7,12 @@ async function prepareBugAttachments(input, request, apiVersion) {
   if (input.descriptionFormat && !["plain", "wiki"].includes(input.descriptionFormat)) throw new Error("Unsupported descriptionFormat.");
   if (String(apiVersion) === "3" && input.descriptionFormat === "wiki") throw new Error("Cloud Description requires ADF, not Wiki markup.");
   if (!attachments.length) return [];
+  if (String(apiVersion) !== "3" && input.descriptionFormat !== "wiki") {
+    throw new Error('Supplied attachments require descriptionFormat: "wiki" and a confirmed Server/DC Wiki renderer; no bug was created. Plain attachment URLs cannot replace thumbnails or native attachment links.');
+  }
+  if (String(apiVersion) === "3" && attachments.some((entry) => entry.mimeType?.startsWith("image/"))) {
+    throw new Error("Image thumbnails require a Cloud connector with supported ADF media insertion. This connector can only insert links; no bug was created.");
+  }
   const names = new Set();
   const files = [];
   const metadata = await request(`/rest/api/${apiVersion}/attachment/meta`);
@@ -68,22 +74,20 @@ async function finishBugAttachments(input, result, files, request, apiVersion, t
         description.content.push({ type: "paragraph", content: [{ type: "text", text: file.filename, marks: [{ type: "link", attrs: { href: file.content } }] }] });
       }
     } else {
-      const wiki = input.descriptionFormat === "wiki";
-      const lines = uploaded.map((file) => wiki
-        ? (file.mimeType.startsWith("image/") ? `${file.filename}\n!${file.filename}|thumbnail!` : `[^${file.filename}]`)
-        : `${file.filename}: ${file.content}`);
+      const lines = uploaded.map((file) => file.mimeType.startsWith("image/")
+        ? `${file.filename}\n!${file.filename}|thumbnail!`
+        : `[^${file.filename}]`);
       description = [input.description, "Материалы:", ...lines].filter(Boolean).join("\n\n");
     }
     await request(issuePath, "PUT", { fields: { description } });
     const saved = await request(issuePath);
     if (JSON.stringify(saved.fields?.description) !== JSON.stringify(description) ||
-        !uploaded.every((file) => saved.fields?.attachment?.some((item) => String(item.id) === String(file.id)))) {
+        !uploaded.every((file) => saved.fields?.attachment?.some((item) => String(item.id) === String(file.id) && item.filename === file.filename))) {
       throw new Error("Saved Description or attachment inventory could not be verified.");
     }
-    result._testdocs.previews = !cloud && input.descriptionFormat === "wiki" ? "wiki_thumbnails_inserted" : "links_only";
-    if (result._testdocs.previews === "links_only" && uploaded.some((file) => file.mimeType.startsWith("image/"))) {
-      result._testdocs.previewLimitation = "Images were uploaded and linked; inline previews require a supported media connector or Server/DC Wiki renderer.";
-    }
+    result._testdocs.previews = !cloud && uploaded.some((file) => file.mimeType.startsWith("image/"))
+      ? "wiki_thumbnails_inserted"
+      : "attachment_links_inserted";
   } catch (error) {
     result._testdocs.partialFailure = true;
     result._testdocs.previews = "failed_or_unverified";

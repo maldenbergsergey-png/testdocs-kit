@@ -86,9 +86,19 @@ test("Jira Cloud reads later metadata pages containing optional result fields", 
   assert.equal(result.project.issuetypes[1].fields.customfield_9.name, "Expected result");
 });
 
-test("Cloud attachment completion uses real links and explicitly reports missing media previews", async () => {
+test("Cloud image evidence fails before creation instead of falling back to links", async (t) => {
+  const calls = [];
+  t.mock.method(global, "fetch", async (url) => { calls.push(url); throw new Error("Unexpected request"); });
+  await assert.rejects(tools.jira_create_bug({
+    confirmed: true, projectKey: "DEMO", issueTypeId: "10001", summary: "FE. Button is hidden",
+    attachments: [{ path: "/unused/screen.png", mimeType: "image/png" }]
+  }), /Image thumbnails require a Cloud connector.*no bug was created/);
+  assert.equal(calls.length, 0);
+});
+
+test("Cloud non-image attachments use real named ADF links", async () => {
   const { finishBugAttachments } = require("./bug-attachments");
-  const file = { filename: "screen.png", mimeType: "image/png", data: Buffer.from("image") };
+  const file = { filename: "server.log", mimeType: "text/plain", data: Buffer.from("original log") };
   const attachment = { id: "123", filename: file.filename, mimeType: file.mimeType, content: "https://cloud.example.test/attachment/123" };
   let description = null;
   const request = async (url, method, body) => {
@@ -98,8 +108,7 @@ test("Cloud attachment completion uses real links and explicitly reports missing
   };
   const toAdf = () => ({ version: 1, type: "doc", content: [] });
   const result = await finishBugAttachments({}, { key: "DEMO-1", _testdocs: {} }, [file], request, "3", toAdf);
-  assert.equal(result._testdocs.previews, "links_only");
-  assert.match(result._testdocs.previewLimitation, /inline previews/);
+  assert.equal(result._testdocs.previews, "attachment_links_inserted");
   assert.equal(description.content[1].content[0].marks[0].attrs.href, attachment.content);
   assert(!JSON.stringify(description).includes('"type":"media"'));
 });
