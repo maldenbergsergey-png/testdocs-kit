@@ -72,12 +72,12 @@ For continuation, related tasks or substantive reusable context, follow [saved-c
 
 - `AUTH_REQUIRED`: apply [session reuse](../../rules/browser-session-rules.md) before requesting connector authentication.
 - `NOT_FOUND`: report the exact reference and instance checked.
-- `PERMISSION_DENIED`: report the missing access without claiming absence.
+- `PERMISSION_DENIED`: request access to the exact resource or usable manual content; do not claim absence.
 - `CAPABILITY_UNAVAILABLE`: name the missing capability and request manual content or an export.
 - `AMBIGUOUS_INSTANCE`: list the candidate connections without opening either one further.
 - `INSUFFICIENT_CONTEXT`: list the missing behavioral facts required by the downstream skill.
 
-Continue with the evidence that is available when it is sufficient for a narrower result. For visual execution, return design gaps and access attempts immediately for [design readiness](../../rules/execution-design-rules.md); collection does not authorize a reduced run. Missing Confluence or TMS access must not block a chat-only workflow that already has adequate context.
+Continue with sufficient available evidence. Return execution gaps immediately under [access rules](../../rules/execution-access-rules.md) and, for visual scope, [design rules](../../rules/execution-design-rules.md). Collection cannot silently reduce scope. Missing Confluence/TMS access does not block a workflow with adequate manual context.
 
 ## Output and boundary
 

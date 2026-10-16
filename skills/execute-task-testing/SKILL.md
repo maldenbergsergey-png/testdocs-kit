@@ -5,7 +5,7 @@ description: Test a task or quickly verify a named component through web/API, An
 
 # Execute task testing
 
-Carry a task from scoped preparation through observable checks and a reviewable report. Execute what the current host can actually reach and label every limitation.
+Carry a task from scoped preparation through observable checks and a reviewable report. Resolve missing access and materials with the user before leaving checks unperformed.
 
 Read [the common contract](../../rules/core.md) once per task. Follow conditional rule links only when their condition applies.
 
@@ -31,10 +31,10 @@ Do not load profiles for systems that are not relevant.
 
 ## Workflow
 
-1. Collect the supplied task or component scope, navigation path and source-backed criteria. Select output at intake: default chat report, requested HTML, or [direct API delivery](../../rules/checklist-delivery-rules.md#direct-api-delivery). For an explicit API destination, read its contract and preflight the target before writing. For frontend, mobile or other visual scope, first resolve design readiness under [design preflight](../../rules/execution-design-rules.md), including references inside requirements and any required user decision. Infer the platform from context and apply the conditional surface preflight linked by `task-execution-rules.md`.
+1. Collect the supplied task or component scope, navigation path and source-backed criteria. Select output at intake: default chat report, requested HTML, or [direct API delivery](../../rules/checklist-delivery-rules.md#direct-api-delivery). For an explicit API destination, read its contract and preflight the target before writing. Apply [access rules](../../rules/execution-access-rules.md) to material gaps and [design rules](../../rules/execution-design-rules.md) to visual scope, including references inside requirements. Infer the platform and apply its surface preflight from `task-execution-rules.md`.
 2. Before saving plan data or evidence, initialize the local workspace with `node scripts/task-workspace.mjs init --project <project> --task <task>` from the installed kit. Use a descriptive local task slug when no issue key exists. Write task data only inside the returned path.
-3. After design readiness is resolved when applicable, prepare the initial empty checklist before test actions; keep quick component checks minimal. Show it in chat by default; direct API delivery initializes it in the destination and gives a short scope note. Apply the preparation, app-handoff and fallback rules without an extra plan-approval pause when scope and access are clear. If delivery is blocked, retain the plan locally and continue independent authorized checks.
-4. Execute reachable checks; continue independent rows when another is blocked only within the design-readiness decision above. Preserve each observed result, allowed status and evidence provenance under `task-execution-rules.md`, including saved screenshots for successful UI checks and their row-to-file index. In direct API mode, validate ready rows and upload results/files in small batches as checks finish, using the profile's IDs, hashes and receipts.
+3. Prepare the initial empty checklist before test actions; keep quick component checks minimal. Show it in chat by default; direct API delivery initializes it in the destination and gives a short scope note. Apply preparation, app-handoff and fallback rules without an extra plan-approval pause when scope and access are clear. If delivery is blocked, retain the plan locally and continue independent authorized checks.
+4. Execute reachable checks. Request missing access/materials immediately, retain dependent checks and continue independent rows under the access/design rules. Preserve each observed result, allowed status and evidence provenance under `task-execution-rules.md`, including saved screenshots for successful UI checks and their row-to-file index. In direct API mode, validate ready rows and upload results/files in small batches as checks finish, using the profile's IDs, hashes and receipts.
 5. Review the expected/actual pair, comments, status and saved media under the report and evidence rules. Remove repetition and executor/tool narration from facts/comments without combining independent rows. Describe a repeated confirmed defect once and cross-reference its primary row under [repeat rules](../../rules/execution-report-rules.md#повтор-одного-дефекта); keep each row's observed status. In direct API mode, retain canonical records in `reports/`, reconcile saved data once and return the report link and material limitations. Otherwise save and return the completed report; follow visual verification for requested HTML. Do not add a redundant summary by default.
 6. For later delivery of a completed report, use only the explicitly requested destination. For QA Report, apply its profile and [delivery rules](../../rules/checklist-delivery-rules.md) to choose inline text or files, resolve evidence destination cells, and verify content, metadata and saved receipts. Do not repeat delivery already confirmed during execution.
 
@@ -53,6 +53,6 @@ For a later attachment/delivery request, resume from the saved report and eviden
 
 ## Completion boundary
 
-The test run is complete when every checklist row has an allowed status and explanation, or when remaining rows are explicitly `НЕ ПРОВЕРЕНО`/`ЧАСТИЧНО ПРОВЕРЕНО`/`ТРЕБУЕТ УТОЧНЕНИЯ` with their cause. Do not call the run complete while silently omitting blocked scope.
+Before closing the run, resolve gaps under [access rules](../../rules/execution-access-rules.md). Every row needs an allowed status and evidence or cause. A pending request for access/materials permits an interim report, not a claim of complete testing; retain the dependent scope until the user's answer. Confirmed unavailable sources may leave explicitly limited results. Exclude checks only by the user's scope decision.
 
 Detected defects remain findings in the report. Route a later draft/create request to `create-bug-report`; do not create Jira issues as a side effect of testing.
