@@ -37,7 +37,7 @@ Identify integrations by capability rather than product name or MCP tool name:
 
 Do not assume a capability exists because a server is named Jira, Confluence, Zephyr, or TMS. Inspect the tools exposed by the current connection. Preserve separate error states for unavailable capability, permission denied, not found, ambiguous instance, and empty result.
 
-Local mobile execution follows `task-execution-rules.md` and the [Maestro profile](../integrations/profiles/maestro.md). Enabling a device-control connection does not authorize cloud uploads or publication to Jira, TMS or QA Report. Ordinary test-app interactions within an explicit testing request do not require a separate publication request for each tap.
+Local mobile execution follows `task-execution-rules.md` and the [Maestro profile](../integrations/profiles/maestro.md). Enabling a device-control connection does not authorize cloud uploads or publication to Jira, TMS or QA Report. Test-app UI/API actions follow [test-environment authorization](execution-access-rules.md#действия-в-тестовой-среде), including consent and submission without a separate request for each action.
 
 ## Input modes
 

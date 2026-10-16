@@ -2,7 +2,7 @@
 
 Read [report rules](execution-report-rules.md) for every execution report and [evidence rules](execution-evidence-rules.md) before capturing or reusing evidence. Read only the applicable surface: [web](execution-web-rules.md), [native](execution-native-rules.md), or [supplied media](execution-media-rules.md). Native control also uses the [Maestro profile](../integrations/profiles/maestro.md).
 
-Read [access and material gaps](execution-access-rules.md) for every run; for OS commands and SSH, read [terminal access](terminal-access-rules.md).
+Read [access, test-action authorization and material gaps](execution-access-rules.md) for every run; for OS commands and SSH, read [terminal access](terminal-access-rules.md).
 
 ## Выполнение тестирования
 
@@ -24,7 +24,7 @@ Read [access and material gaps](execution-access-rules.md) for every run; for OS
 
 ### 2. Исполнение
 
-- По возможности выполнять проверки самостоятельно доступными инструментами пользователя. Разрешено читать страницы, вызывать API, анализировать ответы, макеты, логи и предоставленные медиа в пределах задачи.
+- По возможности выполнять проверки самостоятельно доступными инструментами пользователя. Чтение и необходимые изменяющие действия UI/API, включая согласия и отправку тестовых заявок, выполнять по [разрешениям тестовой среды](execution-access-rules.md#действия-в-тестовой-среде), без повторного согласования каждого действия.
 - При недостающем доступе, инструменте или материале сразу запросить нужное у пользователя по [правилам доступов](execution-access-rules.md); не ограничиваться причиной пропуска в отчёте.
 - Анализ присланного видео или скриншота отмечать как проверку по предоставленному материалу. Не выдавать его за самостоятельное взаимодействие с системой.
 - Не считать проверку успешной только из-за отсутствия видимой ошибки. Сопоставлять результат с конкретным требованием, контрактом, макетом или подтверждённым ожидаемым поведением.

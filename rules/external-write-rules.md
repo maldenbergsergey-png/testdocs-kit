@@ -2,6 +2,8 @@
 
 ## Read and write boundary
 
+This contract governs QA artifacts and integration/workspace changes. Ordinary actions in the application under test, including test-account consent and form/application submission, follow [test-environment authorization](execution-access-rules.md#действия-в-тестовой-среде). A request to test already authorizes those scoped actions; it does not authorize QA publication.
+
 Read-only retrieval is allowed when the user places the source in scope. Every workflow shows its result in chat by default. A user request that explicitly says to create or publish new cases may authorize creation in the same turn after the payload and exact target pass validation; no second confirmation is required. A request only to draft, generate, show, analyze, review, or check does not authorize a write.
 
 The same intent rule applies to a Jira or Eva bug: an explicit request to create/file/register a bug authorizes one creation after the exact target, live creation structure and required fields are validated. Eva additionally requires the tester's explicit choice of feature subtask (with a selected parent) or project backlog (with a selected project); both use type `Ошибка` under the [bug contract](bug-report-standard.md#eva-defect-contract). A request only to draft, compose, format, or show a bug report does not authorize creation. Bug creation includes supplied evidence uploads and their previews/attachment links in the newly created Description. It does not authorize unrelated comments, issue links, transitions, later edits, or reassignment.
