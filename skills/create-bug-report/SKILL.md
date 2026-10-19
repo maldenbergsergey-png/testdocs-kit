@@ -69,7 +69,7 @@ If the live form or required capabilities are unavailable, return the complete E
 
 ## Return the result
 
-After creation, return:
+After creation, return one compact receipt with:
 
 - clickable issue key and full URL supplied by the connector;
 - final summary;
@@ -77,5 +77,7 @@ After creation, return:
 - Eva route, actual parent or project/backlog destination, and defect type;
 - optional routing fields left unset for tester triage;
 - uploaded attachments and preview status, plus exact pending materials or verification gaps.
+
+Group verified routing/ownership values in one line and report optional unset fields only when triage needs them. Do not repeat the complete bug, API payload or creation history unless requested.
 
 Apply the write boundary in `bug-report-standard.md`: supplied evidence uploads and their Description previews belong to the create workflow; unrelated later mutations require an explicit request.

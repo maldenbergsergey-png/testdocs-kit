@@ -49,9 +49,10 @@ const {
 
 export type AuthMode = "basic" | "bearer" | "browser_session";
 
-const { fetchWithSpSecret, redactSpSecret } = require("../../atlassian-http.cjs") as {
+const { fetchWithSpSecret, redactSpSecret, withHttpDiagnostics } = require("../../atlassian-http.cjs") as {
   fetchWithSpSecret: (url: string, options: RequestInit, secret?: string) => Promise<Response>;
   redactSpSecret: (message: string, secret?: string) => string;
+  withHttpDiagnostics: (error: Error, response: Response, body?: string) => Error;
 };
 
 export class ConfluenceClient {
@@ -105,25 +106,24 @@ export class ConfluenceClient {
 
     const body = await res.text();
     if (!this.authHeader && isAuthenticationFailure(res, body)) {
-      throw createAuthRequiredError(
+      throw withHttpDiagnostics(createAuthRequiredError(
         "confluence",
         "Сессия Confluence отсутствует или истекла."
-      );
+      ), res, body);
     }
 
     if (!res.ok) {
-      throw new Error(redactSpSecret(
+      throw withHttpDiagnostics(new Error(redactSpSecret(
         `Confluence API error ${res.status}: ${res.statusText}\n${body}`, this.spSecret
-      ));
+      )), res, body);
     }
 
     try {
       return JSON.parse(body) as Record<string, unknown>;
-    } catch (error) {
-      const details = this.spSecret ? "JSON parse error" : error instanceof Error ? error.message : String(error);
-      throw new Error(redactSpSecret(
-        `Confluence returned invalid JSON (${res.status}) for ${url.origin}${url.pathname}: ${details}`, this.spSecret
-      ));
+    } catch {
+      throw withHttpDiagnostics(new Error(redactSpSecret(
+        `Confluence returned invalid JSON (${res.status}) for ${url.origin}${url.pathname}: JSON parse error`, this.spSecret
+      )), res, body);
     }
   }
 

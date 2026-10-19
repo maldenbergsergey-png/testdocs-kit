@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "identity": {
+    "connection": "demo-jira",
+    "project": "DEMO",
+    "feature": "DEMO-100",
+    "scope": "current",
+    "task": "DEMO-101",
+    "platform": "android"
+  },
+  "summary": "Fictional profile form. The shared name rule applies to Android and iOS; Android navigation has its own source.",
+  "sources": [
+    {
+      "id": "profile-spec",
+      "ref": "https://wiki.example.invalid/pages/77",
+      "revision": "3",
+      "authority": "requirement",
+      "completeness": "COMPLETE",
+      "retrievedAt": "2026-10-05T09:00:00Z"
+    },
+    {
+      "id": "android-task",
+      "ref": "https://jira.example.invalid/browse/DEMO-101",
+      "revision": "2026-10-05T08:00:00Z",
+      "authority": "requirement",
+      "completeness": "COMPLETE",
+      "retrievedAt": "2026-10-05T09:00:00Z"
+    }
+  ],
+  "sections": [
+    {
+      "id": "name-rule",
+      "title": "Shared name requirements",
+      "kind": "requirements",
+      "platforms": ["android", "ios"],
+      "sourceIds": ["profile-spec"],
+      "content": "Profile specification version 3 explicitly applies to Android and iOS. The name field is required and allows at most 40 characters. After saving, the name remains after reopening the profile. Other validation rules are not supplied."
+    },
+    {
+      "id": "android-navigation",
+      "title": "Android navigation",
+      "kind": "requirements",
+      "platforms": ["android"],
+      "sourceIds": ["android-task"],
+      "content": "DEMO-101 specifies the Android entry through the Profile tab. No iOS navigation requirement was supplied."
+    }
+  ]
+}

@@ -11,8 +11,7 @@ const checklistCommentsEnabled = process.env.TESTDOCS_ENABLE_CHECKLIST_COMMENT_P
 const bugCreationEnabled = process.env.TESTDOCS_ENABLE_BUG_CREATION === "1";
 const releaseTestRunCreationEnabled = process.env.TESTDOCS_ENABLE_RELEASE_TEST_RUN_CREATION === "1";
 const writeTools = new Set(["add_comment", "transition_issue"]);
-const createsEnabled = process.env.TESTDOCS_ENABLE_TEST_CASE_CREATION === "1";
-const createTools = new Set(["zephyr_create_test_case", "zephyr_update_session_test_case"]);
+const zephyrEnabled = (process.env.TESTDOCS_TMS_PROVIDER || "zephyr_scale") === "zephyr_scale";
 const sessionCases = createSessionCaseRegistry();
 
 app.use(express.json());
@@ -62,10 +61,8 @@ app.post("/mcp", async (req, res) => {
       });
     }
 
-    if (createTools.has(tool) && !createsEnabled) {
-      return res.status(403).json({
-        error: "Test-case creation and current-session corrections are disabled."
-      });
+    if (["zephyr_create_test_case", "zephyr_update_session_test_case"].includes(tool) && !zephyrEnabled) {
+      return res.status(403).json({ error: "Zephyr is not the selected TMS provider." });
     }
 
     if (tool === "zephyr_update_session_test_case") {

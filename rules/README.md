@@ -4,6 +4,8 @@ This directory is the source of truth for QA test-documentation policy. Skills d
 
 Read [core.md](core.md) once per task. This index is for discovery; follow only the rules relevant to the selected workflow.
 
+[Shared quality criteria](core.md#качество-всех-qa-артефактов) apply to every artifact: minimum sufficient detail, reproducibility, confirmed facts and a content check before delivery.
+
 ## Rule files
 
 - [`test-case-standard.md`](test-case-standard.md) — test-case content and writing standard.
@@ -34,6 +36,11 @@ Read [core.md](core.md) once per task. This index is for discovery; follow only 
 - [task-explanation-rules.md](task-explanation-rules.md): advice-only requests.
 - [test-case-format.md](test-case-format.md): rendering complete cases; [test-case-setup-rules.md](test-case-setup-rules.md): administration assertions and property-specific hints.
 - [execution-web-rules.md](execution-web-rules.md), [execution-native-rules.md](execution-native-rules.md), [execution-media-rules.md](execution-media-rules.md): selected surface only.
+- [terminal-access-rules.md](terminal-access-rules.md): macOS/Windows terminals, SSH test-server diagnostics, command scope and credentials.
 - [browser-session-rules.md](browser-session-rules.md): browser selection, reuse of readable sources and necessary authentication recovery.
+- [context-reuse-rules.md](context-reuse-rules.md): scoped saved context, source freshness and cross-platform applicability.
+- [model-routing-rules.md](model-routing-rules.md): explicitly enabled model roles and bounded delegation.
+- [execution-access-rules.md](execution-access-rules.md): test-environment action authorization, missing access/materials, pending scope and independent checks.
+- [execution-design-rules.md](execution-design-rules.md): design sources and basic visual assessment when designs are missing or partial.
 - [execution-report-rules.md](execution-report-rules.md): statuses and report; [execution-evidence-rules.md](execution-evidence-rules.md): capture, reuse and local history.
 - [tms-integration-rules.md](tms-integration-rules.md): TMS compatibility; [external-write-rules.md](external-write-rules.md): requested writes; [checklist-delivery-rules.md](checklist-delivery-rules.md): requested Jira/QA Report delivery.

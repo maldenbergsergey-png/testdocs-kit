@@ -41,6 +41,15 @@ test("fallback exports all actual skills with working rule links and runnable wo
   assert(JSON.parse(child.stdout).path.startsWith(path.join(f.root, "data")));
   assert(!fs.existsSync(path.join(manifest.resources, ".git")));
   assert(!fs.existsSync(path.join(manifest.resources, "MCP-OLD")));
+  const save = spawnSync(process.execPath, [path.join(manifest.resources, "scripts", "context-store.mjs"), "save", "--file", path.join(manifest.resources, "examples", "good", "reusable-feature-context.json")], {
+    cwd: f.root, env: { ...process.env, TESTDOCS_DATA_DIR: path.join(f.root, "data") }, encoding: "utf8"
+  });
+  assert.equal(save.status, 0, save.stderr);
+  const savedContext = JSON.parse(save.stdout);
+  const contextFile = path.join(savedContext.path, "name-rule.md");
+  const beforeUpdate = fs.readFileSync(contextFile, "utf8");
+  installSkillSet({ ...f, repoRoot: repo, link: noLinks });
+  assert.equal(fs.readFileSync(contextFile, "utf8"), beforeUpdate);
 });
 
 test("managed copies update automatically, edited copies survive, and forced backups stay outside discovery", (t) => {
@@ -104,4 +113,29 @@ test("installation verification rejects legacy copies whose shared rules were no
   fs.mkdirSync(path.join(f.destinationRoot, "demo"), { recursive: true });
   fs.writeFileSync(path.join(f.destinationRoot, "demo", "SKILL.md"), "[rules](../../rules/core.md)");
   assert.throws(() => verifySkillResources(f.destinationRoot, ["demo"]), /недоступен ресурс/);
+});
+
+test("automatic release migration updates managed copies and shared resources and retires only owned skills", (t) => {
+  const f = fixture(t);
+  const oldRoot = path.join(f.root, "old-release");
+  fs.mkdirSync(path.join(oldRoot, "skills", "demo"), { recursive: true });
+  fs.mkdirSync(path.join(oldRoot, "skills", "retired"), { recursive: true });
+  fs.mkdirSync(path.join(oldRoot, "rules"));
+  fs.writeFileSync(path.join(oldRoot, "rules", "core.md"), "rule v1");
+  fs.writeFileSync(path.join(oldRoot, "skills", "demo", "SKILL.md"), "v1\n[rule](../../rules/core.md)\n");
+  fs.writeFileSync(path.join(oldRoot, "skills", "retired", "SKILL.md"), "retired\n");
+  installSkillSet({ ...f, repoRoot: oldRoot, link: noLinks });
+  const newRoot = path.join(f.root, "new-release");
+  fs.cpSync(oldRoot, newRoot, { recursive: true });
+  fs.writeFileSync(path.join(newRoot, "rules", "core.md"), "rule v2");
+  fs.writeFileSync(path.join(newRoot, "skills", "demo", "SKILL.md"), "v2\n[rule](../../rules/core.md)\n");
+  fs.rmSync(path.join(newRoot, "skills", "retired"), { recursive: true });
+  installSkillSet({ ...f, repoRoot: newRoot, previousRepoRoot: oldRoot, strict: true, prune: true, link: noLinks });
+  const installed = path.join(f.destinationRoot, "demo", "SKILL.md");
+  assert.match(fs.readFileSync(installed, "utf8"), /^v2/);
+  assert.equal(fs.readFileSync(links(installed)[0], "utf8"), "rule v2");
+  assert.equal(fs.existsSync(path.join(f.destinationRoot, "retired")), false);
+  fs.appendFileSync(installed, "User edit\n");
+  assert.throws(() => installSkillSet({ ...f, repoRoot: oldRoot, previousRepoRoot: newRoot, strict: true, link: noLinks }), /скилл изменён/);
+  assert.match(fs.readFileSync(installed, "utf8"), /User edit/);
 });

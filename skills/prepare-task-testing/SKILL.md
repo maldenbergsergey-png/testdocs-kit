@@ -11,7 +11,7 @@ Read [the common contract](../../rules/core.md) once per task and [intent/output
 
 Match the user's requested result using the routing table. If the request names a concrete artifact, invoke its skill directly. Apply task-only or targeted scope without adding other artifacts. If "prepare testing" remains ambiguous, ask one short question about the desired result, without presenting internal skill names. A full package requires explicit intent.
 
-Use [collect-test-context](../collect-test-context/SKILL.md) only for external retrieval or scoped discovery; use supplied text/files directly. Pass the resulting context onward and reuse it without repeating retrieval unless it is incomplete or stale.
+Use [collect-test-context](../collect-test-context/SKILL.md) for external retrieval, scoped discovery or saved-context retrieval; use supplied text/files directly. Pass current context onward without repeating retrieval. For continuation/related tasks, apply [saved-context rules](../../rules/context-reuse-rules.md); preserve target-platform differences and artifact scope.
 
 ## Full package
 

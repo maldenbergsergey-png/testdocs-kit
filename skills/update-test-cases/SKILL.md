@@ -1,6 +1,6 @@
 ---
 name: update-test-cases
-description: Propose changes to a specific existing QA test case, including a focused diff and complete corrected case. Apply a correction only to a case created by the current MCP process after an explicit request; all other cases remain proposal-only under the temporary policy.
+description: Propose changes to a specific QA test case, including a focused diff and complete corrected case. Apply an explicitly requested correction to a new case created earlier in this same chat, with the current MCP creation registry guard; previously existing and other-chat cases remain proposal-only.
 ---
 
 # Update test cases
@@ -38,7 +38,7 @@ When the current source or case version needs retrieval from an external referen
 
 1. Establish the current case as the baseline and summarize the requested change.
 2. Compare the baseline with the new context using the shared rules.
-3. Preserve unaffected content and identify additions, modifications, removals, and unchanged parts.
+3. Preserve unaffected content. List only actual changes; note an unchanged part only when its preservation matters.
 4. Give a source-backed reason for every proposed change. Flag conflicts and unresolved placeholders.
 5. Recheck the proposed case for a focused scenario, repeatable setup, observable results, and independence from transient data or execution order.
 6. Recommend a split instead of expanding the baseline when the new behavior forms an independent regression scenario.
@@ -51,9 +51,9 @@ When the current source or case version needs retrieval from an external referen
 
 ## Existing cases
 
-Apply the [temporary restriction](../../rules/update-rules.md): for a case created outside the current MCP session, return the complete proposal even when the user asks to apply it. Do not invoke an update tool or substitute another write channel.
+Apply the [temporary restriction](../../rules/update-rules.md): for a previously existing case or one created in another chat, return the complete proposal even when the user asks to apply it. Do not invoke an update tool or substitute another write channel.
 
-## Apply a correction to a just-created case
+## Apply a correction to a new case from this chat
 
 Read [external write rules](../../rules/external-write-rules.md). Apply the correction without a second confirmation only when all conditions hold:
 
@@ -70,7 +70,7 @@ If the MCP rejects the session key, stop at the complete proposal. Never bypass 
 
 ## Output
 
-For a proposal, start with `Статус: ПРЕДЛОЖЕНИЕ — НЕ ПРИМЕНЕНО`, the source case, reason, and missing information or conflicts. Then show `Предлагаемые изменения` as `ДОБАВИТЬ`, `ИЗМЕНИТЬ`, `УДАЛИТЬ`, and useful `ОСТАВИТЬ` items. Show the concise `Комментарий к изменению` outside the test-case fields. Under `Полная предлагаемая версия`, render the actual case directly as Markdown. End with `Граница применения`, stating that no external changes were made.
+For a proposal, start with `Статус: ПРЕДЛОЖЕНИЕ — НЕ ПРИМЕНЕНО` and identify the source case. Show only applicable `ДОБАВИТЬ`, `ИЗМЕНИТЬ`, `УДАЛИТЬ` and useful `ОСТАВИТЬ` items, with short reasons. Include the required audit comment outside the case fields without repeating its explanation elsewhere. Then render the complete proposed case as Markdown. State material gaps once; omit a concluding repetition that the proposal was not applied.
 
 For an applied current-session correction, use the same focused diff and full final version, then end with `Применено`, the case key, and the fields changed. Do not claim that omitted fields were verified unless they were read.
 

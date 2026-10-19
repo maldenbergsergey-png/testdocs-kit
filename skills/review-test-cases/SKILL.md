@@ -37,7 +37,7 @@ When source content behind an external issue, page, or case reference needs retr
 1. Confirm the review scope and identify each case.
 2. Distinguish structural, behavioral-correctness, and regression-reusability review based on the supplied requirements and scope.
 3. Evaluate only against approved repository rules and explicit task context.
-4. Record each issue at a precise field or step location, cite the rule section, explain impact, and recommend a focused correction.
+4. Record each issue and its correction together at a precise field or step location, citing the rule section. Add impact only when it is not obvious.
 5. Apply the first-pass executability test from the perspective of a competent tester unfamiliar with the project.
 6. Check traceability, scenario focus, minimum sufficient detail, repeatability, observable outcomes, diagnostic value, transient dependencies, and hidden execution order.
 7. When authoritative source content is supplied, build its field and link inventories. Verify that every in-scope item is covered, explicitly excluded with a reason, or identified as ambiguous, and that relevant requirement/design links appear as named clickable links in `Цель`. Report silent omissions without requiring one case per field.
@@ -52,27 +52,9 @@ For an explicit optimization or refactoring request across several cases, also c
 
 ## Output
 
-```text
-Общий статус: PASS | PASS_WITH_COMMENTS | CHANGES_REQUESTED | INSUFFICIENT_CONTEXT
-Область проверки: ...
-Ограничения контекста: ...
+Return the overall status, compact findings under [review rules](../../rules/review-rules.md#finding-format), and the complete corrected proposal when findings affect content. Mark the proposal as not applied once. Mention scope or context limitations only when they matter; omit a repeated conclusion or empty sections.
 
-Замечания
-1. Место: ...
-   Правило: ...
-   Проблема: ...
-   Почему это важно: ...
-   Рекомендация: ...
-
-Итог: ...
-
-Полная исправленная предлагаемая версия
-... (required when findings affect content)
-
-Граница применения: внешние изменения не выполнялись.
-```
-
-State explicitly when no rule-backed issues are found. For `PASS`, do not invent a rewrite. For a partial case or unresolved behavior that prevents a safe complete proposal, state the exact gap instead of inventing content.
+For `PASS`, state that no rule-backed issues were found and do not invent a rewrite. If missing content prevents a safe complete proposal, name the exact gap.
 
 ## Optional integrations
 

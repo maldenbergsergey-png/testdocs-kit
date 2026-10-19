@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { installSkillSet } from "./install-skills.mjs";
+import { configureAutoUpdate, previousSkillRoot, acquireUpdateLock, recoverInterruptedUpdate } from "./auto-update.mjs";
+import { withChecklistPublicationApproval } from "./opencode-checklist-permissions.mjs";
 
 import fs from "node:fs";
 import atlassianHttp from "../mcp/atlassian-http.cjs";
@@ -61,6 +63,19 @@ function parseArgs(argv) {
     if (arg === "--clients") result.clients = argv[++index]?.split(",");
     else if (arg === "--answers") result.answers = argv[++index];
     else if (arg === "--reuse") result.reuse = true;
+    else if (arg === "--auto-update") {
+      const value = argv[++index];
+      if (!["on", "off"].includes(value)) throw new Error("--auto-update: используйте on или off.");
+      result.autoUpdate = value === "on";
+    }
+    else if (arg === "--update-interval-hours") {
+      result.updateIntervalHours = Number(argv[++index]);
+      if (!Number.isFinite(result.updateIntervalHours) || result.updateIntervalHours < 0.25 || result.updateIntervalHours > 168) throw new Error("Интервал автообновления: от 0.25 до 168 часов.");
+    }
+    else if (arg === "--activate-update" && process.env.TESTDOCS_AUTO_UPDATE_INTERNAL === "1") {
+      result.activateUpdate = true;
+      result.skipDependencies = true;
+    }
     else if (arg === "--configure") result.configure = argv[++index];
     else if (arg === "--add") result.add = argv[++index];
     else if (arg === "--opencode-format") result.openCodeFormat = argv[++index];
@@ -94,6 +109,8 @@ function showHelp() {
   --clients codex,claude,opencode,generic  Настроить указанные клиенты
   --answers /path/to/answers.json          Взять ответы из JSON без вопросов
   --reuse                                 Применить сохранённые настройки без вопросов
+  --auto-update on|off                     Автообновление всего пакета (по умолчанию on)
+  --update-interval-hours 4                Проверять обновления раз в заданное число часов
   --configure jira|confluence|eva|tms|delivery|integrations|figma|browser|maestro|all
                                           Перенастроить только выбранную часть
   --configure sp-secret                   Задать/заменить/удалить X-Sp-Secret для Jira/Confluence
@@ -106,7 +123,7 @@ function showHelp() {
   --ca-file /path/to/ca-bundle.pem         Дополнительные доверенные CA в формате PEM
   --insecure-atlassian-tls                 Временно отключить проверку TLS для Jira/Confluence с Basic/PAT
   --verify-atlassian-tls                   Вернуть проверку TLS для Jira/Confluence с Basic/PAT
-  --enable-test-case-writes                Разрешить создание кейсов и исправление созданных в текущей MCP-сессии
+  --enable-test-case-writes                Устаревший совместимый флаг; создание и исправление новых кейсов доступны без него
   --enable-jira-writes                     Разрешить создание Bug, публикацию checklist,
                                           Test Run и связанной QA-задачи
                                           для сохранённых Jira-подключений
@@ -754,7 +771,7 @@ async function collectConfig(args, clients, existing = null) {
   }
   previous.version = 3;
   previous.enableWrites = false;
-  previous.enableTestCaseCreation = previous.enableTestCaseCreation === true;
+  delete previous.enableTestCaseCreation;
   return validateAnswers(previous);
 }
 
@@ -775,10 +792,20 @@ function applyCaFile(config, value) {
   config.caFile = caFile;
 }
 
+function writeAtomic(target, text, mode) {
+  const physical = fs.existsSync(target) ? fs.realpathSync(target) : target;
+  const permissions = mode ?? (fs.existsSync(physical) ? fs.statSync(physical).mode & 0o777 : 0o600);
+  const temporary = `${physical}.${process.pid}.tmp`;
+  try {
+    fs.writeFileSync(temporary, text, { mode: permissions });
+    fs.renameSync(temporary, physical);
+  } finally { fs.rmSync(temporary, { force: true }); }
+}
+
 function savePrivateConfig(config) {
   const configFile = getConfigFile();
   fs.mkdirSync(path.dirname(configFile), { recursive: true, mode: 0o700 });
-  fs.writeFileSync(configFile, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+  writeAtomic(configFile, `${JSON.stringify(config, null, 2)}\n`, 0o600);
   try { fs.chmodSync(configFile, 0o600); } catch { /* Windows ACL управляется системой. */ }
   console.log(`Настройки сохранены: ${configFile}`);
 }
@@ -867,13 +894,14 @@ function pathEntryExists(target) {
   }
 }
 
-function installSkills(clients, force) {
+function installSkills(clients, force, activateUpdate) {
   const home = getInstallHome();
+  const options = { previousRepoRoot: process.env.TESTDOCS_PREVIOUS_SKILL_ROOT || previousSkillRoot(), strict: activateUpdate, prune: activateUpdate };
   if (clients.some((client) => ["codex", "opencode", "generic"].includes(client))) {
-    installSkillSet({ repoRoot, destinationRoot: path.join(home, ".agents", "skills"), storageRoot: path.join(getConfigDir(), "skill-pack"), force });
+    installSkillSet({ repoRoot, destinationRoot: path.join(home, ".agents", "skills"), storageRoot: path.join(getConfigDir(), "skill-pack"), force, ...options });
   }
   if (clients.includes("claude")) {
-    installSkillSet({ repoRoot, destinationRoot: path.join(home, ".claude", "skills"), storageRoot: path.join(getConfigDir(), "skill-pack"), force });
+    installSkillSet({ repoRoot, destinationRoot: path.join(home, ".claude", "skills"), storageRoot: path.join(getConfigDir(), "skill-pack"), force, ...options });
   }
 }
 
@@ -900,7 +928,7 @@ function configuredServers(config) {
         "zephyr_get_test_plans", "zephyr_get_test_plan", "zephyr_get_iterations",
         "zephyr_get_test_case", "zephyr_get_all_test_cases", "zephyr_get_issue_test_cases", "zephyr_get_test_run", "zephyr_list_test_run_folders"
       );
-      if (config.enableTestCaseCreation === true) tools.push("zephyr_create_test_case", "zephyr_update_session_test_case");
+      tools.push("zephyr_create_test_case", "zephyr_update_session_test_case");
       if (jira.enableReleaseTestRunCreation === true) tools.push("zephyr_create_test_run", "zephyr_assign_test_run_item");
     }
     servers.push({ name: serverName("jira", jira.id, jiraItems.length), service: "jira", id: jira.id, tools });
@@ -977,7 +1005,7 @@ function writeManagedCodexConfig(config) {
   const withoutManaged = existing.replace(managedPattern, "").trimEnd();
   const next = `${withoutManaged}${withoutManaged ? "\n\n" : ""}${codexBlock(config)}`;
   if (existing && existing !== next) fs.copyFileSync(target, `${target}.backup-${stamp}`);
-  fs.writeFileSync(target, next, "utf8");
+  writeAtomic(target, next);
   console.log(`Codex настроен: ${target}`);
 }
 
@@ -1023,17 +1051,18 @@ function openCodeServerConfig(server, format) {
 
 function openCodeSnippet(config, format) {
   const servers = {};
-  for (const server of configuredServers(config)) servers[server.name] = openCodeServerConfig(server, format);
-  return {
+  const configured = configuredServers(config);
+  for (const server of configured) servers[server.name] = openCodeServerConfig(server, format);
+  return withChecklistPublicationApproval({
     $schema: "https://opencode.ai/config.json",
     mcp: format === "v2" ? { servers } : servers
-  };
+  }, format, configured);
 }
 
 function writeJsonWithBackup(target, value) {
   fs.mkdirSync(path.dirname(target), { recursive: true });
   if (fs.existsSync(target)) fs.copyFileSync(target, `${target}.backup-${stamp}`);
-  fs.writeFileSync(target, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  writeAtomic(target, `${JSON.stringify(value, null, 2)}\n`);
 }
 
 function commandAvailable(command) {
@@ -1117,6 +1146,7 @@ function mergeOpenCodeConfig(config, args) {
     try {
       data = JSON.parse(fs.readFileSync(target, "utf8"));
     } catch {
+      if (args.activateUpdate) throw new Error("OpenCode-конфиг требует ручного обновления: JSONC или нестандартный JSON.");
       const format = detectOpenCodeFormat({}, requestedFormat);
       const fallback = path.join(getConfigDir(), "client-snippets", `opencode-${format}.json`);
       writeJsonWithBackup(fallback, openCodeSnippet(config, format));
@@ -1149,6 +1179,7 @@ function mergeOpenCodeConfig(config, args) {
     removeManaged(data.mcp.servers);
     for (const server of configured) data.mcp.servers[server.name] = openCodeServerConfig(server, format);
   }
+  data = withChecklistPublicationApproval(data, format, configured);
   writeJsonWithBackup(target, data);
   console.log(`OpenCode настроен (${format}): ${target}`);
   validateOpenCodeConfig(format, args.noCli);
@@ -1166,10 +1197,26 @@ function claudeCommands(config) {
   });
 }
 
-function configureClaude(config, noCli) {
+function configureClaude(config, noCli, activateUpdate) {
   const commandsFile = path.join(getConfigDir(), "client-snippets", "claude-code.txt");
   fs.mkdirSync(path.dirname(commandsFile), { recursive: true });
   fs.writeFileSync(commandsFile, `${claudeCommands(config).join("\n")}\n`, "utf8");
+
+  if (activateUpdate) {
+    const target = path.join(getInstallHome(), ".claude.json");
+    const data = fs.existsSync(target) ? JSON.parse(fs.readFileSync(target, "utf8")) : {};
+    data.mcpServers ||= {};
+    for (const name of Object.keys(data.mcpServers)) if (name.startsWith("testdocs_")) delete data.mcpServers[name];
+    for (const server of configuredServers(config)) {
+      data.mcpServers[server.name] = server.kind === "remote"
+        ? { type: "http", url: server.url, ...(server.envHttpHeaders ? {
+          headers: Object.fromEntries(Object.entries(server.envHttpHeaders).map(([key, envName]) => [key, `\${${envName}}`]))
+        } : {}) }
+        : { type: "stdio", command: process.execPath, args: [launcherFile, server.service, ...(server.id ? [server.id] : [])] };
+    }
+    writeJsonWithBackup(target, data);
+    return;
+  }
 
   if (noCli || spawnSync("claude", ["--version"], { stdio: "ignore" }).status !== 0) {
     console.warn(`Claude Code CLI не найден или отключён. Команды сохранены: ${commandsFile}`);
@@ -1219,14 +1266,14 @@ function configureClients(config, clients, args) {
   writeGenericSnippet(config);
   if (clients.includes("codex")) writeManagedCodexConfig(config);
   if (clients.includes("opencode")) mergeOpenCodeConfig(config, args);
-  if (clients.includes("claude")) configureClaude(config, args.noCli);
+  if (clients.includes("claude")) configureClaude(config, args.noCli, args.activateUpdate);
 }
 
 function verifyInstallation(args) {
   console.log("\nПроверяю локальный MCP-handshake...");
   const checkArgs = [path.join(repoRoot, "scripts", "check-install.mjs")];
   if (args.noCli) checkArgs.push("--offline-external");
-  run(process.execPath, checkArgs);
+  run(process.execPath, checkArgs, { env: { ...process.env, TESTDOCS_AUTO_UPDATE_INTERNAL: "1" } });
 }
 
 function authenticateBrowserSessions(config, args) {
@@ -1302,7 +1349,7 @@ async function main() {
   config.version = 3;
   config.clients = clients;
   config.enableWrites = false;
-  config.enableTestCaseCreation = args.enableTestCaseWrites || config.enableTestCaseCreation === true;
+  delete config.enableTestCaseCreation;
   if (args.enableJiraWrites) {
     const jiraConnections = connectionList(config, "jira");
     if (!jiraConnections.length) {
@@ -1343,14 +1390,15 @@ async function main() {
   }
 
   savePrivateConfig(config);
-  installDependencies(args.skipDependencies, config);
-  installSkills(clients, args.force);
+  if (!args.activateUpdate) installDependencies(args.skipDependencies, config);
+  installSkills(clients, args.force, args.activateUpdate);
   configureClients(config, clients, args);
   // Register independent MCP services before an optional adapter build can fail.
-  buildAdapters(config);
+  if (!args.activateUpdate) buildAdapters(config);
   verifyInstallation(args);
   if (args.configure !== "figma") authenticateBrowserSessions(config, args);
   authenticateRemoteMcp(config, clients, args);
+  configureAutoUpdate({ enabled: args.autoUpdate, intervalHours: args.updateIntervalHours });
   if (config.figma?.mode === "browser") {
     console.log("Figma через testdocs_browser: Dev Mode и OAuth Figma MCP не нужны. Откройте ссылку на макет через браузер агента и войдите в Figma.\nДоступны видимые данные и снимки; экспорт зависит от прав на файл. Структура слоёв и скрытые свойства не подтверждаются снимком.");
   }
@@ -1372,7 +1420,15 @@ ${tmsSummary}
 Checklist-комментарии Jira и QA Report доступны только если были отдельно разрешены при setup. Автоматическое удаление внешних тест-кейсов отключено.`);
 }
 
-main().catch((error) => {
+let releaseInstallLock;
+try {
+  if (process.env.TESTDOCS_AUTO_UPDATE_INTERNAL !== "1" && !process.argv.includes("--help") && !process.argv.includes("-h")) {
+    releaseInstallLock = acquireUpdateLock();
+    if (!releaseInstallLock) throw new Error("Уже выполняется установка или автообновление; повторите позже.");
+    recoverInterruptedUpdate();
+  }
+  await main();
+} catch (error) {
   console.error(`\nОшибка установки: ${error.message}`);
-  process.exit(1);
-});
+  process.exitCode = 1;
+} finally { releaseInstallLock?.(); }

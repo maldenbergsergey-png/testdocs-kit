@@ -184,7 +184,7 @@ test("zephyr_get_test_case returns the complete ATM case with ordered steps", as
   assert.equal(result._testdocs.webUrl, "https://jira.example.test/secure/Tests.jspa#/testCase/DEMO-T7");
 });
 
-test("jira_publish_checklist_comment publishes exact wiki markup only after confirmation", async (t) => {
+test("jira_publish_checklist_comment accepts the agent confirmation flag and publishes exact wiki markup", async (t) => {
   let request;
   t.mock.method(global, "fetch", async (url, options) => {
     request = { url: String(url), options };
@@ -202,7 +202,7 @@ test("jira_publish_checklist_comment publishes exact wiki markup only after conf
   assert.equal(result._testdocs.format, "jira_wiki");
 });
 
-test("jira_publish_checklist_comment rejects silent publication before a request", async (t) => {
+test("jira_publish_checklist_comment rejects a missing confirmation flag without network access", async (t) => {
   const fetchMock = t.mock.method(global, "fetch", async () => response(201, { id: "unexpected" }));
   await assert.rejects(
     tools.jira_publish_checklist_comment({

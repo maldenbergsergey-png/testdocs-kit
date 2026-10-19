@@ -69,6 +69,8 @@ Proposed repository change: ...
 Expected effect: ...
 ```
 
+These are semantic elements, not mandatory separate paragraphs. Combine overlapping rationale and effect; omit inapplicable conflict/limitation fields. Keep the classification, evidence, scope and concrete proposed change visible under [shared quality criteria](core.md#качество-всех-qa-артефактов).
+
 ## Corpus handling boundaries
 
 - Work only from material supplied by the user or retrieved from an authorized in-scope source.

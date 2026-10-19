@@ -1,14 +1,19 @@
 #!/usr/bin/env node
 
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { getDataDir } from "./paths.mjs";
+import { workspaceSegment } from "./workspace-paths.mjs";
 
 function fail(message) {
   console.error(message);
   process.exit(1);
+}
+
+function safeSegment(value, label) {
+  try { return workspaceSegment(value, label); }
+  catch (error) { fail(error.message); }
 }
 
 function parseArgs(argv) {
@@ -21,18 +26,6 @@ function parseArgs(argv) {
     else fail(`Неизвестный аргумент: ${arg}`);
   }
   return result;
-}
-
-function safeSegment(value, label) {
-  const source = String(value || "").trim().normalize("NFKC");
-  if (!source) fail(`Укажите ${label}.`);
-  const readable = source
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}._-]+/gu, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 72);
-  const suffix = crypto.createHash("sha256").update(source).digest("hex").slice(0, 8);
-  return `${readable || label}-${suffix}`;
 }
 
 function workspacePath(project, task) {

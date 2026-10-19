@@ -24,12 +24,13 @@ async function main() {
   const releaseTestRunCreationEnabled = process.env.TESTDOCS_ENABLE_RELEASE_TEST_RUN_CREATION === "1";
   const qaReportImportEnabled = process.env.TESTDOCS_ENABLE_QA_REPORT_IMPORT === "1";
   const deliveryOnly = process.env.TESTDOCS_DELIVERY_ONLY === "1";
-  const createsEnabled = process.env.TESTDOCS_ENABLE_TEST_CASE_CREATION === "1";
   const zephyrEnabled = (process.env.TESTDOCS_TMS_PROVIDER || "zephyr_scale") === "zephyr_scale";
   const sessionCases = createSessionCaseRegistry();
   const server = new McpServer({
     name: deliveryOnly ? "testdocs-delivery-mcp" : "jira-mcp",
     version: "1.0.0"
+  }, {
+    instructions: deliveryOnly ? undefined : "For Jira/Zephyr HTTP failures, use jira_get_connection_diagnostics to inspect this running adapter and its last sanitized HTTP error without making another HTTP request. HTTP 403 alone does not establish missing project permissions. A saved X-Sp-Secret is a connection-specific authentication header used by the standard adapter; do not request its value in chat. Diagnostics do not authorize or retry writes."
   });
 
   if (deliveryOnly) {
@@ -52,6 +53,16 @@ async function main() {
     await server.connect(transport);
     return;
   }
+
+  server.registerTool(
+    "jira_get_connection_diagnostics",
+    {
+      description: "Read local diagnostics from this running Jira/Zephyr adapter: loaded code path, version and fingerprint, selected connection, whether X-Sp-Secret is configured, and the last sanitized HTTP error. Use after 400/403 or when an HTTP diagnostics block is missing. Makes no HTTP requests, exposes no credential values, and does not check server permissions or retry case creation.",
+      inputSchema: z.object({}),
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false }
+    },
+    async () => toTextResult(tools.jira_get_connection_diagnostics())
+  );
 
   server.registerTool(
     "get_issue",
@@ -183,9 +194,10 @@ async function main() {
     server.registerTool(
       "jira_publish_checklist_comment",
       {
-        description: "Publish the exact reviewed checklist as a Jira issue comment only after the user explicitly asks to publish it. Accepts Jira Wiki Markup and converts it to ADF for Jira API v3. Does not edit or delete comments.",
+        description: "Publish the exact checklist previously shown in chat as a Jira issue comment, only after the user approves publishing that version to that issue. A request to prepare/generate a checklist or a supplied issue URL is not approval: show the full draft and stop first. confirmed is an agent assertion, not a user approval mechanism; respect the client's tool approval. Accepts Jira Wiki Markup and converts it to ADF for Jira API v3. Does not edit or delete comments.",
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
         inputSchema: z.object({
-          confirmed: z.literal(true),
+          confirmed: z.literal(true).describe("True only after the user approves publishing this already displayed content to this exact issue; never infer from a preparation request."),
           key: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*-\d+$/),
           content: z.string().min(1)
         })
@@ -401,7 +413,6 @@ async function main() {
     );
   }
 
-  if (createsEnabled) {
     server.registerTool(
       "zephyr_create_test_case",
       {
@@ -445,7 +456,7 @@ async function main() {
     server.registerTool(
       "zephyr_update_session_test_case",
       {
-        description: "Correct a Zephyr/TM4J test case only if this MCP process created it during the current session and the user explicitly asks to apply the correction. Previously existing, discovered, or created-in-another-session cases are rejected. Omitted fields are preserved. If steps are supplied, pass the complete final ordered step list because it replaces the current script; omit testData where no data is consumed and never send 'Не требуется' or 'Не требуются'. Send two or more independent items as one '•' item per newline; the adapter converts those newlines to Zephyr-visible line breaks. The result includes _testdocs.webUrl.",
+        description: "Correct a Zephyr/TM4J test case created earlier in this chat by this MCP process, only when the user explicitly asks to apply the correction. Previously existing, discovered, created-in-another-chat, or created-in-another-session cases are not eligible. The server rejects keys absent from its creation registry. Omitted fields are preserved. If steps are supplied, pass the complete final ordered step list because it replaces the current script; omit testData where no data is consumed and never send 'Не требуется' or 'Не требуются'. Send two or more independent items as one '•' item per newline; the adapter converts those newlines to Zephyr-visible line breaks. The result includes _testdocs.webUrl.",
         inputSchema: z.object({
           confirmed: z.literal(true).describe("Set true only after the user explicitly asks to apply this correction now."),
           testCaseKey: z.string().min(1).describe("Key returned by zephyr_create_test_case during this MCP session."),
@@ -480,7 +491,6 @@ async function main() {
         return toTextResult(await tools.zephyr_update_session_test_case(input));
       }
     );
-  }
   }
 
   const transport = new StdioServerTransport();

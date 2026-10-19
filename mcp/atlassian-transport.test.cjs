@@ -51,6 +51,34 @@ function client(service, url, mode, sessionFile, spSecret = "") {
   return (method = "GET", body) => api[service === "jira" ? "jiraRequest" : "zephyrRequest"]("/probe", method, body);
 }
 
+async function launchMcp(service, connectionId, directory) {
+  const requireSdk = createRequire(path.join(__dirname, "jira-mcp", "package.json"));
+  const { Client } = await import(pathToFileURL(requireSdk.resolve("@modelcontextprotocol/sdk/client/index.js")).href);
+  const { StdioClientTransport } = await import(pathToFileURL(requireSdk.resolve("@modelcontextprotocol/sdk/client/stdio.js")).href);
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [path.join(__dirname, "..", "scripts", "launch-mcp.mjs"), service, connectionId],
+    env: {
+      ...process.env, TESTDOCS_CONFIG_FILE: path.join(directory, "config.json"), TESTDOCS_CONFIG_DIR: directory,
+      TESTDOCS_AUTO_UPDATE: "0",
+      JIRA_SP_SECRET: "wrong-inherited-secret", CONFLUENCE_SP_SECRET: "wrong-inherited-secret"
+    },
+    stderr: "pipe"
+  });
+  const mcp = new Client({ name: "gateway-test", version: "1.0.0" });
+  try {
+    await mcp.connect(transport);
+    return mcp;
+  } catch (error) {
+    await mcp.close();
+    throw error;
+  }
+}
+
+function diagnosticsFrom(text) {
+  return JSON.parse(text.split("\nHTTP diagnostics: ")[1]);
+}
+
 for (const service of ["jira", "zephyr", "confluence"]) {
   for (const mode of ["basic", "bearer"]) {
     test(`${service} ${mode}: canonical redirects reach JSON and keep same-origin authentication`, async (t) => {
@@ -76,9 +104,44 @@ for (const service of ["jira", "zephyr", "confluence"]) {
       res.writeHead(403, { "Content-Type": "application/json" });
       res.end('{"message":"Forbidden"}');
     });
-    await assert.rejects(client(service, fixture.url, "bearer")(), /403/);
+    await assert.rejects(client(service, fixture.url, "bearer")(), (error) => {
+      assert.match(error.message, /403/);
+      const diagnostics = diagnosticsFrom(error.message);
+      assert.equal(diagnostics.request.headers["X-Sp-Secret"], false);
+      assert.equal(diagnostics.request.headers.Authorization, true);
+      assert.equal(diagnostics.request.authScheme, "bearer");
+      assert.equal(diagnostics.response.status, 403);
+      assert(!Number.isNaN(Date.parse(diagnostics.request.sentAt)));
+      return true;
+    });
     assert.equal(fixture.requests.length, 1);
     assert.equal(fixture.requests[0].headers["x-sp-secret"], undefined);
+  });
+
+  test(`${service}: forbidden errors expose safe request metadata and gateway correlation IDs`, async (t) => {
+    const transactionId = "dd55cf41-1e9c-4f74-8d9e-9c307a5e0a63";
+    const fixture = await serve(t, (req, res) => {
+      res.writeHead(403, {
+        "Content-Type": "text/plain", "X-Request-ID": "gateway-request-42",
+        "Set-Cookie": "private=response-cookie", "X-Unlisted-Debug": "private-debug"
+      });
+      res.end("Forbidden " + "x".repeat(310) + `\nTransaction ID: ${transactionId}`);
+    });
+    await assert.rejects(client(service, fixture.url, "bearer", undefined, "dummy-gateway-secret")(), (error) => {
+      const diagnostics = diagnosticsFrom(error.message);
+      assert.equal(diagnostics.request.method, "GET");
+      assert(diagnostics.request.url.startsWith(fixture.url));
+      assert.equal(diagnostics.request.headers["X-Sp-Secret"], true);
+      assert.equal(diagnostics.response.transactionId, transactionId);
+      assert.equal(diagnostics.response.headers["x-request-id"], "gateway-request-42");
+      assert.equal(diagnostics.response.headers["content-type"], "text/plain");
+      for (const secret of ["dummy-gateway-secret", "dummy-token", "response-cookie", "private-debug"]) {
+        assert(!error.message.includes(secret));
+      }
+      assert.deepEqual(diagnostics, error.httpDiagnostics);
+      return true;
+    });
+    assert.equal(fixture.requests.length, 1);
   });
 
   test(`${service}: optional X-Sp-Secret satisfies the gateway and survives same-origin redirects`, async (t) => {
@@ -204,23 +267,10 @@ test("MCP launcher uses each connection's own optional gateway secret", async (t
   }
   const configFile = path.join(directory, "config.json");
   fs.writeFileSync(configFile, JSON.stringify(config));
-  const requireSdk = createRequire(path.join(__dirname, "jira-mcp", "package.json"));
-  const { Client } = await import(pathToFileURL(requireSdk.resolve("@modelcontextprotocol/sdk/client/index.js")).href);
-  const { StdioClientTransport } = await import(pathToFileURL(requireSdk.resolve("@modelcontextprotocol/sdk/client/stdio.js")).href);
   for (const service of ["jira", "confluence"]) {
     for (const entry of config.connections[service]) {
-      const transport = new StdioClientTransport({
-        command: process.execPath,
-        args: [path.join(__dirname, "..", "scripts", "launch-mcp.mjs"), service, entry.id],
-        env: {
-          ...process.env, TESTDOCS_CONFIG_FILE: configFile, TESTDOCS_CONFIG_DIR: directory,
-          JIRA_SP_SECRET: "wrong-inherited-secret", CONFLUENCE_SP_SECRET: "wrong-inherited-secret"
-        },
-        stderr: "pipe"
-      });
-      const mcp = new Client({ name: "gateway-test", version: "1.0.0" });
+      const mcp = await launchMcp(service, entry.id, directory);
       try {
-        await mcp.connect(transport);
         const result = await mcp.callTool({ name: service === "jira" ? "get_issue" : "get_page", arguments: service === "jira" ? { key: "DEMO-42" } : { pageId: "42" } });
         assert.notEqual(result.isError, true);
         assert.equal(fixture.requests.at(-1).headers["x-sp-secret"], entry.spSecret);
@@ -228,6 +278,215 @@ test("MCP launcher uses each connection's own optional gateway secret", async (t
     }
   }
   assert.equal(fixture.requests.length, 4);
+});
+
+for (const mode of ["basic", "bearer", "browser_session"]) {
+  test(`Zephyr MCP ${mode}: saved Jira gateway header reaches reads, fallback, creation and correction`, async (t) => {
+    let denyCreation = false;
+    const fixture = await serve(t, (req, res) => {
+      const reply = (status, data) => {
+        res.writeHead(status, { "Content-Type": "application/json" });
+        res.end(data === undefined ? undefined : JSON.stringify(data));
+      };
+      if (req.headers["x-sp-secret"] !== "dummy-selected-jira-gateway") {
+        return reply(403, { message: "gateway denied" });
+      }
+      const route = `${req.method} ${req.url.split("?")[0]}`;
+      switch (route) {
+        case "GET /rest/api/2/issue/DEMO-42": return reply(200, { key: "DEMO-42" });
+        case "GET /rest/tests/1.0/project": return reply(200, [{ key: "DEMO" }]);
+        case "GET /rest/tests/1.0/testcase/search": return reply(404, { message: "use ATM API" });
+        case "GET /rest/tests/1.0/project/10000": return reply(200, { key: "DEMO" });
+        case "GET /rest/atm/1.0/testcase/search": return reply(200, [{ key: "DEMO-T1" }]);
+        case "GET /rest/atm/1.0/testcase/DEMO-T1": return reply(200, {
+          key: "DEMO-T1", testScript: { steps: [{ description: "Open page", expectedResult: "Page opens" }] }
+        });
+        case "POST /rest/atm/1.0/testcase":
+          if (denyCreation) {
+            res.writeHead(403, { "Content-Type": "text/plain", "X-Request-ID": "gateway-post-42" });
+            return res.end("Forbidden\nTransaction ID: dd55cf41-1e9c-4f74-8d9e-9c307a5e0a63");
+          }
+          return reply(201, { key: "DEMO-T2" });
+        case "PUT /rest/atm/1.0/testcase/DEMO-T2": return reply(204);
+        default: return reply(500, { message: "unexpected fixture route" });
+      }
+    });
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "testdocs-zephyr-gateway-"));
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const selected = {
+      id: "target", enabled: true, url: fixture.url, authMode: mode,
+      username: "tester", secret: "dummy-token", apiVersion: "2"
+    };
+    const config = {
+      version: 3,
+      connections: {
+        jira: [{ ...selected, id: "other", spSecret: "dummy-other-jira-gateway" }, selected],
+        confluence: [{ id: "wiki", enabled: true, baseUrl: fixture.url, authMode: "bearer", secret: "dummy-token", spSecret: "dummy-confluence-gateway" }],
+        eva: [], mcp: []
+      },
+      tms: { category: "zephyr", provider: "zephyr_scale", jiraConnectionId: selected.id }
+    };
+    const configFile = path.join(directory, "config.json");
+    fs.writeFileSync(configFile, JSON.stringify(config));
+    if (mode === "browser_session") {
+      fs.mkdirSync(path.join(directory, "sessions"));
+      fs.writeFileSync(path.join(directory, "sessions", "jira-target.json"), JSON.stringify({
+        service: "jira", baseUrl: fixture.url,
+        cookies: [{ name: "session", value: "dummy-cookie", domain: "127.0.0.1", path: "/", secure: false }]
+      }));
+    }
+
+    const unconfigured = await launchMcp("jira", selected.id, directory);
+    try {
+      const local = JSON.parse((await unconfigured.callTool({ name: "jira_get_connection_diagnostics", arguments: {} })).content[0].text);
+      assert.equal(local.connection.id, "target");
+      assert.equal(local.connection.gatewayHeader.configured, false);
+      assert.equal(local.lastHttpError, null);
+      assert.equal(local.runtime.sourceRoot, path.resolve(__dirname, ".."));
+      assert.equal(fixture.requests.length, 0, "Local diagnostics made an HTTP request");
+      for (const [name, input] of [
+        ["zephyr_get_projects", {}],
+        ["zephyr_get_test_case", { testCaseKey: "DEMO-T1" }]
+      ]) {
+        const result = await unconfigured.callTool({ name, arguments: input });
+        assert.equal(result.isError, true);
+        assert.match(result.content[0].text, /403/);
+        assert.equal(diagnosticsFrom(result.content[0].text).request.headers["X-Sp-Secret"], false);
+      }
+    } finally { await unconfigured.close(); }
+    assert.equal(fixture.requests.length, 2, "A gateway 403 must not trigger retries or fallback");
+    assert(fixture.requests.every((req) => req.headers["x-sp-secret"] === undefined));
+    fixture.requests.length = 0;
+
+    selected.spSecret = "dummy-selected-jira-gateway";
+    fs.writeFileSync(configFile, JSON.stringify(config));
+    const mcp = await launchMcp("jira", selected.id, directory);
+    const call = async (name, input = {}) => {
+      const result = await mcp.callTool({ name, arguments: input });
+      assert.notEqual(result.isError, true, JSON.stringify(result));
+      return JSON.parse(result.content[0].text);
+    };
+    try {
+      const configured = await call("jira_get_connection_diagnostics");
+      assert.equal(configured.connection.gatewayHeader.configured, true);
+      assert.equal(configured.connection.gatewayHeader.valid, true);
+      assert.equal(configured.lastHttpError, null, "HTTP error history survived a process restart");
+      assert.equal(fixture.requests.length, 0);
+      assert.equal((await call("get_issue", { key: "DEMO-42" })).key, "DEMO-42");
+      assert.equal((await call("zephyr_get_projects"))[0].key, "DEMO");
+      assert.equal((await call("zephyr_get_test_case", { testCaseKey: "DEMO-T1" })).testScript.steps.length, 1);
+      assert.equal((await call("zephyr_search_test_cases", { projectId: "10000" })).results[0].key, "DEMO-T1");
+      const created = await call("zephyr_create_test_case", {
+        confirmed: true, projectKey: "DEMO", folder: "/", name: "Gateway fixture",
+        steps: [{ description: "Open page", expectedResult: "Page opens" }]
+      });
+      assert.equal(created.key, "DEMO-T2");
+      assert.equal((await call("zephyr_update_session_test_case", {
+        confirmed: true, testCaseKey: created.key, name: "Corrected gateway fixture"
+      })).key, created.key);
+      denyCreation = true;
+      const denied = await mcp.callTool({ name: "zephyr_create_test_case", arguments: {
+        confirmed: true, projectKey: "DEMO", folder: "/", name: "Private case content",
+        steps: [{ description: "Private step content", expectedResult: "Private result content" }]
+      } });
+      assert.equal(denied.isError, true);
+      const text = denied.content[0].text;
+      const diagnostics = diagnosticsFrom(text);
+      assert.equal(diagnostics.request.method, "POST");
+      assert.equal(diagnostics.request.url, `${fixture.url}/rest/atm/1.0/testcase`);
+      assert.equal(diagnostics.request.headers["X-Sp-Secret"], true);
+      assert.equal(diagnostics.request.authScheme, mode === "browser_session" ? "cookie" : mode);
+      assert.equal(diagnostics.request.bodyBytes, Buffer.byteLength(fixture.requests.at(-1).body));
+      assert.equal(diagnostics.response.status, 403);
+      assert.equal(diagnostics.response.transactionId, "dd55cf41-1e9c-4f74-8d9e-9c307a5e0a63");
+      assert.equal(diagnostics.response.headers["x-request-id"], "gateway-post-42");
+      const requestCount = fixture.requests.length;
+      const recovered = await call("jira_get_connection_diagnostics");
+      assert.deepEqual(recovered.lastHttpError, diagnostics);
+      assert.equal(recovered.serverPermissionsChecked, false);
+      assert.equal(fixture.requests.length, requestCount, "Reading the error history retried a write");
+      for (const secret of [selected.spSecret, "dummy-token", "dummy-cookie", "Private case content", "Private step content", "Private result content"]) {
+        assert(!text.includes(secret));
+        assert(!JSON.stringify(recovered).includes(secret));
+      }
+    } finally { await mcp.close(); }
+    assert.deepEqual(fixture.requests.map((req) => `${req.method} ${req.url.split("?")[0]}`), [
+      "GET /rest/api/2/issue/DEMO-42", "GET /rest/tests/1.0/project",
+      "GET /rest/atm/1.0/testcase/DEMO-T1", "GET /rest/tests/1.0/testcase/search",
+      "GET /rest/tests/1.0/project/10000", "GET /rest/atm/1.0/testcase/search",
+      "POST /rest/atm/1.0/testcase", "PUT /rest/atm/1.0/testcase/DEMO-T2",
+      "POST /rest/atm/1.0/testcase"
+    ]);
+    for (const req of fixture.requests) {
+      assert.equal(req.headers["x-sp-secret"], selected.spSecret);
+      if (mode === "browser_session") {
+        assert.equal(req.headers.cookie, "session=dummy-cookie");
+        assert.equal(req.headers.authorization, undefined);
+      } else {
+        assert.equal(req.headers.authorization, mode === "bearer"
+          ? "Bearer dummy-token" : `Basic ${Buffer.from("tester:dummy-token").toString("base64")}`);
+      }
+    }
+  });
+}
+
+test("HTTP diagnostics omit query values and redact reflected Basic, Bearer and cookie credentials before truncation", async (t) => {
+  const { fetchWithSpSecret, withHttpDiagnostics } = require("./atlassian-http.cjs");
+  for (const authentication of [
+    { Authorization: "Bearer dummy-bearer-credential" },
+    { Authorization: `Basic ${Buffer.from("tester:dummy-basic-password").toString("base64")}` },
+    { Cookie: "session=dummy-session-cookie; other=dummy-other-cookie" }
+  ]) {
+    const fixture = await serve(t, (req, res) => {
+      res.writeHead(403, { "Content-Type": "text/plain", "X-Request-ID": "dummy-gateway-secret" });
+      res.end(JSON.stringify({ authorization: req.headers.authorization, cookie: req.headers.cookie,
+        token: "dummy-bearer-credential", password: "dummy-basic-password", gateway: req.headers["x-sp-secret"] }));
+    });
+    const response = await fetchWithSpSecret(`${fixture.url}/probe?token=private-query-value`, {
+      method: "POST", headers: { ...authentication, "Content-Type": "application/json" },
+      body: '{"private":"private-body-value"}'
+    }, "dummy-gateway-secret");
+    const body = await response.text();
+    const error = withHttpDiagnostics(new Error(body), response, body);
+    assert.equal(error.httpDiagnostics.request.url, `${fixture.url}/probe?[omitted]`);
+    assert.equal(error.httpDiagnostics.response.url, `${fixture.url}/probe?[omitted]`);
+    assert.equal(error.httpDiagnostics.response.headers["x-request-id"], "[REDACTED]");
+    for (const value of [...Object.values(authentication), "dummy-gateway-secret", "dummy-session-cookie", "dummy-other-cookie", "private-query-value", "private-body-value"]) {
+      assert(!error.message.includes(value));
+    }
+    if (authentication.Authorization?.startsWith("Basic")) assert(!error.message.includes("dummy-basic-password"));
+    if (authentication.Authorization?.startsWith("Bearer")) assert(!error.message.includes("dummy-bearer-credential"));
+  }
+  for (const service of ["jira", "zephyr", "confluence"]) {
+    const fixture = await serve(t, (req, res) => {
+      res.writeHead(403, { "Content-Type": "text/plain" });
+      res.end("x".repeat(295) + "dummy-token");
+    });
+    await assert.rejects(client(service, fixture.url, "bearer")(), (error) => {
+      assert(!error.message.includes("dummy"), "A truncated credential prefix leaked");
+      return true;
+    });
+  }
+});
+
+test("HTTP diagnostics describe the final request after a gateway POST-to-GET redirect", async (t) => {
+  const fixture = await serve(t, (req, res) => {
+    if (req.url !== "/done") {
+      res.writeHead(302, { Location: "/done" });
+      return res.end();
+    }
+    res.writeHead(403, { "Content-Type": "text/plain" });
+    res.end("Forbidden");
+  });
+  await assert.rejects(client("zephyr", fixture.url, "bearer", undefined, "dummy-gateway-secret")("POST", { name: "private" }), (error) => {
+    assert.equal(error.httpDiagnostics.request.method, "GET");
+    assert.equal(error.httpDiagnostics.request.url, `${fixture.url}/done`);
+    assert.equal(error.httpDiagnostics.request.redirectsFollowed, 1);
+    assert.equal(error.httpDiagnostics.request.bodyBytes, undefined);
+    assert.equal(error.httpDiagnostics.request.headers["Content-Type"], "");
+    return true;
+  });
+  assert.equal(fixture.requests.length, 2);
 });
 
 for (const service of ["jira", "zephyr"]) {

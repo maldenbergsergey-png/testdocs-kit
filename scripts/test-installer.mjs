@@ -161,7 +161,7 @@ try {
     assert(result.status !== 0 && result.stderr.includes("Выберите только один TLS-флаг"), "Конфликтующие TLS-флаги не отклонены до установки/обновления.");
     assert(fs.readFileSync(privateConfig, "utf8") === beforeConflict, "Конфликтующие флаги изменили конфигурацию.");
   }
-  assert(savedPrivateConfig.enableTestCaseCreation === false, "Запись кейсов должна быть отключена без opt-in.");
+  assert(!Object.hasOwn(savedPrivateConfig, "enableTestCaseCreation"), "Устаревший opt-in создания кейсов остался в конфигурации.");
   assert(savedPrivateConfig.connections.jira[0].enableBugCreation === true, "Не включено создание багов Jira по явному запросу.");
   assert(savedPrivateConfig.connections.jira[0].enableChecklistCommentPublication === true, "Не включена явная публикация checklist в Jira.");
   assert(savedPrivateConfig.connections.jira[0].enableReleaseTestRunCreation === true, "Не включено защищённое создание Test Run и связанной QA-задачи.");
@@ -201,14 +201,16 @@ try {
   assert(fs.readFileSync(codexConfig, "utf8").includes("jira_create_bug"), "Codex не получил разрешённый tool создания багов.");
   assert(fs.readFileSync(codexConfig, "utf8").includes("zephyr_create_test_run"), "Codex не получил разрешённый tool создания Test Run.");
   assert(fs.readFileSync(codexConfig, "utf8").includes("jira_create_qa_work_item"), "Codex не получил разрешённый tool создания связанной QA-задачи.");
+  assert(fs.readFileSync(codexConfig, "utf8").includes('"zephyr_create_test_case"'), "Создание новых кейсов должно быть доступно без opt-in.");
+  assert(fs.readFileSync(codexConfig, "utf8").includes('"zephyr_update_session_test_case"'), "Исправление новых кейсов должно быть доступно без opt-in.");
   assert(fs.readFileSync(codexConfig, "utf8").includes("testdocs_delivery"), "Codex не получил QA Report MCP.");
   assert(JSON.parse(fs.readFileSync(genericConfig, "utf8")).mcpServers?.testdocs_delivery, "Generic client не получил QA Report MCP.");
 
-  const caseOptIn = spawnSync(process.execPath, [path.join(scriptsDir, "install.mjs"), "--reuse", "--enable-test-case-writes", "--skip-dependencies", "--no-cli"], { cwd: repoRoot, env, encoding: "utf8", timeout: 30000 });
-  assert(caseOptIn.status === 0, caseOptIn.stdout + caseOptIn.stderr);
-  assert(JSON.parse(fs.readFileSync(privateConfig, "utf8")).enableTestCaseCreation === true, "Case opt-in was not saved.");
+  const caseCompatibility = spawnSync(process.execPath, [path.join(scriptsDir, "install.mjs"), "--reuse", "--enable-test-case-writes", "--skip-dependencies", "--no-cli"], { cwd: repoRoot, env, encoding: "utf8", timeout: 30000 });
+  assert(caseCompatibility.status === 0, caseCompatibility.stdout + caseCompatibility.stderr);
+  assert(!Object.hasOwn(JSON.parse(fs.readFileSync(privateConfig, "utf8")), "enableTestCaseCreation"), "Legacy flag restored an obsolete case-creation gate.");
   const caseToolsConfig = fs.readFileSync(codexConfig, "utf8");
-  assert(caseToolsConfig.includes('"zephyr_create_test_case"') && caseToolsConfig.includes('"zephyr_update_session_test_case"'), "Case opt-in did not register session-safe tools.");
+  assert(caseToolsConfig.includes('"zephyr_create_test_case"') && caseToolsConfig.includes('"zephyr_update_session_test_case"'), "Legacy flag changed the session-safe case tools.");
   assert(!caseToolsConfig.includes('"zephyr_update_test_case"'), "Existing-case update leaked into client configuration.");
 
   const openCode = JSON.parse(fs.readFileSync(openCodeConfig, "utf8"));
@@ -216,6 +218,7 @@ try {
   assert(openCode.mcp?.testdocs_confluence, "Не добавлен OpenCode stable Confluence MCP.");
   assert(openCode.mcp?.testdocs_delivery, "Не добавлен OpenCode stable QA Report MCP.");
   assert(!openCode.permissions, "В stable-конфиг попало несовместимое поле permissions.");
+  assert(openCode.permission?.testdocs_jira_jira_publish_checklist_comment === "ask", "Публикация checklist в OpenCode не требует подтверждения клиента.");
   if (spawnSync("opencode", ["--version"], { env, stdio: "ignore" }).status === 0) {
     const validation = spawnSync("opencode", ["debug", "config"], {
       cwd: testRoot,
@@ -223,7 +226,20 @@ try {
       encoding: "utf8"
     });
     assert(validation.status === 0, `OpenCode отклонил stable-конфиг установщика: ${validation.stderr || validation.error || ""}`);
+    assert(JSON.parse(validation.stdout).permission?.testdocs_jira_jira_publish_checklist_comment === "ask", "Клиент не загрузил правило подтверждения публикации.");
   }
+
+  // JSONC fallback must carry the same gate without rewriting user configuration.
+  const jsonc = '{\n// user config\n"mcp": {}\n}\n';
+  fs.writeFileSync(openCodeConfig, jsonc);
+  const fallbackResult = spawnSync(process.execPath, [
+    path.join(scriptsDir, "install.mjs"), "--clients", "opencode", "--answers", answersFile,
+    "--skip-dependencies", "--no-cli", "--skip-browser-auth"
+  ], { cwd: repoRoot, env, encoding: "utf8" });
+  assert(fallbackResult.status === 0, `Не подготовлен JSONC-фрагмент: ${fallbackResult.stderr}`);
+  assert(fs.readFileSync(openCodeConfig, "utf8") === jsonc, "Перезаписана JSONC-конфигурация пользователя.");
+  const fallback = JSON.parse(fs.readFileSync(path.join(testRoot, "private-config", "client-snippets", "opencode-stable.json"), "utf8"));
+  assert(fallback.permission?.testdocs_jira_jira_publish_checklist_comment === "ask", "JSONC-фрагмент не содержит подтверждения публикации.");
 
   // Конфиг, созданный ошибочной версией установщика, должен мигрировать в stable.
   fs.writeFileSync(openCodeConfig, JSON.stringify({
@@ -251,6 +267,7 @@ try {
   assert(migratedOpenCode.mcp?.testdocs_jira, "После миграции не добавлен stable Jira MCP.");
   assert(!migratedOpenCode.mcp?.servers, "После миграции осталось поле mcp.servers.");
   assert(!migratedOpenCode.permissions, "После миграции осталось поле permissions.");
+  assert(migratedOpenCode.permission?.testdocs_jira_jira_publish_checklist_comment === "ask", "Миграция потеряла подтверждение публикации checklist.");
   if (spawnSync("opencode", ["--version"], { env, stdio: "ignore" }).status === 0) {
     const migratedValidation = spawnSync("opencode", ["debug", "config"], {
       cwd: testRoot,
@@ -281,7 +298,8 @@ try {
   const v2OpenCode = JSON.parse(fs.readFileSync(openCodeConfig, "utf8"));
   assert(v2OpenCode.mcp?.servers?.existing_server, "Потерян существующий OpenCode V2 MCP.");
   assert(v2OpenCode.mcp?.servers?.testdocs_jira, "Не добавлен OpenCode V2 Jira MCP.");
-  assert(!v2OpenCode.permissions, "В OpenCode V2 без необходимости добавлено поле permissions.");
+  assert(v2OpenCode.permissions?.some((rule) => rule.action === "testdocs_jira_jira_publish_checklist_comment" && rule.resource === "*" && rule.effect === "ask"), "OpenCode V2 не требует подтверждения публикации checklist.");
+  assert(!v2OpenCode.permission, "В OpenCode V2 попало stable-поле permission.");
 
   // Browser-session mode must not require a password and must not open a browser in test mode.
   fs.writeFileSync(answersFile, JSON.stringify({

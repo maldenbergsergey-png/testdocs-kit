@@ -17,6 +17,7 @@ These deliberately small, anonymized examples demonstrate the repository's archi
 - [`good/insufficient-context.md`](good/insufficient-context.md) — safe handling of missing information.
 - [`good/standard-derivation.md`](good/standard-derivation.md) — evidence-backed extraction of a reusable writing rule.
 - [`good/integration-context-bundle.md`](good/integration-context-bundle.md) — a read-only Jira/knowledge context bundle that preserves unavailable TMS coverage as a gap.
+- [`good/concise-bug-report-ru.md`](good/concise-bug-report-ru.md) - a reproducible bug draft without speculation about its cause.
 
 ## Bad examples
 
@@ -30,3 +31,5 @@ Example labels such as item names and case IDs are fictional.
 The anonymized examples under [`workflows/`](workflows/) demonstrate checklist-only, compact single-section checklist, full-package, no-change, create/update/retire, bugfix, insufficient-context, and review-with-fix outputs. They illustrate the rules but do not define policy.
 
 [`workflows/task-execution-report.md`](workflows/task-execution-report.md) shows plain-language results, an unobserved UI criterion, inline JSON, and a screenshot in the actual-result cell.
+
+[`workflows/concise-fact-and-comment.md`](workflows/concise-fact-and-comment.md) shows how to shorten facts and comments while preserving separate checks and material limitations.

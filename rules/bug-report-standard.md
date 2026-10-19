@@ -2,7 +2,7 @@
 
 **Status:** active portable baseline; project-specific placeholders remain unresolved until supplied.
 
-Apply the shared [output language and punctuation rules](core.md#язык-и-оформление-результатов) to the summary, reproduction steps, results, and evidence captions.
+Apply shared [quality criteria](core.md#качество-всех-qa-артефактов) and [output language rules](core.md#язык-и-оформление-результатов) to the summary, steps, results and evidence captions.
 
 ## Evidence and sufficiency
 
@@ -32,7 +32,7 @@ The following choice applies to Jira only. Eva uses the tester-selected feature 
 
 ## Content
 
-Capture these semantic blocks when supported by the source:
+Use these semantic blocks when they help reproduce or understand this defect; they are not a requirement to fill every section:
 
 1. short context or preconditions;
 2. numbered reproduction steps;
@@ -44,7 +44,7 @@ Capture these semantic blocks when supported by the source:
 
 Use the shortest executable reproduction path. Keep one action per step when separation improves reproducibility. Include required initial state, test-user role without credentials, exact page URL or API endpoint, and app/build version when relevant. Do not replace a concrete target with “open the project page.”
 
-Describe the actual result as observable symptoms. Put a suspected cause only in a separately marked hypothesis. Expected result is mandatory for a create-ready bug and must come from a requirement, analytics, design, accepted behavior, or an explicit user statement. If it cannot be established, prepare a draft but stop before Jira creation and request clarification.
+Describe the actual result as observable symptoms. Omit a suspected cause unless it helps investigation, and label it as a hypothesis. Expected result is mandatory for a create-ready bug and must come from a requirement, analytics, design, accepted behavior, or an explicit user statement. If it cannot be established, prepare a draft but stop before creation and request clarification.
 
 Keep actual and expected results a short, directly comparable pair under the same conditions. Preserve clear requirement wording, terms and values; describe the essential behavior so the reader does not need to open a source. Use a list only when needed for clarity. Keep document/design links in `Материалы` (or the checklist's `Комментарий`), not in result prose. Omit other checks, scope-negotiation history and tool narration. Apply [evidence rules](execution-evidence-rules.md) to captures, expected/actual pairs and relevant response excerpts; these rules do not initiate a new test run when only drafting a bug.
 
@@ -73,7 +73,7 @@ Do not duplicate a semantic block in both a dedicated Jira field and `Описа
 ...
 ```
 
-Omit empty optional sections. Never replace a missing result with an invented generic statement.
+Omit empty optional sections and notes about absent optional materials unless their absence affects reproduction or assessment. Never replace a missing result with an invented generic statement.
 
 ## Environment
 

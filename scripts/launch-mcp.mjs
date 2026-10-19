@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
+import { activeRelease, startAutoUpdateChecks } from "./auto-update.mjs";
 import atlassianHttp from "../mcp/atlassian-http.cjs";
 import os from "node:os";
 import path from "node:path";
@@ -9,6 +10,19 @@ import { maestroLaunch, maestroSpawnCommand } from "./maestro-config.mjs";
 import { requiresShell } from "./command-shell.mjs";
 import { getConfigFile, getSessionFile, getDataDir, serviceEntries, repoRoot } from "./paths.mjs";
 import { connectionList, findConnection, hasQaTools, migrateConfig, sessionKey, usesZephyr } from "./config-model.mjs";
+
+// Older client registrations keep working after activation. Each server stays on
+// the release it started with; only a subsequent launch selects the new release.
+const selectedRoot = activeRelease();
+if (selectedRoot !== repoRoot && process.env.TESTDOCS_AUTO_UPDATE_ROUTED !== "1") {
+  const routed = spawn(process.execPath, [path.join(selectedRoot, "scripts", "launch-mcp.mjs"), ...process.argv.slice(2)], {
+    cwd: selectedRoot, env: { ...process.env, TESTDOCS_AUTO_UPDATE_ROUTED: "1" }, stdio: "inherit"
+  });
+  for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => routed.kill(signal));
+  routed.on("error", () => { process.stderr.write("Testdocs Kit: не удалось запустить активную версию.\n"); process.exit(1); });
+  routed.on("exit", (code) => process.exit(code ?? 1));
+  await new Promise(() => {});
+}
 
 function fail(message) {
   process.stderr.write(`Testdocs Kit: ${message}\n`);
@@ -35,7 +49,6 @@ function buildEnvironment(service, connectionId, config) {
   const common = {
     ...process.env,
     TESTDOCS_ENABLE_WRITES: config.enableWrites ? "1" : "0",
-    TESTDOCS_ENABLE_TEST_CASE_CREATION: config.enableTestCaseCreation === true ? "1" : "0",
     TESTDOCS_ENABLE_CHECKLIST_COMMENT_PUBLICATION:
       config.enableChecklistCommentPublication === true ? "1" : "0",
     TESTDOCS_ENABLE_BUG_CREATION: config.enableBugCreation === true ? "1" : "0",
@@ -59,6 +72,7 @@ function buildEnvironment(service, connectionId, config) {
     return {
       ...common,
       JIRA_URL: jira.url,
+      JIRA_CONNECTION_ID: jira.id,
       JIRA_EMAIL: jira.username || "",
       JIRA_TOKEN: jira.secret || "",
       JIRA_SP_SECRET: atlassianHttp.validateSpSecret(jira.spSecret),
@@ -148,6 +162,7 @@ if (service !== "maestro" && !Object.hasOwn(serviceEntries, service)) {
 }
 
 const config = readConfig();
+startAutoUpdateChecks();
 let launch;
 if (service === "maestro") {
   try {

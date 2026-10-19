@@ -21,7 +21,7 @@ Preserve raw field and lifecycle values. Map them to the neutral context bundle 
 
 ## Write capability checklist
 
-Follow [external write rules](../../rules/external-write-rules.md) and the [temporary update restriction](../../rules/update-rules.md). After installer opt-in, the bundled adapter exposes creation and registry-guarded correction of cases created by the current MCP process. Other case updates remain proposal-only, regardless of baseline fingerprints. Use the field mapping below for supported operations.
+Follow [external write rules](../../rules/external-write-rules.md) and the [temporary update restriction](../../rules/update-rules.md). For the selected Zephyr connection, the bundled adapter exposes creation and registry-guarded correction without installer opt-in. Create only on explicit create intent; correct only new cases created in this same chat on explicit correction intent. The current MCP creation registry is an additional guard, not permission to edit another chat's case. Previously existing cases remain proposal-only, regardless of baseline fingerprints. Use the field mapping below for supported operations.
 
 ## Test Run capability checklist
 
@@ -42,6 +42,8 @@ The bundled Server/DC adapter uses the official public `POST /rest/atm/1.0/testr
 Do not treat test-case creation capability as Test Run capability. Resolve testers through Jira assignable-user search and use the connector-returned user key rather than a display name or email address.
 
 ## Compatibility
+
+For a `400` or `403`, preserve the exact operation and observed response; `403 Forbidden` alone does not prove missing project or folder permissions. Use the bundled `jira_get_connection_diagnostics` read-only tool to inspect the running adapter's source path, code fingerprint, selected Jira connection, saved gateway-header presence, and last sanitized HTTP error. This tool performs no network request and does not retry creation. A configured corporate `X-Sp-Secret` is part of the connection's normal authentication; keep its value outside chat and use the standard adapter's saved configuration. If the tool is absent or `lastHttpError` is null, report that diagnostic gap rather than inventing header values or a permission diagnosis. Use the observed transaction/request ID for gateway-side verification. Preserve actual client denials and the existing write boundary.
 
 Do not hard-code one Cloud, Server, or Data Center API schema into the QA skills. Record deployment and product version in the connection profile, then adapt the MCP tool output to `rules/integration-rules.md`.
 

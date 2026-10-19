@@ -74,6 +74,8 @@ For an explicitly requested repair of a previously created run, read it with `ze
 
 For a proposal, return:
 
+Keep inclusion reasons short, put shared release/folder context once, and omit empty optional sections. Preserve the complete required creation payloads and source-defined Jira description; do not repeat them in an additional narrative summary.
+
 ```text
 Status: TEST_RUN_PROPOSAL — NOT CREATED
 Release and scope: ...
@@ -92,7 +94,6 @@ Linked Jira QA work item:
 - issue type, summary, description, release, component/routing, reporter, assignee, specialist, Test Run relation
 
 Capabilities and limitations: ...
-External writes performed: none
 ```
 
 After creation, return the stable Test Run key/URL and Jira issue key/URL supplied by the connectors, attached-case count, verified assignment count and balance by tester, final Test Run name, Jira summary and description convention used, and any partial failures. Never invent a URL or claim that a relation or assignment exists without a successful read-back verification.
