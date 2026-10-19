@@ -33,7 +33,17 @@ global.fetch = async (url, options = {}) => {
     return client;
   }
   const defaultClient = await connect(false);
-  const defaultTools = (await defaultClient.listTools()).tools.map(({ name }) => name);
+  assert.match(defaultClient.getInstructions(), /HTTP 403 alone does not establish missing project permissions/);
+  const inventory = (await defaultClient.listTools()).tools;
+  const defaultTools = inventory.map(({ name }) => name);
+  assert.equal(inventory.find(({ name }) => name === "jira_get_connection_diagnostics").annotations.readOnlyHint, true);
+  const localDiagnostics = await defaultClient.callTool({ name: "jira_get_connection_diagnostics", arguments: {} });
+  assert.notEqual(localDiagnostics.isError, true);
+  const diagnostics = JSON.parse(localDiagnostics.content[0].text);
+  assert.equal(diagnostics.networkRequestPerformed, false);
+  assert.equal(diagnostics.connection.gatewayHeader.configured, false);
+  assert.equal(diagnostics.lastHttpError, null);
+  assert(!fs.existsSync(calls), "Local diagnostics reached the network");
   assert(defaultTools.includes("zephyr_create_test_case"));
   assert(defaultTools.includes("zephyr_update_session_test_case"));
   assert(!defaultTools.includes("zephyr_update_test_case"));
@@ -56,6 +66,7 @@ global.fetch = async (url, options = {}) => {
 
   const otherTms = await connect(true, "none");
   const otherTools = (await otherTms.listTools()).tools.map(({ name }) => name);
+  assert(otherTools.includes("jira_get_connection_diagnostics"));
   assert(!otherTools.includes("zephyr_create_test_case") && !otherTools.includes("zephyr_update_session_test_case"));
   await otherTms.close();
 

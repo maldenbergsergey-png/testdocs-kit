@@ -1,5 +1,6 @@
 const { validateHeaderValue } = require("node:http");
 const responseDiagnostics = new WeakMap();
+let lastHttpDiagnostics = null;
 
 function validateSpSecret(value = "") {
   if (typeof value !== "string") throw new Error("X-Sp-Secret должен быть строкой.");
@@ -93,9 +94,14 @@ function withHttpDiagnostics(error, response, body = "") {
       ...(transactionId ? { transactionId: redact(transactionId) } : {})
     }
   };
+  lastHttpDiagnostics = structuredClone(error.httpDiagnostics);
   // The SDK returns Error.message as MCP tool text, including in OpenCode.
   error.message = `${redact(error.message)}\nHTTP diagnostics: ${JSON.stringify(error.httpDiagnostics)}`;
   return error;
+}
+
+function getLastHttpDiagnostics() {
+  return structuredClone(lastHttpDiagnostics);
 }
 
 async function fetchWithSpSecret(url, options, spSecret = "") {
@@ -131,4 +137,4 @@ async function fetchWithSpSecret(url, options, spSecret = "") {
   }
 }
 
-module.exports = { validateSpSecret, redactSpSecret, fetchWithSpSecret, withHttpDiagnostics, redactHttpText };
+module.exports = { validateSpSecret, redactSpSecret, fetchWithSpSecret, withHttpDiagnostics, redactHttpText, getLastHttpDiagnostics };

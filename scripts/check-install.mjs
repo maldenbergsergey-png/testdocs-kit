@@ -143,6 +143,7 @@ async function main() {
   for (const jira of connectionList(config, "jira")) {
     const tools = await listTools("jira", jira.id, Client, StdioClientTransport);
     assert(tools.includes("get_issue"), "Jira MCP не отдал get_issue.");
+    assert(tools.includes("jira_get_connection_diagnostics"), "Подключённый Jira MCP не предоставляет локальную диагностику. Проверьте путь запуска и активный релиз.");
     assert(tools.includes("jira_get_bug_create_metadata"), "Jira MCP не отдал read-only metadata создания бага.");
     assert(tools.includes("jira_get_work_item_create_metadata"), "Jira MCP не отдал read-only metadata создания QA-задачи.");
     assert(tools.includes("jira_find_assignable_users"), "Jira MCP не отдал поиск назначаемых тестировщиков.");

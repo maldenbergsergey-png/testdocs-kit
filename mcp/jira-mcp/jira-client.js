@@ -1,6 +1,8 @@
 require("dotenv").config({ quiet: true });
 const crypto = require("node:crypto");
 const { fetchWithSpSecret, redactSpSecret, withHttpDiagnostics, redactHttpText } = require("../atlassian-http.cjs");
+const { createConnectionDiagnostics } = require("./connection-diagnostics");
+const getConnectionDiagnostics = createConnectionDiagnostics(process.env);
 
 const {
   createAuthRequiredError,
@@ -1290,6 +1292,7 @@ module.exports = {
   jiraRequest,
   zephyrRequest,
   tools: {
+    jira_get_connection_diagnostics: getConnectionDiagnostics,
     get_issue: getIssue,
     jira_get_bug_create_metadata: getBugCreateMetadata,
     jira_get_work_item_create_metadata: getWorkItemCreateMetadata,

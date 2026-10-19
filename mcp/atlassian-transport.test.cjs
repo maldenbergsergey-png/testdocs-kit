@@ -338,6 +338,12 @@ for (const mode of ["basic", "bearer", "browser_session"]) {
 
     const unconfigured = await launchMcp("jira", selected.id, directory);
     try {
+      const local = JSON.parse((await unconfigured.callTool({ name: "jira_get_connection_diagnostics", arguments: {} })).content[0].text);
+      assert.equal(local.connection.id, "target");
+      assert.equal(local.connection.gatewayHeader.configured, false);
+      assert.equal(local.lastHttpError, null);
+      assert.equal(local.runtime.sourceRoot, path.resolve(__dirname, ".."));
+      assert.equal(fixture.requests.length, 0, "Local diagnostics made an HTTP request");
       for (const [name, input] of [
         ["zephyr_get_projects", {}],
         ["zephyr_get_test_case", { testCaseKey: "DEMO-T1" }]
@@ -361,6 +367,11 @@ for (const mode of ["basic", "bearer", "browser_session"]) {
       return JSON.parse(result.content[0].text);
     };
     try {
+      const configured = await call("jira_get_connection_diagnostics");
+      assert.equal(configured.connection.gatewayHeader.configured, true);
+      assert.equal(configured.connection.gatewayHeader.valid, true);
+      assert.equal(configured.lastHttpError, null, "HTTP error history survived a process restart");
+      assert.equal(fixture.requests.length, 0);
       assert.equal((await call("get_issue", { key: "DEMO-42" })).key, "DEMO-42");
       assert.equal((await call("zephyr_get_projects"))[0].key, "DEMO");
       assert.equal((await call("zephyr_get_test_case", { testCaseKey: "DEMO-T1" })).testScript.steps.length, 1);
@@ -389,8 +400,14 @@ for (const mode of ["basic", "bearer", "browser_session"]) {
       assert.equal(diagnostics.response.status, 403);
       assert.equal(diagnostics.response.transactionId, "dd55cf41-1e9c-4f74-8d9e-9c307a5e0a63");
       assert.equal(diagnostics.response.headers["x-request-id"], "gateway-post-42");
+      const requestCount = fixture.requests.length;
+      const recovered = await call("jira_get_connection_diagnostics");
+      assert.deepEqual(recovered.lastHttpError, diagnostics);
+      assert.equal(recovered.serverPermissionsChecked, false);
+      assert.equal(fixture.requests.length, requestCount, "Reading the error history retried a write");
       for (const secret of [selected.spSecret, "dummy-token", "dummy-cookie", "Private case content", "Private step content", "Private result content"]) {
         assert(!text.includes(secret));
+        assert(!JSON.stringify(recovered).includes(secret));
       }
     } finally { await mcp.close(); }
     assert.deepEqual(fixture.requests.map((req) => `${req.method} ${req.url.split("?")[0]}`), [

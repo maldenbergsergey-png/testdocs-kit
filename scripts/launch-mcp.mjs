@@ -72,6 +72,7 @@ function buildEnvironment(service, connectionId, config) {
     return {
       ...common,
       JIRA_URL: jira.url,
+      JIRA_CONNECTION_ID: jira.id,
       JIRA_EMAIL: jira.username || "",
       JIRA_TOKEN: jira.secret || "",
       JIRA_SP_SECRET: atlassianHttp.validateSpSecret(jira.spSecret),

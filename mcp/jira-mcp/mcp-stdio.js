@@ -29,6 +29,8 @@ async function main() {
   const server = new McpServer({
     name: deliveryOnly ? "testdocs-delivery-mcp" : "jira-mcp",
     version: "1.0.0"
+  }, {
+    instructions: deliveryOnly ? undefined : "For Jira/Zephyr HTTP failures, use jira_get_connection_diagnostics to inspect this running adapter and its last sanitized HTTP error without making another HTTP request. HTTP 403 alone does not establish missing project permissions. A saved X-Sp-Secret is a connection-specific authentication header used by the standard adapter; do not request its value in chat. Diagnostics do not authorize or retry writes."
   });
 
   if (deliveryOnly) {
@@ -51,6 +53,16 @@ async function main() {
     await server.connect(transport);
     return;
   }
+
+  server.registerTool(
+    "jira_get_connection_diagnostics",
+    {
+      description: "Read local diagnostics from this running Jira/Zephyr adapter: loaded code path, version and fingerprint, selected connection, whether X-Sp-Secret is configured, and the last sanitized HTTP error. Use after 400/403 or when an HTTP diagnostics block is missing. Makes no HTTP requests, exposes no credential values, and does not check server permissions or retry case creation.",
+      inputSchema: z.object({}),
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false }
+    },
+    async () => toTextResult(tools.jira_get_connection_diagnostics())
+  );
 
   server.registerTool(
     "get_issue",

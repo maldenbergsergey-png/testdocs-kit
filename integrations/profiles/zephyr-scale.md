@@ -43,6 +43,8 @@ Do not treat test-case creation capability as Test Run capability. Resolve teste
 
 ## Compatibility
 
+For a `400` or `403`, preserve the exact operation and observed response; `403 Forbidden` alone does not prove missing project or folder permissions. Use the bundled `jira_get_connection_diagnostics` read-only tool to inspect the running adapter's source path, code fingerprint, selected Jira connection, saved gateway-header presence, and last sanitized HTTP error. This tool performs no network request and does not retry creation. A configured corporate `X-Sp-Secret` is part of the connection's normal authentication; keep its value outside chat and use the standard adapter's saved configuration. If the tool is absent or `lastHttpError` is null, report that diagnostic gap rather than inventing header values or a permission diagnosis. Use the observed transaction/request ID for gateway-side verification. Preserve actual client denials and the existing write boundary.
+
 Do not hard-code one Cloud, Server, or Data Center API schema into the QA skills. Record deployment and product version in the connection profile, then adapt the MCP tool output to `rules/integration-rules.md`.
 
 The bundled Jira MCP reads a complete Server/Data Center or compatible TM4J case through `/rest/atm/1.0/testcase/{key}` when available. It orders `testScript.steps` by `index`. When that endpoint is unavailable, it falls back internally to search and returns `_testdocs.complete: false`; do not treat that metadata-only response as evidence that the steps were checked. Search accepts a project key for the compatible `/rest/atm/1.0/testcase/search` endpoint and can recover a supported endpoint internally, reducing repeated client-visible failures.
