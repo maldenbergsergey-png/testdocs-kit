@@ -51,6 +51,30 @@ function client(service, url, mode, sessionFile, spSecret = "") {
   return (method = "GET", body) => api[service === "jira" ? "jiraRequest" : "zephyrRequest"]("/probe", method, body);
 }
 
+async function launchMcp(service, connectionId, directory) {
+  const requireSdk = createRequire(path.join(__dirname, "jira-mcp", "package.json"));
+  const { Client } = await import(pathToFileURL(requireSdk.resolve("@modelcontextprotocol/sdk/client/index.js")).href);
+  const { StdioClientTransport } = await import(pathToFileURL(requireSdk.resolve("@modelcontextprotocol/sdk/client/stdio.js")).href);
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [path.join(__dirname, "..", "scripts", "launch-mcp.mjs"), service, connectionId],
+    env: {
+      ...process.env, TESTDOCS_CONFIG_FILE: path.join(directory, "config.json"), TESTDOCS_CONFIG_DIR: directory,
+      TESTDOCS_AUTO_UPDATE: "0",
+      JIRA_SP_SECRET: "wrong-inherited-secret", CONFLUENCE_SP_SECRET: "wrong-inherited-secret"
+    },
+    stderr: "pipe"
+  });
+  const mcp = new Client({ name: "gateway-test", version: "1.0.0" });
+  try {
+    await mcp.connect(transport);
+    return mcp;
+  } catch (error) {
+    await mcp.close();
+    throw error;
+  }
+}
+
 for (const service of ["jira", "zephyr", "confluence"]) {
   for (const mode of ["basic", "bearer"]) {
     test(`${service} ${mode}: canonical redirects reach JSON and keep same-origin authentication`, async (t) => {
@@ -204,23 +228,10 @@ test("MCP launcher uses each connection's own optional gateway secret", async (t
   }
   const configFile = path.join(directory, "config.json");
   fs.writeFileSync(configFile, JSON.stringify(config));
-  const requireSdk = createRequire(path.join(__dirname, "jira-mcp", "package.json"));
-  const { Client } = await import(pathToFileURL(requireSdk.resolve("@modelcontextprotocol/sdk/client/index.js")).href);
-  const { StdioClientTransport } = await import(pathToFileURL(requireSdk.resolve("@modelcontextprotocol/sdk/client/stdio.js")).href);
   for (const service of ["jira", "confluence"]) {
     for (const entry of config.connections[service]) {
-      const transport = new StdioClientTransport({
-        command: process.execPath,
-        args: [path.join(__dirname, "..", "scripts", "launch-mcp.mjs"), service, entry.id],
-        env: {
-          ...process.env, TESTDOCS_CONFIG_FILE: configFile, TESTDOCS_CONFIG_DIR: directory,
-          JIRA_SP_SECRET: "wrong-inherited-secret", CONFLUENCE_SP_SECRET: "wrong-inherited-secret"
-        },
-        stderr: "pipe"
-      });
-      const mcp = new Client({ name: "gateway-test", version: "1.0.0" });
+      const mcp = await launchMcp(service, entry.id, directory);
       try {
-        await mcp.connect(transport);
         const result = await mcp.callTool({ name: service === "jira" ? "get_issue" : "get_page", arguments: service === "jira" ? { key: "DEMO-42" } : { pageId: "42" } });
         assert.notEqual(result.isError, true);
         assert.equal(fixture.requests.at(-1).headers["x-sp-secret"], entry.spSecret);
@@ -229,6 +240,112 @@ test("MCP launcher uses each connection's own optional gateway secret", async (t
   }
   assert.equal(fixture.requests.length, 4);
 });
+
+for (const mode of ["basic", "bearer", "browser_session"]) {
+  test(`Zephyr MCP ${mode}: saved Jira gateway header reaches reads, fallback, creation and correction`, async (t) => {
+    const fixture = await serve(t, (req, res) => {
+      const reply = (status, data) => {
+        res.writeHead(status, { "Content-Type": "application/json" });
+        res.end(data === undefined ? undefined : JSON.stringify(data));
+      };
+      if (req.headers["x-sp-secret"] !== "dummy-selected-jira-gateway") {
+        return reply(403, { message: "gateway denied" });
+      }
+      const route = `${req.method} ${req.url.split("?")[0]}`;
+      switch (route) {
+        case "GET /rest/api/2/issue/DEMO-42": return reply(200, { key: "DEMO-42" });
+        case "GET /rest/tests/1.0/project": return reply(200, [{ key: "DEMO" }]);
+        case "GET /rest/tests/1.0/testcase/search": return reply(404, { message: "use ATM API" });
+        case "GET /rest/tests/1.0/project/10000": return reply(200, { key: "DEMO" });
+        case "GET /rest/atm/1.0/testcase/search": return reply(200, [{ key: "DEMO-T1" }]);
+        case "GET /rest/atm/1.0/testcase/DEMO-T1": return reply(200, {
+          key: "DEMO-T1", testScript: { steps: [{ description: "Open page", expectedResult: "Page opens" }] }
+        });
+        case "POST /rest/atm/1.0/testcase": return reply(201, { key: "DEMO-T2" });
+        case "PUT /rest/atm/1.0/testcase/DEMO-T2": return reply(204);
+        default: return reply(500, { message: "unexpected fixture route" });
+      }
+    });
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "testdocs-zephyr-gateway-"));
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const selected = {
+      id: "target", enabled: true, url: fixture.url, authMode: mode,
+      username: "tester", secret: "dummy-token", apiVersion: "2"
+    };
+    const config = {
+      version: 3,
+      connections: {
+        jira: [{ ...selected, id: "other", spSecret: "dummy-other-jira-gateway" }, selected],
+        confluence: [{ id: "wiki", enabled: true, baseUrl: fixture.url, authMode: "bearer", secret: "dummy-token", spSecret: "dummy-confluence-gateway" }],
+        eva: [], mcp: []
+      },
+      tms: { category: "zephyr", provider: "zephyr_scale", jiraConnectionId: selected.id }
+    };
+    const configFile = path.join(directory, "config.json");
+    fs.writeFileSync(configFile, JSON.stringify(config));
+    if (mode === "browser_session") {
+      fs.mkdirSync(path.join(directory, "sessions"));
+      fs.writeFileSync(path.join(directory, "sessions", "jira-target.json"), JSON.stringify({
+        service: "jira", baseUrl: fixture.url,
+        cookies: [{ name: "session", value: "dummy-cookie", domain: "127.0.0.1", path: "/", secure: false }]
+      }));
+    }
+
+    const unconfigured = await launchMcp("jira", selected.id, directory);
+    try {
+      for (const [name, input] of [
+        ["zephyr_get_projects", {}],
+        ["zephyr_get_test_case", { testCaseKey: "DEMO-T1" }]
+      ]) {
+        const result = await unconfigured.callTool({ name, arguments: input });
+        assert.equal(result.isError, true);
+        assert.match(result.content[0].text, /403/);
+      }
+    } finally { await unconfigured.close(); }
+    assert.equal(fixture.requests.length, 2, "A gateway 403 must not trigger retries or fallback");
+    assert(fixture.requests.every((req) => req.headers["x-sp-secret"] === undefined));
+    fixture.requests.length = 0;
+
+    selected.spSecret = "dummy-selected-jira-gateway";
+    fs.writeFileSync(configFile, JSON.stringify(config));
+    const mcp = await launchMcp("jira", selected.id, directory);
+    const call = async (name, input = {}) => {
+      const result = await mcp.callTool({ name, arguments: input });
+      assert.notEqual(result.isError, true, JSON.stringify(result));
+      return JSON.parse(result.content[0].text);
+    };
+    try {
+      assert.equal((await call("get_issue", { key: "DEMO-42" })).key, "DEMO-42");
+      assert.equal((await call("zephyr_get_projects"))[0].key, "DEMO");
+      assert.equal((await call("zephyr_get_test_case", { testCaseKey: "DEMO-T1" })).testScript.steps.length, 1);
+      assert.equal((await call("zephyr_search_test_cases", { projectId: "10000" })).results[0].key, "DEMO-T1");
+      const created = await call("zephyr_create_test_case", {
+        confirmed: true, projectKey: "DEMO", folder: "/", name: "Gateway fixture",
+        steps: [{ description: "Open page", expectedResult: "Page opens" }]
+      });
+      assert.equal(created.key, "DEMO-T2");
+      assert.equal((await call("zephyr_update_session_test_case", {
+        confirmed: true, testCaseKey: created.key, name: "Corrected gateway fixture"
+      })).key, created.key);
+    } finally { await mcp.close(); }
+    assert.deepEqual(fixture.requests.map((req) => `${req.method} ${req.url.split("?")[0]}`), [
+      "GET /rest/api/2/issue/DEMO-42", "GET /rest/tests/1.0/project",
+      "GET /rest/atm/1.0/testcase/DEMO-T1", "GET /rest/tests/1.0/testcase/search",
+      "GET /rest/tests/1.0/project/10000", "GET /rest/atm/1.0/testcase/search",
+      "POST /rest/atm/1.0/testcase", "PUT /rest/atm/1.0/testcase/DEMO-T2"
+    ]);
+    for (const req of fixture.requests) {
+      assert.equal(req.headers["x-sp-secret"], selected.spSecret);
+      if (mode === "browser_session") {
+        assert.equal(req.headers.cookie, "session=dummy-cookie");
+        assert.equal(req.headers.authorization, undefined);
+      } else {
+        assert.equal(req.headers.authorization, mode === "bearer"
+          ? "Bearer dummy-token" : `Basic ${Buffer.from("tester:dummy-token").toString("base64")}`);
+      }
+    }
+  });
+}
 
 for (const service of ["jira", "zephyr"]) {
   test(`${service}: 307/308 preserve a POST request and its JSON body`, async (t) => {
