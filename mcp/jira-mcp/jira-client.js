@@ -1,6 +1,6 @@
 require("dotenv").config({ quiet: true });
 const crypto = require("node:crypto");
-const { fetchWithSpSecret, redactSpSecret } = require("../atlassian-http.cjs");
+const { fetchWithSpSecret, redactSpSecret, withHttpDiagnostics, redactHttpText } = require("../atlassian-http.cjs");
 
 const {
   createAuthRequiredError,
@@ -59,8 +59,8 @@ async function fetchWithNetworkDetails(url, options, system) {
   }
 }
 
-function transportError(message) {
-  return new Error(redactSpSecret(message, JIRA_SP_SECRET));
+function transportError(message, response, body) {
+  return withHttpDiagnostics(new Error(redactSpSecret(message, JIRA_SP_SECRET)), response, body);
 }
 
 async function jiraRequest(path, method = "GET", body, multipart = false) {
@@ -82,8 +82,9 @@ async function jiraRequest(path, method = "GET", body, multipart = false) {
 
   const contentType = res.headers.get("content-type") || "";
   const rawText = await res.text();
+  const safeText = redactSpSecret(redactHttpText(res, rawText), JIRA_SP_SECRET);
   if (JIRA_AUTH_MODE === "browser_session" && isAuthenticationFailure(res, rawText)) {
-    throw createAuthRequiredError("jira", "Сессия Jira отсутствует или истекла.");
+    throw withHttpDiagnostics(createAuthRequiredError("jira", "Сессия Jira отсутствует или истекла."), res, rawText);
   }
   const trimmedText = rawText.trim();
   const looksLikeJson =
@@ -97,17 +98,19 @@ async function jiraRequest(path, method = "GET", body, multipart = false) {
       data = JSON.parse(rawText);
     } catch (parseError) {
       throw transportError(
-        `Jira returned invalid JSON (${res.status}) from ${url}: ${JIRA_SP_SECRET ? "JSON parse error" : parseError.message}. Body starts with: ${redactSpSecret(rawText, JIRA_SP_SECRET).slice(0, 200)}`
+        `Jira returned invalid JSON (${res.status}) from ${url}: JSON parse error. Body starts with: ${safeText.slice(0, 200)}`,
+        res, rawText
       );
     }
   }
 
   if (!res.ok) {
     const details =
-      typeof data === "string" ? redactSpSecret(data, JIRA_SP_SECRET).slice(0, 300) : JSON.stringify(data);
+      typeof data === "string" ? safeText.slice(0, 300) : JSON.stringify(data);
 
     throw transportError(
-      `Jira request failed (${res.status} ${res.statusText}) for ${url}. Content-Type: ${contentType || "unknown"}. Body: ${details}`
+      `Jira request failed (${res.status} ${res.statusText}) for ${url}. Content-Type: ${contentType || "unknown"}. Body: ${details}`,
+      res, rawText
     );
   }
 
@@ -117,7 +120,8 @@ async function jiraRequest(path, method = "GET", body, multipart = false) {
 
   if (!looksLikeJson) {
     throw transportError(
-      `Jira returned non-JSON response (${res.status}) for ${url}. Content-Type: ${contentType || "unknown"}. Body starts with: ${redactSpSecret(rawText, JIRA_SP_SECRET).slice(0, 300)}`
+      `Jira returned non-JSON response (${res.status}) for ${url}. Content-Type: ${contentType || "unknown"}. Body starts with: ${safeText.slice(0, 300)}`,
+      res, rawText
     );
   }
 
@@ -497,8 +501,9 @@ async function zephyrRequest(path, method = "GET", body) {
 
   const contentType = res.headers.get("content-type") || "";
   const rawText = await res.text();
+  const safeText = redactSpSecret(redactHttpText(res, rawText), JIRA_SP_SECRET);
   if (JIRA_AUTH_MODE === "browser_session" && isAuthenticationFailure(res, rawText)) {
-    throw createAuthRequiredError("jira", "Сессия Jira/Zephyr отсутствует или истекла.");
+    throw withHttpDiagnostics(createAuthRequiredError("jira", "Сессия Jira/Zephyr отсутствует или истекла."), res, rawText);
   }
   const trimmedText = rawText.trim();
   const looksLikeJson =
@@ -512,17 +517,19 @@ async function zephyrRequest(path, method = "GET", body) {
       data = JSON.parse(rawText);
     } catch (parseError) {
       throw transportError(
-        `Zephyr returned invalid JSON (${res.status}) from ${url}: ${JIRA_SP_SECRET ? "JSON parse error" : parseError.message}. Body starts with: ${redactSpSecret(rawText, JIRA_SP_SECRET).slice(0, 200)}`
+        `Zephyr returned invalid JSON (${res.status}) from ${url}: JSON parse error. Body starts with: ${safeText.slice(0, 200)}`,
+        res, rawText
       );
     }
   }
 
   if (!res.ok) {
     const details =
-      typeof data === "string" ? redactSpSecret(data, JIRA_SP_SECRET).slice(0, 300) : JSON.stringify(data);
+      typeof data === "string" ? safeText.slice(0, 300) : JSON.stringify(data);
 
     const error = transportError(
-      `Zephyr request failed (${res.status}) for ${url}. Body: ${details}`
+      `Zephyr request failed (${res.status}) for ${url}. Body: ${details}`,
+      res, rawText
     );
     error.status = res.status;
     error.url = url;
@@ -535,7 +542,8 @@ async function zephyrRequest(path, method = "GET", body) {
 
   if (!looksLikeJson) {
     throw transportError(
-      `Zephyr returned non-JSON response (${res.status}) for ${url}. Body starts with: ${redactSpSecret(rawText, JIRA_SP_SECRET).slice(0, 300)}`
+      `Zephyr returned non-JSON response (${res.status}) for ${url}. Body starts with: ${safeText.slice(0, 300)}`,
+      res, rawText
     );
   }
 
