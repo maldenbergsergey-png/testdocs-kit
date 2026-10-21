@@ -75,6 +75,12 @@ Do not duplicate a semantic block in both a dedicated Jira field and `Описа
 
 Omit empty optional sections and notes about absent optional materials unless their absence affects reproduction or assessment. Never replace a missing result with an invented generic statement.
 
+## Tester voice
+
+- Write the report as the tester filing the defect: simple, direct language and exact interface terms. For a tester's supplied reproduction, first-person wording is natural: Открываю профиль, меняю имя на "Анна", нажимаю "Сохранить". Имя сохранилось, форма осталась открытой. Short numbered actions such as "Открыть профиль" are also valid; do not force "я" into every step.
+- Describe the problem itself, without "пользователь сообщил", "по запросу пользователя", "агент обнаружил" or a story about preparing the report. The tester's supplied observations may be written in their voice; material based only on a screenshot, log or source analysis must not become a claim of a personal test run.
+- Replace abstract assessments with the visible action and result, e.g. После нажатия "Сохранить" форма остаётся открытой. Avoid phrases like "В ходе комплексной верификации выявлено некорректное функционирование механизма сохранения". Remove stock introductions, bureaucratic language, filler, repeated conclusions and unsupported explanations of the cause. Keep the conditions and exact values needed to reproduce the defect.
+
 ## Environment
 
 - Record the environment category supported by the project, such as `DEV`, `STAGE`, or `PROD`, together with the exact page URL, API host, or application environment actually used. Environment names are portable concepts; their domains are project-specific and must come from supplied context or approved configuration.
@@ -107,11 +113,22 @@ Keep short requests, responses and code excerpts readable inline under [text and
 
 - Read create metadata for the exact Jira project and defect issue type before preparing the final create payload.
 - Inventory all pages of the selected issue type’s create fields, including optional custom fields. A project/type list without fields or a truncated metadata response is not sufficient.
-- Build a semantic mapping before creation: block → live field ID and name → schema/serialization → value, or an explicit reason for Description fallback. Check reproduction steps (`Шаги воспроизведения`, `Steps to reproduce`), actual result (`Фактический результат`, `Actual result`), and expected result (`Ожидаемый результат`, `Expected result`) individually; these names are semantic hints, not hard-coded IDs.
+- Build a semantic mapping before creation: block → live field ID and name → schema/serialization → value, or an explicit reason for Description fallback. Check these four blocks individually, even when their fields are optional:
+
+  | Block | Field-name hints |
+  | --- | --- |
+  | Environment/build | `Окружение`, `Среда`, `Environment`; standard `environment` or a custom field |
+  | Reproduction steps | `Шаги воспроизведения`, `Steps to reproduce`, `Reproduction steps` |
+  | Expected result | `Ожидаемый результат`, `Expected result` |
+  | Actual result | `Фактический результат`, `Actual result` |
+
+  Names are semantic hints, not fixed IDs or proof of a match. Also map other relevant blocks, such as preconditions or reproducibility, when dedicated fields exist.
 - Match fields by stable field ID plus displayed name and schema. Do not rely on a custom-field ID learned from another Jira or project.
 - Optional dedicated fields still take precedence over Description. Send them via the connector’s custom/additional field payload, using live IDs. For Cloud textarea fields use ADF when required; do not stringify ADF or send Wiki markup as plain ADF text.
+- Map each block independently. If Jira has only some dedicated fields, fill those fields and put only the remaining blocks in Description; never choose an all-in-Description fallback for convenience. A custom field named `Окружение` can be the intended destination even when the standard `environment` is absent. If several fields could represent the same block, resolve their purpose from the live schema or approved project mapping before writing.
+- If a typed dedicated field stores only part of a block, such as an environment category selected from allowed values, put that part in the field and preserve the remaining URL/browser/build details in Description or other matching fields. Do not discard details or duplicate the selected value merely to keep the block together.
 - Use Description fallback only when the complete schema has no matching writable field. An ambiguous field, unsupported serialization, permission error, or incomplete metadata is a mapping gap, not proof that the field is absent: resolve or report it before creation. Never retry a rejected custom-field payload by silently moving everything into Description.
-- Before writing, verify that each known semantic block has exactly one destination and all three reproduction/result blocks have been considered. After creation, read the issue back and check the actual saved dedicated fields, Description, and attachments. Report unverified or mismatched values without claiming success for them.
+- Before writing, verify that each known semantic block has exactly one destination and all four environment/reproduction/result blocks have been considered. If Description is required when all four blocks have dedicated fields, use concise source-backed context there, leaving those blocks in their own fields. After creation, read the issue back and compare each mapped value at its actual field ID, as well as Description and attachments; a returned key alone does not verify the content. Report empty, unverified or mismatched values without claiming success for them. Do not recreate the bug or perform an unrequested repair.
 - Use the defect issue type actually available in the target project. Do not silently create a Task or Story when no defect type is available.
 - Satisfy every required field. If a required value cannot be derived from approved project rules, the current Jira user, or supplied context, stop before creation and request it.
 - Let Jira record the authenticated user as reporter/author. Assign the new bug to that same authenticated user when the assignee field permits it; otherwise preserve the project default and report the limitation.

@@ -78,7 +78,7 @@ async function main() {
   server.registerTool(
     "jira_get_bug_create_metadata",
     {
-      description: "Read the authenticated Jira user and exact create-field metadata for one project before drafting or creating a bug. This is read-only. Use field IDs, schemas, required flags, defaults, and allowed values from this response; never reuse custom-field mappings from another project or Jira instance.",
+      description: "Read the authenticated Jira user and exact create-field metadata for one project before drafting or creating a bug. This is read-only. Inventory all selected issue-type fields, including optional environment, reproduction steps, expected result and actual result fields. Use field IDs, schemas, required flags, defaults, and allowed values from this response; never reuse custom-field mappings from another project or Jira instance.",
       inputSchema: z.object({
         projectKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/),
         issueTypeId: z.string().min(1).optional().describe("For Jira Cloud, omit first to list project issue types, then repeat with the selected defect issue type ID to retrieve its exact fields. Jira Server/DC returns expanded fields in one call.")
@@ -116,7 +116,7 @@ async function main() {
     server.registerTool(
       "jira_create_bug",
       {
-        description: "Create exactly one standalone Jira bug or defect subtask after explicit user intent and live create-metadata validation. A subtask requires an exact source-backed parentKey. Reporter/author remains the authenticated Jira user; assignee defaults to that same user when Jira exposes a usable identity. Supplied Server/DC attachments require descriptionFormat wiki: images become thumbnails, other files native attachment links. Cloud images fail preflight because this connector cannot insert ADF media. Returns partial failures with the created key; never retry the whole create call. Custom steps/results belong in additionalFields using live IDs, including optional fields.",
+        description: "Create exactly one standalone Jira bug or defect subtask after explicit user intent and live create-metadata validation. A subtask requires an exact source-backed parentKey. Reporter/author remains the authenticated Jira user; assignee defaults to that same user when Jira exposes a usable identity. Supplied Server/DC attachments require descriptionFormat wiki: images become thumbnails, other files native attachment links. Cloud images fail preflight because this connector cannot insert ADF media. Returns partial failures with the created key; never retry the whole create call. Dedicated environment, steps, expected result and actual result fields take precedence, even when optional: pass them in additionalFields using live IDs and schema-correct values; do not duplicate them in description. Write in plain tester language.",
         inputSchema: z.object({
           confirmed: z.literal(true),
           projectKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/),
@@ -131,7 +131,7 @@ async function main() {
             filename: z.string().min(1).optional().describe("Safe unique upload filename; defaults to the local basename."),
             mimeType: z.string().min(1)
           })).max(20).optional(),
-          additionalFields: z.record(z.string(), z.unknown()).optional(),
+          additionalFields: z.record(z.string(), z.unknown()).optional().describe("Live standard/custom field IDs for dedicated environment, steps, expected/actual results and other supported fields. Values pass through unchanged: use strings or typed values as the schema requires, including ADF objects for Cloud rich-text fields."),
           assignToCurrentUser: z.boolean().optional().default(true)
         }).refine((input) => Boolean(input.issueTypeId || input.issueTypeName), {
           message: "issueTypeId or issueTypeName from live create metadata is required."

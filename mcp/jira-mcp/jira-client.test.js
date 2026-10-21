@@ -66,8 +66,13 @@ test("jira_create_bug creates one issue and assigns it to the authenticated user
     issueTypeId: "1",
     parentKey: "DEMO-10",
     summary: "FE. Checkout — total is not recalculated",
-    description: "Steps:\n1. Open checkout",
-    additionalFields: { customfield_10001: "Total is recalculated" }
+    description: "Signed in as a customer.",
+    additionalFields: {
+      environment: "STAGE, https://qa.example.test/checkout, Chrome 128",
+      customfield_10001: "Total is recalculated",
+      customfield_10002: "1. Open checkout\n2. Change quantity from 1 to 2",
+      customfield_10003: "Total stays unchanged"
+    }
   });
 
   assert.equal(requests.length, 2);
@@ -75,6 +80,10 @@ test("jira_create_bug creates one issue and assigns it to the authenticated user
   assert.deepEqual(payload.fields.assignee, { name: "tester" });
   assert.deepEqual(payload.fields.parent, { key: "DEMO-10" });
   assert.equal(payload.fields.customfield_10001, "Total is recalculated");
+  assert.equal(payload.fields.environment, "STAGE, https://qa.example.test/checkout, Chrome 128");
+  assert.equal(payload.fields.customfield_10002, "1. Open checkout\n2. Change quantity from 1 to 2");
+  assert.equal(payload.fields.customfield_10003, "Total stays unchanged");
+  assert.equal(payload.fields.description, "Signed in as a customer.");
   assert.equal(payload.fields.reporter, undefined);
   assert.equal(result._testdocs.webUrl, "https://jira.example.test/browse/DEMO-42");
   assert.equal(result._testdocs.parentKey, "DEMO-10");

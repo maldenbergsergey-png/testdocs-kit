@@ -1,0 +1,889 @@
+[
+  {
+    "id": "dedicated_optional_ru",
+    "messages": [
+      "Создай самостоятельный баг в Jira DEMO. Я на STAGE, https://qa.example.invalid/profile/edit, Chrome 128, авторизован как редактор профиля. Ввожу в поле \"Имя\" значение \"Анна\" и нажимаю \"Сохранить\". Имя сохраняется, форма остаётся открытой. После сохранения форма должна закрываться."
+    ],
+    "context": {
+      "offline": true,
+      "sources_complete": true,
+      "tools": [
+        "jira_get_bug_create_metadata",
+        "jira_create_bug",
+        "get_issue"
+      ],
+      "bug_write_opt_in": true,
+      "deployment": "Server/DC",
+      "api_version": "2",
+      "current_user": {
+        "name": "tester",
+        "displayName": "QA Tester"
+      },
+      "assignable_current_user": true,
+      "metadata": {
+        "complete": true,
+        "project": "DEMO",
+        "issue_type": {
+          "id": "1",
+          "name": "Bug",
+          "subtask": false
+        },
+        "fields": {
+          "summary": {
+            "name": "Название",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "description": {
+            "name": "Описание",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "environment": {
+            "name": "Окружение",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "system": "environment"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_41001": {
+            "name": "Шаги воспроизведения",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_41002": {
+            "name": "Ожидаемый результат",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_41003": {
+            "name": "Фактический результат",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          }
+        }
+      },
+      "evidence": []
+    },
+    "task": "Верни текст ответа, решение о следующей записи, карту полей и точные аргументы следующего вызова, если они готовы. Живые вызовы запрещены."
+  },
+  {
+    "id": "cloud_adf_later_page",
+    "messages": [
+      "Создай самостоятельный баг в Jira DEMO. Я на STAGE, https://qa.example.invalid/profile/edit, Chrome 128, авторизован как редактор профиля. Ввожу в поле \"Имя\" значение \"Анна\" и нажимаю \"Сохранить\". Имя сохраняется, форма остаётся открытой. После сохранения форма должна закрываться."
+    ],
+    "context": {
+      "offline": true,
+      "sources_complete": true,
+      "tools": [
+        "jira_get_bug_create_metadata",
+        "jira_create_bug",
+        "get_issue"
+      ],
+      "bug_write_opt_in": true,
+      "deployment": "Cloud",
+      "api_version": "3",
+      "current_user": {
+        "accountId": "qa-account",
+        "displayName": "QA Tester"
+      },
+      "assignable_current_user": true,
+      "metadata": {
+        "complete": true,
+        "project": "DEMO",
+        "issue_type": {
+          "id": "1",
+          "name": "Bug",
+          "subtask": false
+        },
+        "fields": {
+          "summary": {
+            "name": "Название",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "description": {
+            "name": "Описание",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "environment": {
+            "name": "Environment",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "system": "environment"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_52001": {
+            "name": "Steps to reproduce",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_52002": {
+            "name": "Expected result",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_52003": {
+            "name": "Actual result",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          }
+        }
+      },
+      "evidence": [],
+      "serialization": "По прочитанному контракту все четыре семантических поля принимают ADF doc object, без строковой сериализации.",
+      "metadata_pages_read": 2,
+      "metadata_pages_total": 2,
+      "last_page_fields": [
+        "environment",
+        "customfield_52002",
+        "customfield_52003"
+      ]
+    },
+    "task": "Верни ответ, карту полей и точные аргументы следующего вызова. Живые вызовы запрещены."
+  },
+  {
+    "id": "partial_custom_environment",
+    "messages": [
+      "Создай самостоятельный баг в Jira DEMO. Я на STAGE, https://qa.example.invalid/profile/edit, Chrome 128, авторизован как редактор профиля. Ввожу в поле \"Имя\" значение \"Анна\" и нажимаю \"Сохранить\". Имя сохраняется, форма остаётся открытой. После сохранения форма должна закрываться."
+    ],
+    "context": {
+      "offline": true,
+      "sources_complete": true,
+      "tools": [
+        "jira_get_bug_create_metadata",
+        "jira_create_bug",
+        "get_issue"
+      ],
+      "bug_write_opt_in": true,
+      "deployment": "Server/DC",
+      "api_version": "2",
+      "current_user": {
+        "name": "tester",
+        "displayName": "QA Tester"
+      },
+      "assignable_current_user": true,
+      "metadata": {
+        "complete": true,
+        "project": "DEMO",
+        "issue_type": {
+          "id": "1",
+          "name": "Bug",
+          "subtask": false
+        },
+        "fields": {
+          "summary": {
+            "name": "Название",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "description": {
+            "name": "Описание",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_63001": {
+            "name": "Среда",
+            "required": false,
+            "schema": {
+              "type": "option",
+              "custom": "select"
+            },
+            "operations": [
+              "set"
+            ],
+            "allowedValues": [
+              {
+                "id": "71",
+                "value": "STAGE"
+              },
+              {
+                "id": "72",
+                "value": "PROD"
+              }
+            ]
+          },
+          "customfield_63002": {
+            "name": "Expected result",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          }
+        }
+      },
+      "evidence": [],
+      "approved_mapping": "Поле Среда содержит категорию окружения, выбранная STAGE соответствует option id=71. Отдельных полей URL, браузера, шагов и фактического результата в полной схеме нет."
+    },
+    "task": "Верни ответ, карту полей и точный payload. Живые вызовы запрещены."
+  },
+  {
+    "id": "description_fallback_absent",
+    "messages": [
+      "Создай самостоятельный баг в Jira DEMO. Я на STAGE, https://qa.example.invalid/profile/edit, Chrome 128, авторизован как редактор профиля. Ввожу в поле \"Имя\" значение \"Анна\" и нажимаю \"Сохранить\". Имя сохраняется, форма остаётся открытой. После сохранения форма должна закрываться."
+    ],
+    "context": {
+      "offline": true,
+      "sources_complete": true,
+      "tools": [
+        "jira_get_bug_create_metadata",
+        "jira_create_bug",
+        "get_issue"
+      ],
+      "bug_write_opt_in": true,
+      "deployment": "Server/DC",
+      "api_version": "2",
+      "current_user": {
+        "name": "tester",
+        "displayName": "QA Tester"
+      },
+      "assignable_current_user": true,
+      "metadata": {
+        "complete": true,
+        "project": "DEMO",
+        "issue_type": {
+          "id": "1",
+          "name": "Bug",
+          "subtask": false
+        },
+        "fields": {
+          "summary": {
+            "name": "Название",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "description": {
+            "name": "Описание",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          }
+        }
+      },
+      "evidence": []
+    },
+    "task": "Верни ответ и точные аргументы следующего вызова. Живые вызовы запрещены."
+  },
+  {
+    "id": "ambiguous_environment",
+    "messages": [
+      "Создай самостоятельный баг в Jira DEMO. Я на STAGE, https://qa.example.invalid/profile/edit, Chrome 128, авторизован как редактор профиля. Ввожу в поле \"Имя\" значение \"Анна\" и нажимаю \"Сохранить\". Имя сохраняется, форма остаётся открытой. После сохранения форма должна закрываться."
+    ],
+    "context": {
+      "offline": true,
+      "sources_complete": true,
+      "tools": [
+        "jira_get_bug_create_metadata",
+        "jira_create_bug",
+        "get_issue"
+      ],
+      "bug_write_opt_in": true,
+      "deployment": "Server/DC",
+      "api_version": "2",
+      "current_user": {
+        "name": "tester",
+        "displayName": "QA Tester"
+      },
+      "assignable_current_user": true,
+      "metadata": {
+        "complete": true,
+        "project": "DEMO",
+        "issue_type": {
+          "id": "1",
+          "name": "Bug",
+          "subtask": false
+        },
+        "fields": {
+          "summary": {
+            "name": "Название",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "description": {
+            "name": "Описание",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_71001": {
+            "name": "Окружение",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_71002": {
+            "name": "Environment",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_71003": {
+            "name": "Шаги воспроизведения",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_71004": {
+            "name": "Ожидаемый результат",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_71005": {
+            "name": "Фактический результат",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          }
+        }
+      },
+      "evidence": [],
+      "approved_mapping": null,
+      "field_descriptions": null
+    },
+    "task": "Верни ответ пользователю и следующие действия. Живые вызовы запрещены."
+  },
+  {
+    "id": "incomplete_inventory",
+    "messages": [
+      "Создай самостоятельный баг в Jira DEMO. Я на STAGE, https://qa.example.invalid/profile/edit, Chrome 128, авторизован как редактор профиля. Ввожу в поле \"Имя\" значение \"Анна\" и нажимаю \"Сохранить\". Имя сохраняется, форма остаётся открытой. После сохранения форма должна закрываться."
+    ],
+    "context": {
+      "offline": true,
+      "sources_complete": true,
+      "tools": [
+        "jira_get_bug_create_metadata",
+        "jira_create_bug",
+        "get_issue"
+      ],
+      "bug_write_opt_in": true,
+      "deployment": "Cloud",
+      "api_version": "3",
+      "current_user": {
+        "accountId": "qa-account"
+      },
+      "assignable_current_user": true,
+      "metadata": {
+        "complete": false,
+        "project": "DEMO",
+        "issue_type": {
+          "id": "1",
+          "name": "Bug",
+          "subtask": false
+        },
+        "fields": {
+          "summary": {
+            "name": "Summary",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "description": {
+            "name": "Description",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          }
+        },
+        "hasMore": true,
+        "nextStart": 2
+      },
+      "evidence": [],
+      "available_metadata_input": {
+        "projectKey": "string",
+        "issueTypeId": "string optional"
+      }
+    },
+    "task": "Верни ответ, решение о записи и следующий шаг с аргументами, если они известны. Живые вызовы запрещены."
+  },
+  {
+    "id": "unsupported_field_serialization",
+    "messages": [
+      "Создай самостоятельный баг в Jira DEMO. Я на STAGE, https://qa.example.invalid/profile/edit, Chrome 128, авторизован как редактор профиля. Ввожу в поле \"Имя\" значение \"Анна\" и нажимаю \"Сохранить\". Имя сохраняется, форма остаётся открытой. После сохранения форма должна закрываться."
+    ],
+    "context": {
+      "offline": true,
+      "sources_complete": true,
+      "tools": [
+        "jira_get_bug_create_metadata",
+        "jira_create_bug",
+        "get_issue"
+      ],
+      "bug_write_opt_in": true,
+      "deployment": "Server/DC",
+      "api_version": "2",
+      "current_user": {
+        "name": "tester",
+        "displayName": "QA Tester"
+      },
+      "assignable_current_user": true,
+      "metadata": {
+        "complete": true,
+        "project": "DEMO",
+        "issue_type": {
+          "id": "1",
+          "name": "Bug",
+          "subtask": false
+        },
+        "fields": {
+          "summary": {
+            "name": "Название",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "description": {
+            "name": "Описание",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "environment": {
+            "name": "Окружение",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "system": "environment"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_41001": {
+            "name": "Шаги воспроизведения",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_41002": {
+            "name": "Ожидаемый результат",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "custom": "vendor:result-editor"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_41003": {
+            "name": "Фактический результат",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          }
+        }
+      },
+      "evidence": [],
+      "connector_limitation": "Производитель поля не документирует сериализацию result-editor; текущий connector поддерживает только стандартный JSON payload без адаптера этого поля."
+    },
+    "task": "Верни ответ и следующие действия. Живые вызовы запрещены."
+  },
+  {
+    "id": "rejected_dedicated_field",
+    "messages": [
+      "Создай самостоятельный баг в Jira DEMO. Я на STAGE, https://qa.example.invalid/profile/edit, Chrome 128, авторизован как редактор профиля. Ввожу в поле \"Имя\" значение \"Анна\" и нажимаю \"Сохранить\". Имя сохраняется, форма остаётся открытой. После сохранения форма должна закрываться."
+    ],
+    "context": {
+      "offline": true,
+      "sources_complete": true,
+      "tools": [
+        "jira_get_bug_create_metadata",
+        "jira_create_bug",
+        "get_issue"
+      ],
+      "bug_write_opt_in": true,
+      "deployment": "Server/DC",
+      "api_version": "2",
+      "current_user": {
+        "name": "tester",
+        "displayName": "QA Tester"
+      },
+      "assignable_current_user": true,
+      "metadata": {
+        "complete": true,
+        "project": "DEMO",
+        "issue_type": {
+          "id": "1",
+          "name": "Bug",
+          "subtask": false
+        },
+        "fields": {
+          "summary": {
+            "name": "Название",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "description": {
+            "name": "Описание",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "environment": {
+            "name": "Окружение",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "system": "environment"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_41001": {
+            "name": "Шаги воспроизведения",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_41002": {
+            "name": "Ожидаемый результат",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_41003": {
+            "name": "Фактический результат",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          }
+        }
+      },
+      "evidence": [],
+      "attempted_payload": {
+        "additionalFields": {
+          "environment": "STAGE, https://qa.example.invalid/profile/edit, Chrome 128",
+          "customfield_41001": "1. Ввожу в поле \"Имя\" значение \"Анна\".\n2. Нажимаю \"Сохранить\".",
+          "customfield_41002": "Имя сохраняется, форма закрывается.",
+          "customfield_41003": "Имя сохранилось, форма осталась открытой."
+        }
+      },
+      "creation_result": {
+        "status": 400,
+        "errors": {
+          "customfield_41002": "Field cannot be set. It is not on the appropriate screen, or unknown."
+        },
+        "issue_created": false
+      }
+    },
+    "task": "Верни ответ и следующие действия. Живые вызовы запрещены."
+  },
+  {
+    "id": "readback_empty_actual",
+    "messages": [
+      "Создай самостоятельный баг в Jira DEMO. Я на STAGE, https://qa.example.invalid/profile/edit, Chrome 128, авторизован как редактор профиля. Ввожу в поле \"Имя\" значение \"Анна\" и нажимаю \"Сохранить\". Имя сохраняется, форма остаётся открытой. После сохранения форма должна закрываться."
+    ],
+    "context": {
+      "offline": true,
+      "sources_complete": true,
+      "tools": [
+        "jira_get_bug_create_metadata",
+        "jira_create_bug",
+        "get_issue"
+      ],
+      "bug_write_opt_in": true,
+      "deployment": "Server/DC",
+      "api_version": "2",
+      "current_user": {
+        "name": "tester",
+        "displayName": "QA Tester"
+      },
+      "assignable_current_user": true,
+      "metadata": {
+        "complete": true,
+        "project": "DEMO",
+        "issue_type": {
+          "id": "1",
+          "name": "Bug",
+          "subtask": false
+        },
+        "fields": {
+          "summary": {
+            "name": "Название",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "description": {
+            "name": "Описание",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "environment": {
+            "name": "Окружение",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "system": "environment"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_41001": {
+            "name": "Шаги воспроизведения",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_41002": {
+            "name": "Ожидаемый результат",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          },
+          "customfield_41003": {
+            "name": "Фактический результат",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "custom": "textarea"
+            },
+            "operations": [
+              "set"
+            ]
+          }
+        }
+      },
+      "evidence": [],
+      "creation_receipt": {
+        "key": "DEMO-55",
+        "webUrl": "https://jira.example.invalid/browse/DEMO-55",
+        "created": true
+      },
+      "readback": {
+        "key": "DEMO-55",
+        "fields": {
+          "summary": "FE. Профиль - форма остаётся открытой после сохранения имени",
+          "description": "Редактор профиля авторизован.",
+          "environment": "STAGE, https://qa.example.invalid/profile/edit, Chrome 128",
+          "customfield_41001": "1. Ввожу в поле \"Имя\" значение \"Анна\".\n2. Нажимаю \"Сохранить\".",
+          "customfield_41002": "Имя сохраняется, форма закрывается.",
+          "customfield_41003": null
+        }
+      },
+      "sent_values": {
+        "customfield_41003": "Имя сохранилось, форма осталась открытой."
+      }
+    },
+    "task": "Верни итоговый ответ пользователю и следующие действия. Живые вызовы запрещены."
+  },
+  {
+    "id": "dictation_plain_tester_voice",
+    "messages": [
+      "Оформи только черновик. Я тестировал FE на STAGE, Chrome 128, https://qa.example.invalid/profile/edit. Открыл форму профиля, ввёл \"Анна\", нажал \"Сохранить\" - имя сохранилось, форма не закрылась. По требованию из чата должна закрываться. Причину не знаю. Старый текст: \"По запросу пользователя агентом была осуществлена комплексная верификация функциональности, в рамках которой выявлено некорректное функционирование механизма завершения сессии редактирования. Вероятная причина - гонка состояний\". Перепиши нормальным языком от моего лица."
+    ],
+    "context": {
+      "offline": true,
+      "sources_complete": true,
+      "evidence": [],
+      "independent_run": false
+    },
+    "task": "Верни готовый черновик и следующие действия. Живые вызовы запрещены."
+  },
+  {
+    "id": "screenshot_only_no_personal_run",
+    "messages": [
+      "Составь черновик бага FE. Есть только снимок от коллеги: на форме профиля в поле \"Имя\" текст \"Анна\", кнопка \"Сохранить\" серая. Требование из чата: при непустом имени кнопка должна быть активна. Путь до формы, окружение и действия до снимка неизвестны. Сам я это не воспроизводил. Напиши просто, как тестировщик."
+    ],
+    "context": {
+      "offline": true,
+      "screenshot_observation": "Форма \"Профиль\", поле \"Имя\": \"Анна\", кнопка \"Сохранить\" неактивна.",
+      "independent_run": false
+    },
+    "task": "Верни черновик и следующие действия. Живые вызовы запрещены."
+  }
+]

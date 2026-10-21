@@ -50,6 +50,13 @@ test("Jira Cloud metadata uses project and issue-type endpoints", async (t) => {
 
 test("Jira Cloud bug creation uses ADF and accountId", async (t) => {
   const requests = [];
+  const adf = (text) => ({ type: "doc", version: 1, content: text.split("\n").map((line) => ({ type: "paragraph", content: [{ type: "text", text: line }] })) });
+  const additionalFields = {
+    environment: adf("STAGE, https://qa.example.test/checkout, Chrome 128"),
+    customfield_20001: adf("1. Open checkout\n2. Change quantity from 1 to 2"),
+    customfield_20002: adf("Total is recalculated"),
+    customfield_20003: adf("Total stays unchanged")
+  };
   t.mock.method(global, "fetch", async (url, options) => {
     requests.push({ url: String(url), options });
     if (String(url).endsWith("/myself")) return response(200, { accountId: "abc", displayName: "QA" });
@@ -61,13 +68,15 @@ test("Jira Cloud bug creation uses ADF and accountId", async (t) => {
     projectKey: "DEMO",
     issueTypeId: "10001",
     summary: "BE. Broken total",
-    description: "Actual result:\nWrong total"
+    description: "Context:\nSigned in as a customer.",
+    additionalFields
   });
 
   const payload = JSON.parse(requests[1].options.body);
   assert.deepEqual(payload.fields.assignee, { accountId: "abc" });
   assert.equal(payload.fields.description.type, "doc");
-  assert.equal(payload.fields.description.content[1].content[0].text, "Wrong total");
+  assert.equal(payload.fields.description.content[1].content[0].text, "Signed in as a customer.");
+  for (const [id, value] of Object.entries(additionalFields)) assert.deepEqual(payload.fields[id], value);
 });
 
 test("Jira Cloud reads later metadata pages containing optional result fields", async (t) => {
@@ -75,7 +84,10 @@ test("Jira Cloud reads later metadata pages containing optional result fields", 
     if (url.endsWith("/myself")) return response(200, { accountId: "abc" });
     if (url.includes("/issuetypes/10001?")) {
       return response(200, url.includes("startAt=1")
-        ? { values: [{ fieldId: "customfield_9", name: "Expected result", required: false }], isLast: true }
+        ? { values: [
+          { fieldId: "customfield_9", name: "Expected result", required: false },
+          { fieldId: "environment", name: "Environment", required: false }
+        ], isLast: true }
         : { values: [{ fieldId: "summary", name: "Summary" }], isLast: false });
     }
     return response(200, url.includes("startAt=1")
@@ -84,6 +96,7 @@ test("Jira Cloud reads later metadata pages containing optional result fields", 
   });
   const result = await tools.jira_get_bug_create_metadata({ projectKey: "DEMO", issueTypeId: "10001" });
   assert.equal(result.project.issuetypes[1].fields.customfield_9.name, "Expected result");
+  assert.equal(result.project.issuetypes[1].fields.environment.name, "Environment");
 });
 
 test("Cloud image evidence fails before creation instead of falling back to links", async (t) => {
