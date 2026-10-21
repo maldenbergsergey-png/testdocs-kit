@@ -21,7 +21,7 @@ Load for persisted context, continuation, or reuse between related tasks. The co
 
 ## Freshness and completion
 
-1. Reuse complete source text already known to be current in this task without an extra fetch. For a saved snapshot from another task/session, read current metadata for the selected sources where supported, including relevant decisions/comments and case versions when those affect the artifact.
+1. Reuse complete source text already known to be current in this task without an extra fetch. For a saved snapshot from another task/session, refresh [knowledge discovery](knowledge-discovery-rules.md) when applicable and read current metadata for selected sources, including relevant decisions/comments and case versions. An unchanged base page does not rule out new change documents.
 2. Match exact references plus revision or a fingerprint computed from the complete relevant source content. A locally calculated hash of a saved section proves local integrity only. A retrieval date, unchanged title or age threshold does not prove the source is current.
 3. Read only sections with complete, matching source checks and applicability to the target platform. For changed, unavailable, partial or unverifiable sources, collect the necessary current material and update the snapshot; preserve unresolved gaps. Do not repeat full retrieval for verified unchanged sources.
 4. Before generating the requested artifact, check that the selected sections cover its full required inventory. Retrieve missing material rather than relying on the short summary. Carry material conflicts and gaps into the artifact workflow.

@@ -1,7 +1,14 @@
-export interface SearchResults {
-  results: SearchResultItem[];
-  totalSize: number;
+export interface Pagination {
+  size: number;
   startIndex: number;
+  hasMore: boolean;
+  nextStart?: number;
+  nextCursor?: string;
+}
+
+export interface SearchResults extends Pagination {
+  results: SearchResultItem[];
+  totalSize: number | null;
 }
 
 export interface SearchResultItem {
@@ -20,6 +27,7 @@ export interface ConfluencePage {
   status: string;
   space?: { key: string; name: string };
   body: string;
+  ancestors?: { id: string; title: string; url: string }[];
   version?: {
     number: number;
     by: { displayName: string; email: string };
@@ -35,6 +43,35 @@ export interface SpacePage {
   status: string;
   space: { key: string; name: string };
   url: string;
+}
+
+function knownTotal(data: Record<string, unknown>): number | null {
+  return typeof data.totalSize === "number" && Number.isInteger(data.totalSize) && data.totalSize >= 0
+    ? data.totalSize : null;
+}
+
+function pagination(data: Record<string, unknown>, size: number, start: number, currentCursor?: string): Pagination {
+  const startIndex = Number(data.start ?? data.startIndex ?? start);
+  const next = (data._links as Record<string, string> | undefined)?.next;
+  const result: Pagination = { size, startIndex, hasMore: Boolean(next) };
+  if (next) {
+    // Extract continuation only; never fetch a server-provided URL or change the original scope.
+    try {
+      const params = new URL(next, "https://pagination.invalid").searchParams;
+      const cursor = params.get("cursor");
+      const offset = params.get("start");
+      if (cursor) {
+        if (cursor !== currentCursor) result.nextCursor = cursor;
+      } else if (offset !== null && /^\d+$/.test(offset) && Number(offset) > startIndex) result.nextStart = Number(offset);
+    } catch { /* Keep hasMore true so an unusable continuation cannot imply completeness. */ }
+  } else {
+    const total = knownTotal(data);
+    if (!currentCursor && total !== null && startIndex + size < total) {
+      result.hasMore = true;
+      if (size > 0) result.nextStart = startIndex + size;
+    }
+  }
+  return result;
 }
 
 const {
@@ -127,12 +164,14 @@ export class ConfluenceClient {
     }
   }
 
-  async search(query: string, limit?: number): Promise<SearchResults> {
+  async search(query: string, limit?: number, start = 0, cursor?: string): Promise<SearchResults> {
     const l = Math.min(limit ?? 10, 25);
     const data = await this.request("/content/search", {
       cql: query,
       limit: String(l),
+      ...(cursor ? { cursor } : { start: String(start) }),
       excerpt: "full",
+      expand: "space,version",
     });
 
     const results = ((data.results as Record<string, unknown>[]) ?? []).map(
@@ -154,13 +193,13 @@ export class ConfluenceClient {
 
     return {
       results,
-      totalSize: (data.totalSize as number) ?? results.length,
-      startIndex: (data.startIndex as number) ?? 0,
+      totalSize: knownTotal(data),
+      ...pagination(data, results.length, start, cursor),
     };
   }
 
   async getPage(pageId: string, includeVersion?: boolean): Promise<ConfluencePage> {
-    const expand = ["body.storage", "space", "history.lastUpdated"];
+    const expand = ["body.storage", "space", "history.lastUpdated", "ancestors"];
     if (includeVersion) expand.push("version");
 
     const data = await this.request(`/content/${pageId}`, {
@@ -177,6 +216,12 @@ export class ConfluenceClient {
       status: String(data.status ?? ""),
       space: data.space as { key: string; name: string } | undefined,
       body: (data.body as Record<string, Record<string, string>>)?.storage?.value ?? "",
+      ancestors: Array.isArray(data.ancestors) ? data.ancestors.map((ancestor: Record<string, unknown>) => ({
+        id: String(ancestor.id),
+        title: String(ancestor.title ?? ""),
+        url: (ancestor._links as Record<string, string> | undefined)?.webui
+          ? `${this.baseUrl}${(ancestor._links as Record<string, string>).webui}` : "",
+      })) : undefined,
       version: includeVersion
         ? {
             number: versionData?.number ?? 0,
@@ -253,12 +298,15 @@ export class ConfluenceClient {
 
   async getPageChildren(
     pageId: string,
-    limit?: number
-  ): Promise<{ children: SpacePage[]; total: number }> {
+    limit?: number,
+    start = 0,
+    cursor?: string
+  ): Promise<{ children: SpacePage[]; total: number | null } & Pagination> {
     const l = Math.min(limit ?? 25, 50);
 
     const data = await this.request(`/content/${pageId}/child/page`, {
       limit: String(l),
+      ...(cursor ? { cursor } : { start: String(start) }),
       expand: "space",
     });
 
@@ -276,7 +324,8 @@ export class ConfluenceClient {
 
     return {
       children,
-      total: (data.size as number) ?? children.length,
+      total: knownTotal(data),
+      ...pagination(data, children.length, start, cursor),
     };
   }
 }

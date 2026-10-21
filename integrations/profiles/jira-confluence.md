@@ -40,9 +40,14 @@ Given an explicit or issue-linked page, retrieve when available:
 - title, space, and version;
 - relevant page content;
 - attachment metadata and relevant readable content;
-- child pages only when the source explicitly depends on them.
+- hierarchy metadata, including children and ancestry where supported;
+- focused page search within the confirmed knowledge area and continuation metadata for paginated results.
 
-Do not crawl an entire space by default.
+Discover relevant base/change pages under [knowledge discovery](../../rules/knowledge-discovery-rules.md), even without body links. Missing hierarchy or search is a distinct capability gap. Do not crawl an entire space by default.
+
+The bundled Confluence adapter exposes `get_page` (including ancestry), `get_page_children` and CQL `search`. Read candidates with `get_page`; listings/excerpts are not full source text. For focused discovery use a confirmed space plus `type = "page"` and `title ~ "feature terms"` or the exact task key; `ancestor = "pageId"` limits a query to a confirmed branch. Escape source values as CQL literals instead of interpolating raw titles. Do not use `get_space_pages` to export the space.
+
+For `search` and `get_page_children`, continue with returned `nextStart` or `nextCursor` while `hasMore` is true; keep the original query/page and scope. Unknown totals are `null`; `size` counts only the current batch. Search accepts offset or cursor continuation depending on the server. Pagination follows [Atlassian's next-link contract](https://developer.atlassian.com/server/confluence/pagination-in-the-rest-api/) and [CQL search continuation](https://developer.atlassian.com/cloud/confluence/rest/v1/api-group-content/#api-wiki-rest-api-content-search-get). A continuation that cannot advance remains partial context.
 
 ## Scope behavior
 

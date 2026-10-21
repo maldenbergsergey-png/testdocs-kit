@@ -14,7 +14,7 @@ Identify integrations by capability rather than product name or MCP tool name:
 | --- | --- | --- |
 | Issue read | Retrieve one supplied task, bug, story, epic, or other work item | Only for an issue-key workflow |
 | Issue relations | Retrieve relevant parent, child, linked issue, attachment, and decision context | Optional |
-| Knowledge read | Retrieve a supplied or issue-linked specification or Confluence page | Optional |
+| Knowledge read/discovery | Read scoped pages; list hierarchy and search related change documents | Optional |
 | TMS read | Find and read existing cases, versions, links, folders, and lifecycle metadata | Optional |
 | TMS write | Create, update, link, comment on, version, or change status of reviewed cases | Optional and approval-gated |
 | Release scope read | Resolve an exact release version and retrieve the issues included in it | Only for a release Test Run workflow |
@@ -57,7 +57,7 @@ Do not crawl the whole project, space, or test library unless the user explicitl
 
 Use the context supplied in chat, files, or other explicitly scoped sources. Do not search an arbitrary Jira project merely because an issue integration is connected. If facts needed for an executable result are missing, request them using the active skill's missing-context behavior.
 
-A standalone Confluence or knowledge-page URL is a valid primary scope anchor even when no Jira issue exists. Retrieve that exact page and only materially relevant linked sources. Do not require an issue key, infer an issue, or broaden to the whole knowledge space.
+A standalone knowledge-page URL anchors scope without Jira. Read it and discover relevant changes under [knowledge discovery](knowledge-discovery-rules.md), including unlinked pages. Do not infer an issue or crawl the whole space.
 
 An exact release version is a valid scope anchor for a Test Run request. Resolve that version in the explicitly supplied Jira project or connection, retrieve only its release issues and materially linked requirements, then search cases only inside the user-specified TMS folder boundary. Do not infer a project from the version name or broaden the search to another release or the whole test library.
 
@@ -79,6 +79,7 @@ Scope anchor: issue key/link, exact release version, or supplied-context descrip
 Issue facts: summary, behavior, acceptance criteria, status, decisions
 Relevant comment evidence: evidence type, relevant content, exact comment link or ID, author/date when available, and corroboration status for previous checklists
 Relevant linked requirements and knowledge: stable ID/link, title, version when available, relevant content
+Knowledge discovery: boundary, queries/listings, completeness, candidate IDs/links, relation, revisions, applicability, read/exclusion/gap status
 Relevant source links: exact URL, readable purpose, source location, retrieval status, and whether it influenced the requested QA result
 Change context: GitLab object URL, stable ID/SHA, changed behavior surface, pipeline result and retrieval status
 Design context: exact source/frame URL or supplied file, viewport/state, actual content retrieved, access gaps, user requests/answers and scope decisions; distinguish design comparison from basic visual assessment
@@ -107,7 +108,7 @@ Keep raw external values alongside any neutral interpretation. Do not silently t
 - Treat a previous tester checklist or execution note in a comment as practitioner evidence: use it to find scenarios and risk areas, but do not treat it as an approved requirement, current expected behavior, or proof of permanent TMS coverage. Preserve its provenance and corroborate reused checks against current sources.
 - Report conflicting behavior or versions and request a decision when the conflict changes coverage or expected results.
 - Retrieve only fields and attachments relevant to the QA task. Avoid collecting credentials, personal data, or unrelated comments.
-- Inventory URLs in the primary issue and every scoped knowledge page. Follow only links that can materially define the requested behavior, especially linked requirements, designs/mockups, API contracts, attachments, and related decision documents. Record the exact URL, visible label or retrieved title, source location, and retrieval status. Do not recursively crawl unrelated navigation or an entire knowledge space.
+- Inventory URLs in the issue and scoped knowledge pages. Follow material requirements, designs, API contracts, attachments and decisions. Record exact URL, purpose/title, source location and retrieval status. Apply [knowledge discovery](knowledge-discovery-rules.md) for unlinked changes too; do not crawl unrelated navigation or an entire space.
 - A discovered link is not evidence that its target was read. Mark inaccessible targets as unavailable. Include such a link in a case only when its purpose is identifiable from authoritative source text; otherwise raise the missing context instead of inventing a label.
 - Return execution gaps immediately under [access rules](execution-access-rules.md); request needed access/materials before leaving checks unperformed. For visual scope also apply [design rules](execution-design-rules.md).
 - When the source describes a form, entity, table, API object, or configurable screen, enumerate every explicitly defined field and its supported properties before summarizing. Do not collapse unprocessed rows into “other fields” or silently omit a field because it looks secondary.

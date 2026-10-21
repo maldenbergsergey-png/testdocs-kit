@@ -1,0 +1,22 @@
+# Knowledge requirements and change documents
+
+Apply before deriving QA documentation from a page in a confirmed scoped knowledge base: cases, checklists, plans, coverage, reviews, updates or estimates. A base specification may omit links to separate change documents. Its body, unchanged version or lack of outgoing links does not establish complete feature requirements.
+
+## Discovery boundary
+
+- Anchor discovery to the supplied issue/page, confirmed feature, connection and knowledge area. Within that boundary, finding related change documents needs no separate search request. A screenshot of a page tree identifies candidates, not their contents or an authorized arbitrary company instance.
+- Respect an explicit source-only, subtree or release restriction. Complete current text supplied in chat/files remains sufficient manual input when its URL is only provenance and no knowledge area is established; do not require discovery, invent that area or ask for it just to broaden the sources. With no scoped external source, do not search an arbitrary connected project. Missing knowledge access does not invalidate sufficient manual context.
+- Inspect the base page's child-page listing even when its body does not reference children. Inspect relevant nested branches and, when starting from a change page, its available ancestry and feature siblings. List metadata first; read bodies of candidates that can affect the requested feature. Do not walk unrelated branches or read every ancestor's descendants.
+- Also search the confirmed knowledge area by the stable feature/page title or distinctive functional terms and, when known, the exact task key. Include titles with a task-key prefix, such as "DEMO-42 - Site: Карточка проекта". Search beyond the subtree when allowed: change pages can be siblings or elsewhere in the same scoped space. An exact-title search alone misses prefixed copies; an exact-task-key search alone misses changes from other tasks. Title matches identify candidates, not proven relevance.
+- Finish pagination for relevant listings and focused queries before declaring discovery complete. Narrow noisy queries by feature terms or the confirmed branch. A truncated listing, failed page read or unavailable search/tree capability is a discovery gap, not proof that changes do not exist. Stop at the scoped feature and record any unfinished relevant branch/query; never replace focused search with a whole-space export.
+
+## Applicability and reconciliation
+
+- Read relevant candidates, including their change sections, tables, decisions and supporting links. Preserve exact page IDs/URLs, titles, revisions and task/release references when available. A tree entry, excerpt or copied base text does not prove the change section was read.
+- Establish whether each change applies to the requested task, platform and release/current behavior from source-backed scope and decisions. A task key, larger number, later date, page placement or Jira status alone establishes neither precedence nor deployment. Planned requirements can define design-time cases; keep their target conditions explicit and do not present them as shipped behavior. Exclude unrelated, superseded or future-release changes only with a recorded basis; ask about material unresolved applicability.
+- Reconcile the base and applicable changes per affected requirement. Preserve unchanged base behavior, apply explicitly scoped amendments and deduplicate repeated requirements. Keep conflicting or unapproved alternatives visible; never silently let the latest page win or combine incompatible releases into one expectation.
+- Carry the discovery boundary, queries/listings and completeness into the context bundle. Record each relevant candidate as read, excluded with reason, ambiguous or unavailable, with its relation, applicability and source revision. Use `PARTIAL_CONTEXT` for incomplete relevant retrieval. Keep this inventory internal in an artifact workflow; expose material gaps/conflicts and cite the exact sources used under the selected artifact contract.
+
+## Reuse
+
+Complete current source text can be reused. Before reusing a saved feature snapshot for a new task/session, refresh scoped discovery as well as checking known page revisions: a newly added child or unlinked change page need not alter the base page's version. Reuse a complete discovery result already verified for the same scope in the current task. Read only new, changed or previously incomplete relevant sources under [context reuse](context-reuse-rules.md).

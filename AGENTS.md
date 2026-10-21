@@ -11,4 +11,4 @@ This is a portable QA skill pack, not an application.
 - Reports and test evidence belong in the project/task user-data workspace outside this repository. Installer updates must preserve that data.
 - Never print secrets or store them in the repository/client config. QA writes require intent and opt-in, except Zephyr creation/same-chat correction needs no setup opt-in. Test-app actions use [execution permissions](rules/execution-access-rules.md).
 - Validate structural changes with `npm test`. Routing evaluation prompts and the repeatable evaluation procedure are in [evals/README.md](evals/README.md); rerun behavioral evaluation when changing discovery descriptions, routing or artifact contracts.
-- After edits and required checks, commit only task changes and push to `main` on the configured remote, unless the user explicitly chooses another branch.
+- Work directly on `main`; create another branch only on explicit user request. After edits and required checks, commit only task changes and immediately push to remote `main`.

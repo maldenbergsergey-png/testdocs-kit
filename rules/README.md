@@ -39,6 +39,7 @@ Read [core.md](core.md) once per task. This index is for discovery; follow only 
 - [terminal-access-rules.md](terminal-access-rules.md): macOS/Windows terminals, SSH test-server diagnostics, command scope and credentials.
 - [browser-session-rules.md](browser-session-rules.md): browser selection, reuse of readable sources and necessary authentication recovery.
 - [context-reuse-rules.md](context-reuse-rules.md): scoped saved context, source freshness and cross-platform applicability.
+- [knowledge-discovery-rules.md](knowledge-discovery-rules.md): scoped base/change document discovery, applicability and reconciliation before QA documentation.
 - [model-routing-rules.md](model-routing-rules.md): explicitly enabled model roles and bounded delegation.
 - [execution-access-rules.md](execution-access-rules.md): test-environment action authorization, missing access/materials, pending scope and independent checks.
 - [execution-design-rules.md](execution-design-rules.md): design sources and basic visual assessment when designs are missing or partial.

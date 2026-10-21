@@ -35,7 +35,7 @@ For a task/subtask estimate, read the full supplied task, its parent story, the 
 
 ## Discover capabilities
 
-Apply the common contract's reuse condition before the retrieval steps below. Collect missing or stale material; an explicit refresh request also requires a new read.
+Apply context reuse before retrieval. Collect missing/stale material or explicit refreshes; reused page text does not establish complete knowledge discovery.
 
 Before browser retrieval, follow [session reuse](../../rules/browser-session-rules.md) to select the user's browser and read accessible content without initializing another login.
 
@@ -56,7 +56,7 @@ For continuation, related tasks or substantive reusable context, follow [saved-c
 1. Record the request intent, supplied references, and requested scope.
 2. For a release Test Run request, resolve the exact version only in the supplied Jira project/connection, retrieve its release issues, and preserve the user-specified TMS folder, platform, launch kind, coverage depth, and tester list. Search no broader TMS scope than that folder.
 3. If a Jira/GitLab issue, merge request, commit or link is supplied, retrieve that exact object as the primary anchor. Do not broaden to a project-wide or group-wide search by default.
-4. If a standalone Confluence or knowledge-page URL is supplied without an issue, retrieve that page as the primary knowledge anchor. Follow only its relevant requirement, design, attachment, or decision links. Do not require a Jira issue and do not crawl the whole space.
+4. A standalone knowledge-page URL anchors scope without Jira. For in-scope knowledge, run [knowledge discovery](../../rules/knowledge-discovery-rules.md): inspect hierarchy, search feature/title and task-key candidates, read applicable changes and record completeness before drafting or reusing a bundle.
 5. Retrieve only relevant parent, child, linked issue, comment, attachment, and knowledge-page content needed to understand the requested behavior. In comments, identify decisions, corrections, unresolved questions, and recognizable previous tester checklists or execution notes.
 6. Inventory URLs in the primary issue and scoped knowledge pages under `integration-rules.md`. Follow materially relevant requirements, designs, API contracts, attachments and decisions; preserve each URL's purpose, source location and retrieval status. Do not crawl unrelated navigation.
 7. For a supplied Figma selection link, preserve the exact file/node identity and retrieve only that node and materially required supported states. For a supplied Postman workspace/collection/request, retrieve only that API scope. For logs, require an environment plus a time or correlation boundary before querying.

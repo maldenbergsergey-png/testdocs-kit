@@ -79,6 +79,123 @@ function diagnosticsFrom(text) {
   return JSON.parse(text.split("\nHTTP diagnostics: ")[1]);
 }
 
+test("Confluence MCP discovers later child pages and cursor search results without broadening scope", async (t) => {
+  const query = 'type = "page" AND space = "DOCS" AND title ~ "Карточка проекта"';
+  const cursor = "opaque+next/token=";
+  const fixture = await serve(t, (req, res) => {
+    const url = new URL(req.url, "http://fixture.test");
+    let data;
+    if (url.pathname === "/wiki/rest/api/content/100/child/page") {
+      const start = Number(url.searchParams.get("start"));
+      const children = Array.from({ length: start === 0 ? 50 : 1 }, (_, i) => ({
+        id: String(start + i + 101), title: start ? "DEMO-42 - Site: Карточка проекта" : `Section ${i}`,
+        status: "current", space: { key: "DOCS", name: "Product" }, _links: { webui: `/pages/${start + i + 101}` }
+      }));
+      data = { results: children, start, size: children.length, limit: 50,
+        _links: start ? {} : { next: "/rest/api/content/100/child/page?start=50&limit=50" } };
+    } else if (url.pathname === "/wiki/rest/api/content/search") {
+      const last = url.searchParams.get("cursor") === cursor;
+      data = { results: [{ id: last ? "202" : "201", title: last ? "DEMO-43 - Site: Карточка проекта" : "Site: Карточка проекта",
+        type: "page", space: { key: "DOCS", name: "Product" }, _links: { webui: last ? "/pages/202" : "/pages/201" } }],
+        size: 1, limit: 1, _links: last ? {} : { next: `/rest/api/content/search?cursor=${encodeURIComponent(cursor)}` } };
+    } else return res.writeHead(500).end("Unexpected route");
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(data));
+  });
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "testdocs-confluence-discovery-"));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(directory, "config.json"), JSON.stringify({
+    version: 3, connections: { jira: [], eva: [], mcp: [], confluence: [
+      { id: "wiki", enabled: true, baseUrl: `${fixture.url}/wiki`, authMode: "bearer", secret: "dummy-token" }
+    ] }, tms: { category: "none", provider: "none" }
+  }));
+  const mcp = await launchMcp("confluence", "wiki", directory);
+  t.after(() => mcp.close());
+  const call = async (name, input) => {
+    const result = await mcp.callTool({ name, arguments: input });
+    assert.notEqual(result.isError, true, result.content[0]?.text);
+    return JSON.parse(result.content[0].text);
+  };
+  const first = await call("get_page_children", { pageId: "100", limit: 50 });
+  assert.equal(first.hasMore, true);
+  assert.equal(first.nextStart, 50);
+  assert.equal(first.total, null, "Batch size must not masquerade as total children");
+  assert.equal(first.size, 50);
+  const last = await call("get_page_children", { pageId: "100", limit: 50, start: first.nextStart });
+  assert.equal(last.children[0].title, "DEMO-42 - Site: Карточка проекта");
+  assert.equal(last.startIndex, 50);
+  assert.equal(last.hasMore, false);
+  const found = await call("search", { query, limit: 1 });
+  assert.equal(found.nextCursor, cursor);
+  assert.equal(found.totalSize, null);
+  const more = await call("search", { query, limit: 1, cursor: found.nextCursor });
+  assert.equal(more.results[0].id, "202");
+  assert.equal(more.hasMore, false);
+  assert.equal(more.results[0].url, `${fixture.url}/wiki/pages/202`);
+  const searchRequests = fixture.requests.slice(2).map((r) => new URL(r.url, fixture.url));
+  assert(searchRequests.every((url) => url.searchParams.get("cql") === query));
+  assert.equal(searchRequests[1].searchParams.get("start"), null);
+  assert.equal(searchRequests[1].searchParams.get("cursor"), cursor);
+  for (const [name, input] of [
+    ["search", { query, start: 1, cursor }],
+    ["get_page_children", { pageId: "100", start: -1 }],
+    ["get_page_children", { pageId: "100", start: 1.5 }],
+    ["search", { query, limit: 0 }]
+  ]) assert.equal((await mcp.callTool({ name, arguments: input })).isError, true);
+  assert.equal(fixture.requests.length, 4, "Invalid continuation must fail before HTTP");
+});
+
+test("Confluence discovery preserves known totals, ancestry and unusable continuation gaps", async (t) => {
+  const fixture = await serve(t, (req, res) => {
+    const url = new URL(req.url, "http://fixture.test");
+    const query = url.searchParams.get("cql");
+    let data;
+    if (url.pathname.endsWith("/content/202")) data = {
+      id: "202", title: "DEMO-43 - Site: Карточка проекта", body: { storage: { value: "<p>Change details</p>" } },
+      ancestors: [{ id: "100", title: "Site: Карточка проекта", _links: { webui: "/pages/100" } }]
+    };
+    else if (query === "offset") data = { results: [{ id: "202" }], start: 25, size: 1, totalSize: 27,
+      _links: { next: "/rest/api/content/search?start=26&limit=1" } };
+    else if (query === "known-total") data = { results: [{ id: "202" }], start: 0, totalSize: 2 };
+    else if (query === "stalled") data = { results: [], start: 0, totalSize: 2 };
+    else if (query === "bad-next") data = { results: [], _links: { next: "http://[invalid" } };
+    else if (query === "repeated-next") data = { results: [{ id: "202" }], start: 25,
+      _links: { next: "/rest/api/content/search?start=25" } };
+    else if (query === "repeated-cursor") data = { results: [{ id: "202" }],
+      _links: { next: "/rest/api/content/search?cursor=current" } };
+    else if (query === "cursor-end") data = { results: [{ id: "202" }], totalSize: 2, _links: {} };
+    else data = { results: [], size: 0, _links: {} };
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(data));
+  });
+  const api = new ConfluenceClient(fixture.url, "tester", "dummy-token", "bearer");
+  const page = await api.getPage("202", true);
+  assert.deepEqual(page.ancestors, [{ id: "100", title: "Site: Карточка проекта", url: `${fixture.url}/pages/100` }]);
+  assert(new URL(fixture.requests[0].url, fixture.url).searchParams.get("expand").includes("ancestors"));
+  const offset = await api.search("offset", 1, 25);
+  assert.equal(offset.totalSize, 27);
+  assert.equal(offset.nextStart, 26);
+  assert.equal(offset.startIndex, 25);
+  const known = await api.search("known-total");
+  assert.equal(known.hasMore, true);
+  assert.equal(known.nextStart, 1);
+  for (const query of ["stalled", "bad-next", "repeated-next"]) {
+    const partial = await api.search(query, 1, query === "repeated-next" ? 25 : 0);
+    assert.equal(partial.hasMore, true, query);
+    assert.equal(partial.nextStart, undefined, query);
+    assert.equal(partial.nextCursor, undefined, query);
+  }
+  const empty = await api.search("empty");
+  assert.equal(empty.hasMore, false);
+  assert.equal(empty.size, 0);
+  assert.equal(empty.totalSize, null);
+  const cursorEnd = await api.search("cursor-end", 1, 0, "current");
+  assert.equal(cursorEnd.hasMore, false, "A cursor batch without a next link is final even when a total is supplied");
+  const repeated = await api.search("repeated-cursor", 1, 0, "current");
+  assert.equal(repeated.hasMore, true);
+  assert.equal(repeated.nextCursor, undefined, "Do not offer the same cursor again");
+});
+
 for (const service of ["jira", "zephyr", "confluence"]) {
   for (const mode of ["basic", "bearer"]) {
     test(`${service} ${mode}: canonical redirects reach JSON and keep same-origin authentication`, async (t) => {

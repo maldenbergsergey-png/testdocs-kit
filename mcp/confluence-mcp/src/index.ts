@@ -44,12 +44,18 @@ const server = new McpServer({
   version: "1.0.0",
 });
 
+const continuationSchema = {
+  start: z.number().int().nonnegative().optional().describe("Start offset from nextStart (default: 0); omit when using cursor"),
+  cursor: z.string().min(1).optional().describe("Opaque nextCursor returned by the previous batch; omit start"),
+};
+
 server.registerTool(
   "search",
   {
     title: "Search Confluence",
     description:
       "Search Confluence pages using CQL (Confluence Query Language). " +
+      "Use focused queries for related change pages in a confirmed space. Continue with nextStart/nextCursor while hasMore is true. " +
       'Examples: \'title = "My Page"\', \'space = "DEV"\', \'type = "page" AND title ~ "api"\', \'ancestor = "12345"\'',
     inputSchema: {
       query: z
@@ -59,12 +65,15 @@ server.registerTool(
         ),
       limit: z
         .number()
+        .int().positive()
         .optional()
         .describe("Maximum number of results to return (default: 10, max: 25)"),
+      ...continuationSchema,
     },
   },
-  async ({ query, limit }) => {
-    const results = await client.search(query, limit);
+  async ({ query, limit, start, cursor }) => {
+    if (start !== undefined && cursor !== undefined) throw new Error("Use either start or cursor, not both");
+    const results = await client.search(query, limit, start, cursor);
     return {
       content: [
         {
@@ -81,7 +90,7 @@ server.registerTool(
   {
     title: "Get Confluence Page",
     description:
-      "Read the content of a Confluence page by its ID. Returns the page title, body (HTML), and metadata.",
+      "Read the content of a Confluence page by its ID. Returns title, body (HTML), space, ancestry and metadata. Use ancestry to identify the scoped base page when starting from a change document.",
     inputSchema: {
       pageId: z.string().describe("Confluence page ID"),
       includeVersion: z
@@ -163,17 +172,20 @@ server.registerTool(
   {
     title: "Get Child Pages",
     description:
-      "Get the child pages of a Confluence page. Useful for navigating page hierarchies.",
+      "List child pages, including change documents absent from the parent body. Read relevant pages separately. Continue with nextStart/nextCursor while hasMore is true; size is the batch count, total may be null.",
     inputSchema: {
       pageId: z.string().describe("Parent Confluence page ID"),
       limit: z
         .number()
+        .int().positive()
         .optional()
-        .describe("Maximum number of child pages to return (default: 25)"),
+        .describe("Maximum number of child pages to return (default: 25, max: 50)"),
+      ...continuationSchema,
     },
   },
-  async ({ pageId, limit }) => {
-    const children = await client.getPageChildren(pageId, limit);
+  async ({ pageId, limit, start, cursor }) => {
+    if (start !== undefined && cursor !== undefined) throw new Error("Use either start or cursor, not both");
+    const children = await client.getPageChildren(pageId, limit, start, cursor);
     return {
       content: [
         {
