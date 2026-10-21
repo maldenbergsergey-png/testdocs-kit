@@ -65,7 +65,12 @@ async function trackedFetch(url, options, redirects = 0) {
     redirectsFollowed: redirects
   };
   const response = await fetch(url, options);
-  responseDiagnostics.set(response, { request, redact });
+  const responseCookies = (response.headers.getSetCookie?.() || []).map((header) => {
+    const pair = header.split(";", 1)[0];
+    return pair.slice(pair.indexOf("=") + 1).trim();
+  }).filter(Boolean).sort((a, b) => b.length - a.length);
+  const redactResponse = (text) => responseCookies.reduce((result, value) => redactSpSecret(result, value), redact(text));
+  responseDiagnostics.set(response, { request, redact: redactResponse });
   return response;
 }
 

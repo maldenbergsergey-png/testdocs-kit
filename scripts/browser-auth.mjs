@@ -12,7 +12,7 @@ import { connectionList, findConnection, migrateConfig, sessionKey } from "./con
 
 const currentFile = fileURLToPath(import.meta.url);
 const require = createRequire(import.meta.url);
-const { getCookieHeader } = require("../mcp/session-auth.cjs");
+const { getCookieHeader, saveSession: writeSession, cookiesFromResponse } = require("../mcp/session-auth.cjs");
 const { fetchWithSpSecret } = require("../mcp/atlassian-http.cjs");
 const service = process.argv[2];
 const connectionId = process.argv.slice(3).find((value) => !value.startsWith("--"));
@@ -54,7 +54,7 @@ function respawnForRuntime(config) {
 function configuredService(config) {
   const entry = findConnection(config, service, connectionId);
   if (!entry?.enabled) fail(`${service} отключён в настройках.`);
-  if (entry.authMode !== "browser_session") {
+  if (entry.authMode !== "browser_session" && !(entry.authMode === "basic" && entry.profile === "3")) {
     fail(`${service} использует режим ${entry.authMode || "не определён"}, а не вход через браузер.`);
   }
   const baseUrl = (service === "jira" ? entry.url : entry.baseUrl)?.replace(/\/+$/, "");
@@ -96,11 +96,11 @@ function findBrowser() {
   fail("не найден Google Chrome, Microsoft Edge или Chromium. Установите один из них либо задайте TESTDOCS_BROWSER=/полный/путь.");
 }
 
-function cookieHeaderFromCookies(cookies, baseUrl) {
+function cookieHeaderFromCookies(cookies, baseUrl, requestUrl) {
   const temporary = path.join(os.tmpdir(), `testdocs-session-probe-${process.pid}-${service}.json`);
   try {
     fs.writeFileSync(temporary, JSON.stringify({ version: 1, service, baseUrl, cookies }), { mode: 0o600 });
-    return getCookieHeader(temporary, `${baseUrl}/`, service);
+    return getCookieHeader(temporary, requestUrl, service);
   } finally {
     fs.rmSync(temporary, { force: true });
   }
@@ -115,16 +115,17 @@ function cookiesForService(cookies, baseUrl) {
 }
 
 async function probe(baseUrl, cookies, spSecret) {
+  const probePath = service === "jira" ? "/rest/api/2/myself" : "/rest/api/user/current";
+  const requestUrl = `${baseUrl}${probePath}`;
   let cookieHeader;
   try {
-    cookieHeader = cookieHeaderFromCookies(cookies, baseUrl);
+    cookieHeader = cookieHeaderFromCookies(cookies, baseUrl, requestUrl);
   } catch {
     return false;
   }
-  const probePath = service === "jira" ? "/rest/api/2/myself" : "/rest/api/user/current";
   let response;
   try {
-    response = await fetchWithSpSecret(`${baseUrl}${probePath}`, {
+    response = await fetchWithSpSecret(requestUrl, {
       redirect: "manual",
       headers: { Cookie: cookieHeader, Accept: "application/json" }
     }, spSecret);
@@ -134,8 +135,10 @@ async function probe(baseUrl, cookies, spSecret) {
   if (!response.ok) return false;
   try {
     const data = await response.json();
-    if (service === "jira") return Boolean(data.name || data.key || data.accountId || data.displayName);
-    return data.type !== "anonymous" && Boolean(data.username || data.userKey || data.displayName);
+    const authenticated = service === "jira"
+      ? Boolean(data.name || data.key || data.accountId || data.displayName)
+      : data.type !== "anonymous" && Boolean(data.username || data.userKey || data.displayName);
+    return authenticated ? cookiesFromResponse({ cookies }, requestUrl, response) : false;
   } catch {
     return false;
   }
@@ -145,24 +148,20 @@ function readStoredCookies(sessionFile, baseUrl) {
   if (!fs.existsSync(sessionFile)) return [];
   try {
     const stored = JSON.parse(fs.readFileSync(sessionFile, "utf8"));
-    return stored.baseUrl === baseUrl && Array.isArray(stored.cookies) ? stored.cookies : [];
+    return !stored.authRequired && stored.service === service && stored.baseUrl === baseUrl && Array.isArray(stored.cookies) ? stored.cookies : [];
   } catch {
     return [];
   }
 }
 
 function saveSession(sessionFile, baseUrl, cookies) {
-  fs.mkdirSync(path.dirname(sessionFile), { recursive: true, mode: 0o700 });
-  const temporary = `${sessionFile}.tmp-${process.pid}`;
-  fs.writeFileSync(temporary, `${JSON.stringify({
+  writeSession(sessionFile, {
     version: 1,
     service,
     baseUrl,
     authenticatedAt: new Date().toISOString(),
     cookies
-  }, null, 2)}\n`, { mode: 0o600 });
-  fs.renameSync(temporary, sessionFile);
-  try { fs.chmodSync(sessionFile, 0o600); } catch { /* Windows uses ACLs. */ }
+  });
 }
 
 function wait(milliseconds) {
@@ -225,7 +224,7 @@ class CdpClient {
 
 async function authenticate(baseUrl, sessionFile, spSecret) {
   const browser = findBrowser();
-  const profileDir = path.join(getConfigDir(), "browser-profiles", service);
+  const profileDir = path.join(getConfigDir(), "browser-profiles", path.basename(sessionFile, ".json"));
   const portFile = path.join(profileDir, "DevToolsActivePort");
   fs.mkdirSync(profileDir, { recursive: true, mode: 0o700 });
   fs.rmSync(portFile, { force: true });
@@ -252,8 +251,9 @@ async function authenticate(baseUrl, sessionFile, spSecret) {
     while (Date.now() < deadline) {
       const { cookies = [] } = await cdp.send("Storage.getCookies");
       const serviceCookies = cookiesForService(cookies, baseUrl);
-      if (await probe(baseUrl, serviceCookies, spSecret)) {
-        saveSession(sessionFile, baseUrl, serviceCookies);
+      const verifiedCookies = await probe(baseUrl, serviceCookies, spSecret);
+      if (verifiedCookies) {
+        saveSession(sessionFile, baseUrl, verifiedCookies);
         console.log(`Сессия ${service} сохранена: ${sessionFile}`);
         await cdp.send("Browser.close").catch(() => {});
         return;
@@ -279,9 +279,13 @@ async function main() {
   const { entry, baseUrl } = configuredService(config);
   const sessionFile = getSessionFile(sessionKey(service, entry.id, connectionList(config, service).length));
   const storedCookies = readStoredCookies(sessionFile, baseUrl);
-  if (!force && storedCookies.length && await probe(baseUrl, storedCookies, entry.spSecret)) {
-    console.log(`Сессия ${service} действует. Повторный вход не требуется.`);
-    return;
+  if (!force && storedCookies.length) {
+    const verifiedCookies = await probe(baseUrl, storedCookies, entry.spSecret);
+    if (verifiedCookies) {
+      saveSession(sessionFile, baseUrl, verifiedCookies);
+      console.log(`Сессия ${service} действует. Повторный вход не требуется.`);
+      return;
+    }
   }
   await authenticate(baseUrl, sessionFile, entry.spSecret);
 }

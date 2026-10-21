@@ -74,27 +74,25 @@ function pagination(data: Record<string, unknown>, size: number, start: number, 
   return result;
 }
 
-const {
-  createAuthRequiredError,
-  getCookieHeader,
-  isAuthenticationFailure,
-} = require("../../session-auth.cjs") as {
-  createAuthRequiredError: (service: string, reason: string) => Error;
-  getCookieHeader: (sessionFile: string | undefined, requestUrl: string, service: string) => string;
-  isAuthenticationFailure: (response: Response, body?: string) => boolean;
+const { fetchWithSession } = require("../../session-auth.cjs") as {
+  fetchWithSession: (url: string, options: RequestInit, session: {
+    service: string; sessionFile?: string; baseUrl: string; spSecret: string; bootstrapAuthorization?: string;
+  }) => Promise<{ response: Response; body: string }>;
 };
 
 export type AuthMode = "basic" | "bearer" | "browser_session";
 
-const { fetchWithSpSecret, redactSpSecret, withHttpDiagnostics } = require("../../atlassian-http.cjs") as {
+const { fetchWithSpSecret, redactSpSecret, withHttpDiagnostics, redactHttpText } = require("../../atlassian-http.cjs") as {
   fetchWithSpSecret: (url: string, options: RequestInit, secret?: string) => Promise<Response>;
   redactSpSecret: (message: string, secret?: string) => string;
   withHttpDiagnostics: (error: Error, response: Response, body?: string) => Error;
+  redactHttpText: (response: Response, text: string) => string;
 };
 
 export class ConfluenceClient {
   private baseUrl: string;
   private authHeader?: string;
+  private useSession: boolean;
 
   constructor(
     baseUrl: string,
@@ -103,8 +101,10 @@ export class ConfluenceClient {
     authMode: AuthMode = "basic",
     private sessionFile?: string,
     private spSecret = "",
+    passwordSession = false,
   ) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
+    this.useSession = authMode === "browser_session" || (authMode === "basic" && passwordSession);
 
     if (authMode === "browser_session") {
       this.authHeader = undefined;
@@ -124,34 +124,30 @@ export class ConfluenceClient {
     }
 
     let res: Response;
+    let body: string;
     try {
-      const authentication: Record<string, string> = this.authHeader
-        ? { Authorization: this.authHeader }
-        : { Cookie: getCookieHeader(this.sessionFile, url.toString(), "confluence") };
-      res = await fetchWithSpSecret(url.toString(), {
-        redirect: this.authHeader ? "follow" : "manual",
-        headers: {
-          ...authentication,
-          Accept: "application/json",
-        },
-      }, this.spSecret);
+      const options = { headers: { Accept: "application/json" } };
+      if (this.useSession) {
+        ({ response: res, body } = await fetchWithSession(url.toString(), options, {
+          service: "confluence", sessionFile: this.sessionFile, baseUrl: this.baseUrl,
+          spSecret: this.spSecret, bootstrapAuthorization: this.authHeader,
+        }));
+      } else {
+        res = await fetchWithSpSecret(url.toString(), {
+          redirect: "follow", headers: { ...options.headers, Authorization: this.authHeader! },
+        }, this.spSecret);
+        body = await res.text();
+      }
     } catch (error) {
-      const cause = (error as { cause?: { code?: string; message?: string }; message?: string });
+      const cause = (error as { code?: string; cause?: { code?: string; message?: string }; message?: string });
+      if (cause.code === "AUTH_REQUIRED" || cause.message?.startsWith("SESSION_BUSY:")) throw error;
       const details = cause.cause?.code ?? cause.cause?.message ?? cause.message ?? "unknown network error";
       throw new Error(redactSpSecret(`Confluence network request failed for ${url.origin}${url.pathname}: ${details}`, this.spSecret));
     }
 
-    const body = await res.text();
-    if (!this.authHeader && isAuthenticationFailure(res, body)) {
-      throw withHttpDiagnostics(createAuthRequiredError(
-        "confluence",
-        "Сессия Confluence отсутствует или истекла."
-      ), res, body);
-    }
-
     if (!res.ok) {
       throw withHttpDiagnostics(new Error(redactSpSecret(
-        `Confluence API error ${res.status}: ${res.statusText}\n${body}`, this.spSecret
+        `Confluence API error ${res.status}: ${res.statusText}\n${redactHttpText(res, body)}`, this.spSecret
       )), res, body);
     }
 

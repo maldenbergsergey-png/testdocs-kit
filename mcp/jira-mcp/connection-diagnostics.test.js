@@ -20,7 +20,7 @@ test("local connection diagnostics expose loaded code and configuration without 
   assert(!Number.isNaN(Date.parse(result.runtime.loadedAt)));
   assert.equal(result.runtime.httpDiagnosticsVersion, 1);
   assert.deepEqual(result.connection, {
-    id: "jira-selected", baseUrl: "https://jira.example.test/jira", authMode: "bearer",
+    id: "jira-selected", baseUrl: "https://jira.example.test/jira", authMode: "bearer", sessionReuse: "none",
     gatewayHeader: { name: "X-Sp-Secret", configured: true, valid: true }
   });
   assert.equal(result.lastHttpError, null);
@@ -30,6 +30,12 @@ test("local connection diagnostics expose loaded code and configuration without 
     assert(!JSON.stringify(result).includes(secret));
   }
   assert.equal(fetch.mock.callCount(), 0);
+});
+
+test("diagnostics distinguish password session reuse from Basic API-token authentication", () => {
+  assert.equal(createConnectionDiagnostics({ JIRA_AUTH_MODE: "basic", JIRA_PASSWORD_SESSION: "1" })().connection.sessionReuse, "password");
+  assert.equal(createConnectionDiagnostics({ JIRA_AUTH_MODE: "basic", JIRA_PASSWORD_SESSION: "0" })().connection.sessionReuse, "none");
+  assert.equal(createConnectionDiagnostics({ JIRA_AUTH_MODE: "browser_session" })().connection.sessionReuse, "browser");
 });
 
 test("local diagnostics distinguish absent and invalid headers without disclosing their values", () => {

@@ -4,11 +4,7 @@ const { fetchWithSpSecret, redactSpSecret, withHttpDiagnostics, redactHttpText }
 const { createConnectionDiagnostics } = require("./connection-diagnostics");
 const getConnectionDiagnostics = createConnectionDiagnostics(process.env);
 
-const {
-  createAuthRequiredError,
-  getCookieHeader,
-  isAuthenticationFailure
-} = require("../session-auth.cjs");
+const { fetchWithSession } = require("../session-auth.cjs");
 
 const {
   JIRA_URL,
@@ -18,6 +14,7 @@ const {
   JIRA_API_VERSION = "3",
   JIRA_INSECURE_TLS = "0",
   JIRA_SESSION_FILE,
+  JIRA_PASSWORD_SESSION = "0",
   JIRA_SP_SECRET = "",
   JIRA_TEST_CASE_URL_TEMPLATE,
   JIRA_TEST_RUN_URL_TEMPLATE
@@ -45,17 +42,26 @@ function buildAuthHeader() {
   return `Basic ${Buffer.from(`${JIRA_EMAIL}:${JIRA_TOKEN}`).toString("base64")}`;
 }
 
-function buildAuthHeaders(url) {
+function buildAuthHeaders() {
   if (JIRA_AUTH_MODE === "browser_session") {
-    return { Cookie: getCookieHeader(JIRA_SESSION_FILE, url, "jira") };
+    return {};
   }
   return { Authorization: buildAuthHeader() };
 }
 
 async function fetchWithNetworkDetails(url, options, system) {
   try {
-    return await fetchWithSpSecret(url, options, JIRA_SP_SECRET);
+    if (JIRA_AUTH_MODE === "browser_session" || (JIRA_AUTH_MODE === "basic" && JIRA_PASSWORD_SESSION === "1")) {
+      return await fetchWithSession(url, options, {
+        service: "jira", sessionFile: JIRA_SESSION_FILE, baseUrl: JIRA_URL,
+        spSecret: JIRA_SP_SECRET,
+        bootstrapAuthorization: JIRA_AUTH_MODE === "basic" ? buildAuthHeader() : undefined
+      });
+    }
+    const response = await fetchWithSpSecret(url, options, JIRA_SP_SECRET);
+    return { response, body: await response.text() };
   } catch (error) {
+    if (error.code === "AUTH_REQUIRED" || error.message.startsWith("SESSION_BUSY:")) throw error;
     const cause = error.cause?.code || error.cause?.message || error.message;
     throw transportError(`${system} network request failed for ${url}: ${cause}`);
   }
@@ -71,11 +77,11 @@ async function jiraRequest(path, method = "GET", body, multipart = false) {
   }
 
   const url = `${JIRA_URL}${path}`;
-  const res = await fetchWithNetworkDetails(url, {
+  const { response: res, body: rawText } = await fetchWithNetworkDetails(url, {
     method,
     redirect: JIRA_AUTH_MODE === "browser_session" ? "manual" : "follow",
     headers: {
-      ...buildAuthHeaders(url),
+      ...buildAuthHeaders(),
       Accept: "application/json",
       ...(multipart ? { "X-Atlassian-Token": "no-check" } : { "Content-Type": "application/json" })
     },
@@ -83,11 +89,7 @@ async function jiraRequest(path, method = "GET", body, multipart = false) {
   }, "Jira");
 
   const contentType = res.headers.get("content-type") || "";
-  const rawText = await res.text();
   const safeText = redactSpSecret(redactHttpText(res, rawText), JIRA_SP_SECRET);
-  if (JIRA_AUTH_MODE === "browser_session" && isAuthenticationFailure(res, rawText)) {
-    throw withHttpDiagnostics(createAuthRequiredError("jira", "Сессия Jira отсутствует или истекла."), res, rawText);
-  }
   const trimmedText = rawText.trim();
   const looksLikeJson =
     contentType.includes("application/json") ||
@@ -490,11 +492,11 @@ async function zephyrRequest(path, method = "GET", body) {
   }
 
   const url = `${JIRA_URL}${path}`;
-  const res = await fetchWithNetworkDetails(url, {
+  const { response: res, body: rawText } = await fetchWithNetworkDetails(url, {
     method,
     redirect: JIRA_AUTH_MODE === "browser_session" ? "manual" : "follow",
     headers: {
-      ...buildAuthHeaders(url),
+      ...buildAuthHeaders(),
       Accept: "application/json",
       "Content-Type": "application/json"
     },
@@ -502,11 +504,7 @@ async function zephyrRequest(path, method = "GET", body) {
   }, "Zephyr");
 
   const contentType = res.headers.get("content-type") || "";
-  const rawText = await res.text();
   const safeText = redactSpSecret(redactHttpText(res, rawText), JIRA_SP_SECRET);
-  if (JIRA_AUTH_MODE === "browser_session" && isAuthenticationFailure(res, rawText)) {
-    throw withHttpDiagnostics(createAuthRequiredError("jira", "Сессия Jira/Zephyr отсутствует или истекла."), res, rawText);
-  }
   const trimmedText = rawText.trim();
   const looksLikeJson =
     contentType.includes("application/json") ||

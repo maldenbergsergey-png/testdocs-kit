@@ -32,9 +32,9 @@ function success(res) {
   res.end(JSON.stringify({ id: "42" }));
 }
 
-function client(service, url, mode, sessionFile, spSecret = "") {
+function client(service, url, mode, sessionFile, spSecret = "", passwordSession = false) {
   if (service === "confluence") {
-    const api = new ConfluenceClient(url, "tester", "dummy-token", mode, sessionFile, spSecret);
+    const api = new ConfluenceClient(url, "tester", "dummy-token", mode, sessionFile, spSecret, passwordSession);
     return () => api.getPage("42");
   }
   Object.assign(process.env, {
@@ -43,12 +43,230 @@ function client(service, url, mode, sessionFile, spSecret = "") {
     JIRA_TOKEN: "dummy-token",
     JIRA_SP_SECRET: spSecret,
     JIRA_AUTH_MODE: mode,
+    JIRA_PASSWORD_SESSION: passwordSession ? "1" : "0",
     JIRA_INSECURE_TLS: "0",
     JIRA_SESSION_FILE: sessionFile || ""
   });
   delete require.cache[require.resolve("./jira-mcp/jira-client.js")];
   const api = require("./jira-mcp/jira-client.js");
   return (method = "GET", body) => api[service === "jira" ? "jiraRequest" : "zephyrRequest"]("/probe", method, body);
+}
+
+function storedSession(t, service, url, cookies = [{ name: "session", value: "0", domain: "127.0.0.1", path: "/" }]) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "testdocs-session-reuse-"));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const file = path.join(directory, `${service}-company.json`);
+  require("./session-auth.cjs").saveSession(file, { version: 1, service, baseUrl: url, cookies });
+  return file;
+}
+
+for (const service of ["jira", "zephyr", "confluence"]) {
+  const sessionService = service === "zephyr" ? "jira" : service;
+  test(`${service}: rotated cookies survive parallel reads and a fresh client`, async (t) => {
+    let version = 0;
+    const fixture = await serve(t, (req, res) => {
+      assert.equal(req.headers.cookie, `session=${version}`);
+      assert.equal(req.headers.authorization, undefined);
+      version += 1;
+      res.setHeader("Set-Cookie", [`session=${version}; Path=/; HttpOnly`, "retired=; Path=/; Max-Age=0"]);
+      success(res);
+    });
+    const file = storedSession(t, sessionService, fixture.url);
+    const read = client(service, fixture.url, "browser_session", file);
+    await Promise.all([read(), read(), read()]);
+    await client(service, fixture.url, "browser_session", file)();
+    assert.equal(version, 4);
+    assert.equal(JSON.parse(fs.readFileSync(file)).cookies[0].value, "4");
+    if (process.platform !== "win32") assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+    assert.deepEqual(fs.readdirSync(`${file}.locks`), []);
+  });
+
+  test(`${service}: an expired session stops the whole batch until explicit login`, async (t) => {
+    let expired = true;
+    const fixture = await serve(t, (req, res) => {
+      if (!expired) return success(res);
+      res.writeHead(302, { Location: "/login", "Set-Cookie": "session=login-cookie; Path=/" });
+      res.end();
+    });
+    const file = storedSession(t, sessionService, fixture.url);
+    const read = client(service, fixture.url, "browser_session", file);
+    const outcomes = await Promise.allSettled([read(), read(), read()]);
+    for (const outcome of outcomes) {
+      assert.equal(outcome.status, "rejected");
+      assert.equal(outcome.reason.code, "AUTH_REQUIRED");
+      assert(outcome.reason.message.includes(`npm run auth -- ${sessionService} company`));
+    }
+    await assert.rejects(client(service, fixture.url, "browser_session", file)(), /AUTH_REQUIRED/);
+    assert.equal(fixture.requests.length, 1, "Later issues/pages must not restart MFA");
+    expired = false;
+    const session = JSON.parse(fs.readFileSync(file));
+    delete session.authRequired;
+    require("./session-auth.cjs").saveSession(file, session);
+    await read();
+    assert.equal(fixture.requests.length, 2);
+  });
+
+  test(`${service}: password login bootstraps once and then uses the saved cookie`, async (t) => {
+    const fixture = await serve(t, (req, res) => {
+      if (fixture.requests.length === 1) {
+        assert.match(req.headers.authorization, /^Basic /);
+        assert.equal(req.headers.cookie, undefined);
+        res.setHeader("Set-Cookie", "session=authenticated; Path=/; HttpOnly");
+      } else {
+        assert.equal(req.headers.authorization, undefined);
+        assert.equal(req.headers.cookie, "session=authenticated");
+      }
+      success(res);
+    });
+    const file = storedSession(t, sessionService, fixture.url);
+    fs.unlinkSync(file);
+    const read = client(service, fixture.url, "basic", file, "", true);
+    await Promise.all([read(), read(), read()]);
+    await client(service, fixture.url, "basic", file, "", true)();
+    assert.equal(fixture.requests.length, 4);
+  });
+
+  test(`${service}: password authentication without a reusable session never loops`, async (t) => {
+    for (const status of [200, 401]) {
+      const fixture = await serve(t, (req, res) => {
+        res.writeHead(status, { "Content-Type": "application/json" });
+        res.end('{"id":"42"}');
+      });
+      const file = storedSession(t, sessionService, fixture.url);
+      fs.unlinkSync(file);
+      const read = client(service, fixture.url, "basic", file, "", true);
+      if (status === 200) await read();
+      else await assert.rejects(read(), /AUTH_REQUIRED/);
+      await assert.rejects(read(), /AUTH_REQUIRED/);
+      assert.equal(fixture.requests.length, 1);
+    }
+  });
+
+  test(`${service}: ordinary forbidden responses keep the session usable`, async (t) => {
+    const fixture = await serve(t, (req, res) => {
+      if (fixture.requests.length > 1) return success(res);
+      res.writeHead(403, { "Content-Type": "application/json", "Set-Cookie": "session=renewed; Path=/" });
+      res.end('{"message":"Forbidden"}');
+    });
+    const file = storedSession(t, sessionService, fixture.url);
+    const read = client(service, fixture.url, "browser_session", file);
+    await assert.rejects(read(), /403/);
+    await read();
+    assert.equal(fixture.requests[1].headers.cookie, "session=renewed");
+    assert.equal(JSON.parse(fs.readFileSync(file)).authRequired, undefined);
+  });
+
+  test(`${service}: errors never expose sent or newly rotated session cookies`, async (t) => {
+    const fixture = await serve(t, (req, res) => {
+      res.writeHead(403, { "Content-Type": "application/json", "Set-Cookie": "session=private-rotated-cookie; Path=/" });
+      res.end(JSON.stringify({ error: `${req.headers.cookie} private-rotated-cookie` }));
+    });
+    const file = storedSession(t, sessionService, fixture.url,
+      [{ name: "session", value: "private-sent-cookie", domain: "127.0.0.1", path: "/" }]);
+    await assert.rejects(client(service, fixture.url, "browser_session", file)(), (error) => {
+      assert.match(error.message, /403/);
+      assert(!error.message.includes("private-sent-cookie"));
+      assert(!error.message.includes("private-rotated-cookie"));
+      return true;
+    });
+  });
+}
+
+test("separate MCP processes serialize requests using the same rotating session", async (t) => {
+  let version = 0;
+  const fixture = await serve(t, (req, res) => {
+    assert.equal(req.headers.cookie, `session=${version}`);
+    version += 1;
+    res.setHeader("Set-Cookie", `session=${version}; Path=/`);
+    success(res);
+  });
+  const file = storedSession(t, "jira", fixture.url);
+  const { execFile } = require("node:child_process");
+  const run = require("node:util").promisify(execFile);
+  const script = `const {fetchWithSession}=require(process.argv[1]);
+    (async()=>{for(let i=0;i<2;i++) await fetchWithSession(process.argv[2],{},
+      {service:'jira',sessionFile:process.argv[3]});})().catch(()=>process.exit(1));`;
+  await Promise.all([0, 1, 2, 3].map(() => run(process.execPath, ["-e", script,
+    path.join(__dirname, "session-auth.cjs"), fixture.url, file])));
+  assert.equal(version, 8);
+  assert.equal(JSON.parse(fs.readFileSync(file)).cookies[0].value, "8");
+  assert.deepEqual(fs.readdirSync(`${file}.locks`), []);
+});
+
+test("a late response cannot overwrite an explicitly renewed session", async (t) => {
+  let file;
+  const fixture = await serve(t, (req, res) => {
+    const session = JSON.parse(fs.readFileSync(file));
+    session.cookies[0].value = "fresh-interactive-login";
+    require("./session-auth.cjs").saveSession(file, session);
+    res.writeHead(401, { "Content-Type": "application/json" });
+    res.end('{}');
+  });
+  file = storedSession(t, "jira", fixture.url);
+  await assert.rejects(client("jira", fixture.url, "browser_session", file)(), /AUTH_REQUIRED/);
+  const session = JSON.parse(fs.readFileSync(file));
+  assert.equal(session.cookies[0].value, "fresh-interactive-login");
+  assert.equal(session.authRequired, undefined);
+});
+
+for (const service of ["jira", "confluence"]) {
+  test(`${service}: launcher enables cookie reuse for passwords and keeps API tokens unchanged`, async (t) => {
+    for (const profile of ["3", "1"]) {
+      const fixture = await serve(t, (req, res) => {
+        res.setHeader("Set-Cookie", "session=authenticated; Path=/");
+        success(res);
+      });
+      const file = storedSession(t, service, fixture.url);
+      const directory = path.dirname(file);
+      fs.unlinkSync(file);
+      fs.writeFileSync(path.join(directory, "config.json"), JSON.stringify({ version: 3,
+        connections: { [service]: [{ id: "company", enabled: true, authMode: "basic", profile,
+          url: fixture.url, baseUrl: fixture.url, username: "tester", secret: "dummy-token" }] },
+        tms: { category: "none", provider: "none" }
+      }));
+      const mcp = await launchMcp(service, "company", directory);
+      try {
+        for (let i = 0; i < 2; i++) {
+          const result = await mcp.callTool({ name: service === "jira" ? "get_issue" : "get_page",
+            arguments: service === "jira" ? { key: "DEMO-42" } : { pageId: "42" } });
+          assert.notEqual(result.isError, true, result.content[0]?.text);
+        }
+      } finally { await mcp.close(); }
+      assert.match(fixture.requests[0].headers.authorization, /^Basic /);
+      assert.equal(fixture.requests[1].headers.authorization,
+        profile === "3" ? undefined : fixture.requests[0].headers.authorization);
+      assert.equal(fixture.requests[1].headers.cookie, profile === "3" ? "session=authenticated" : undefined);
+    }
+  });
+
+  test(`${service}: auth command retains cookies rotated by its own verification request`, async (t) => {
+    for (const mode of ["basic", "browser_session"]) {
+      const fixture = await serve(t, (req, res) => {
+        assert.equal(req.headers.cookie, "session=0");
+        res.writeHead(200, { "Content-Type": "application/json", "Set-Cookie": "session=verified; Path=/rest/api; HttpOnly" });
+        res.end('{"name":"tester","username":"tester"}');
+      });
+      const file = storedSession(t, service, fixture.url,
+        [{ name: "session", value: "0", domain: "127.0.0.1", path: "/rest/api" }]);
+      const directory = path.dirname(file);
+      const sessions = path.join(directory, "sessions");
+      fs.mkdirSync(sessions);
+      const sessionFile = path.join(sessions, path.basename(file));
+      fs.renameSync(file, sessionFile);
+      fs.writeFileSync(path.join(directory, "config.json"), JSON.stringify({ version: 3,
+        connections: { [service]: [{ id: "company", enabled: true, authMode: mode, profile: mode === "basic" ? "3" : "4",
+          url: fixture.url, baseUrl: fixture.url }] }
+      }));
+      const run = require("node:util").promisify(require("node:child_process").execFile);
+      const result = await run(process.execPath, [path.join(__dirname, "../scripts/browser-auth.mjs"), service, "company"], {
+        env: { ...process.env, TESTDOCS_CONFIG_DIR: directory, TESTDOCS_CONFIG_FILE: path.join(directory, "config.json"),
+          TESTDOCS_BROWSER: process.execPath }
+      });
+      assert.match(result.stdout, /Повторный вход не требуется/);
+      assert.equal(fixture.requests.length, 1);
+      assert.equal(JSON.parse(fs.readFileSync(sessionFile)).cookies[0].value, "verified");
+    }
+  });
 }
 
 async function launchMcp(service, connectionId, directory) {

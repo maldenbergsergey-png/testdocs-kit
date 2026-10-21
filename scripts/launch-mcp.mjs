@@ -77,6 +77,7 @@ function buildEnvironment(service, connectionId, config) {
       JIRA_TOKEN: jira.secret || "",
       JIRA_SP_SECRET: atlassianHttp.validateSpSecret(jira.spSecret),
       JIRA_AUTH_MODE: jira.authMode || "basic",
+      JIRA_PASSWORD_SESSION: jira.authMode === "basic" && jira.profile === "3" ? "1" : "0",
       JIRA_SESSION_FILE: getSessionFile(sessionKey("jira", jira.id, connectionList(config, "jira").length)),
       JIRA_API_VERSION: String(jira.apiVersion || "2"),
       JIRA_INSECURE_TLS: jira.insecureTls ? "1" : "0",
@@ -150,6 +151,7 @@ function buildEnvironment(service, connectionId, config) {
     CONFLUENCE_API_TOKEN: confluence.secret || "",
     CONFLUENCE_SP_SECRET: atlassianHttp.validateSpSecret(confluence.spSecret),
     CONFLUENCE_AUTH_MODE: confluence.authMode || "basic",
+    CONFLUENCE_PASSWORD_SESSION: confluence.authMode === "basic" && confluence.profile === "3" ? "1" : "0",
     CONFLUENCE_SESSION_FILE: getSessionFile(sessionKey("confluence", confluence.id, connectionList(config, "confluence").length)),
     CONFLUENCE_INSECURE_TLS: confluence.insecureTls ? "1" : "0"
   };
