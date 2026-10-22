@@ -16,6 +16,7 @@ Integrations are context transport, not QA logic. This repository works fully wi
 - [`profiles/gitlab.md`](profiles/gitlab.md) — official GitLab remote MCP, OAuth/Keycloak considerations, and scoped change context.
 - [`profiles/figma.md`](profiles/figma.md) — official Figma remote MCP and node-specific design comparison.
 - [`profiles/postman.md`](profiles/postman.md) — official Postman remote MCP modes for API assets and optional collection management.
+- [`postman-collection-sync.md`](postman-collection-sync.md) - collection maintenance from files, repository refs and task exports; optional connections and host-driven automation.
 - [`profiles/elastic-kibana.md`](profiles/elastic-kibana.md) — version-aware Elastic Agent Builder MCP and scoped log analysis.
 - [`profiles/maestro.md`](profiles/maestro.md) - default local Android/iOS control through the official Maestro CLI MCP, device preflight and evidence capture.
 

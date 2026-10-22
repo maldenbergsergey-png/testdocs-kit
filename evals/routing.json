@@ -194,5 +194,40 @@
     "skill": "update-test-cases",
     "artifact": "proposal",
     "collect": false
+  },
+  {
+    "id": "postman_file_delta",
+    "prompt": "Обнови контрактные автотесты GET /api/items по приложенному YAML. Полная актуальная коллекция и инструкция валидатора тоже приложены. Нужен только локальный patch.",
+    "skill": "update-postman-collection",
+    "artifact": "collection_patch",
+    "collect": false
+  },
+  {
+    "id": "postman_branch_new_method",
+    "prompt": "Добавь новый метод и автотесты в выбранную Postman-коллекцию по контракту из https://gitlab.example.invalid/demo/api/-/tree/feature/DEMO-31. Путь к YAML указан в задаче.",
+    "skill": "update-postman-collection",
+    "artifact": "collection_patch",
+    "collect": true
+  },
+  {
+    "id": "postman_task_bound",
+    "prompt": "В API-задаче добавили необязательный параметр запроса; поддерживаем автотесты привязанной к задаче коллекции Postman. Задача, YAML из её ветки и коллекция уже полностью приложены. Учти доработку в автотестах.",
+    "skill": "update-postman-collection",
+    "artifact": "collection_patch",
+    "collect": false
+  },
+  {
+    "id": "postman_task_export",
+    "prompt": "Сделай patch Postman по выгрузке YAML только изменённого метода. Текущая коллекция и описание формата schema полностью приложены; репозитория и подключений нет.",
+    "skill": "update-postman-collection",
+    "artifact": "collection_patch",
+    "collect": false
+  },
+  {
+    "id": "api_checklist_only",
+    "prompt": "В методе добавлен необязательный query-параметр limit, integer от 1 до 20. Нужен только чек-лист по этим требованиям; Postman-коллекцию не меняй.",
+    "skill": "generate-test-checklist",
+    "artifact": "checklist",
+    "collect": false
   }
 ]

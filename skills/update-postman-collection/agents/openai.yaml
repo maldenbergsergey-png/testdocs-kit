@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update Postman Collection"
+  short_description: "Maintain API requests and contract autotests"
+  default_prompt: "Use $update-postman-collection to update the collection's requests and autotests from this API contract change."

@@ -26,6 +26,7 @@ Read [core.md](core.md) once per task. This index is for discovery; follow only 
 - [`regression-model-rules.md`](regression-model-rules.md) — construction and maintenance of a traceable regression coverage model.
 - [`test-run-rules.md`](test-run-rules.md) — release Test Run discovery, eligibility, depth, assignment, and creation rules.
 - [`update-rules.md`](update-rules.md) — safe changes to existing cases.
+- [`postman-collection-rules.md`](postman-collection-rules.md) - contract provenance, request/schema deltas, required/types dialect and collection publication.
 - [`review-rules.md`](review-rules.md) — review criteria and finding severity.
 - [`standard-derivation-rules.md`](standard-derivation-rules.md) — evidence and approval rules for deriving shared policy from a documentation corpus.
 - [`project-conventions.md`](project-conventions.md) — cross-company isolation rules for runtime-only project conventions.

@@ -28,4 +28,14 @@ Use Minimal for ordinary discovery and Full only when collection/specification/m
 
 ## Authentication and fallback
 
-Prefer OAuth where the selected endpoint and client support it. For an API key, keep the key outside the repository and client snippets; reference it through an environment variable. If Postman is unavailable, run safe requests with an available HTTP/terminal tool and save sanitized request/response evidence locally when needed.
+Prefer OAuth where the selected endpoint and client support it. For an API key, keep the key outside the repository and client snippets; reference it through an environment variable. If Postman is unavailable during requested API execution, use an available HTTP/terminal tool and save sanitized request/response evidence locally when needed. For collection maintenance, use a supplied export/local file instead; maintenance alone does not authorize live requests.
+
+## Collection maintenance capabilities
+
+For request/schema updates, use [update-postman-collection](../../skills/update-postman-collection/SKILL.md) and its [shared rules](../../rules/postman-collection-rules.md). File-based input/output remains available without a connection; an HTTP run is not a substitute for reading the collection baseline.
+
+Inspect the exposed inventory for full nested collection reads, inherited scripts/auth/variables, stable item IDs, folder/item creation and updates, and post-write reads. Minimal discovery need not expose these writes; select Full when required. Confirm whether an update patches an item or replaces a whole collection; map the desired payload to that exact operation. Do not assume conditional revisions, fork creation, JavaScript execution or monitor controls exist.
+
+Preserve workspace/collection/item IDs, server revision/ETag when supplied, sanitized baseline hash, desired diff and write receipts. Follow read-before-write, conflict handling and uncertain-outcome reconciliation from the shared rules. Use sanitized collection exports/local files as the baseline when live reads are unavailable; never claim that a local patch was saved to Postman.
+
+Remote MCP accesses server-side assets. For [Native Git](https://learning.postman.com/docs/use/native-git/overview/), verify whether the intended element is local or cloud-synced and use the matching access path. See the [setup and automation guide](../postman-collection-sync.md) for optional bindings and host-driven invocations.
