@@ -114,7 +114,7 @@ function showHelp() {
   --reuse                                 Применить сохранённые настройки без вопросов
   --auto-update on|off                     Автообновление всего пакета (по умолчанию on)
   --update-interval-hours 4                Проверять обновления раз в заданное число часов
-  --configure jira|confluence|eva|tms|delivery|integrations|repositories|postman-repository|repository-sources|gitlab|figma|browser|maestro|all
+  --configure jira|confluence|eva|tms|delivery|integrations|repositories|postman-repository|postman|repository-sources|gitlab|figma|browser|maestro|all
                                           Перенастроить только выбранную часть
   --advanced-repositories                 Дополнительные настройки источников: Git, ID, файл и ветка
   --configure sp-secret                   Задать/заменить/удалить X-Sp-Secret для Jira/Confluence
@@ -401,6 +401,26 @@ function previousMcp(items, provider) {
   return (items || []).find((item) => item.provider === provider) || {};
 }
 
+async function collectPostmanMcp(previous = {}, { standalone = false } = {}) {
+  if (!standalone && !await confirm("Подключить официальный Postman MCP", previous.enabled ?? false)) return null;
+  const region = (await ask("Регион аккаунта Postman: 1 - US (вход через браузер), 2 - EU (API key)", previous.region === "eu" ? "2" : "1")) === "2" ? "eu" : "us";
+  const modeChoice = await ask(
+    "Инструменты Postman: 1 - основной набор, 2 - полный (управление коллекциями), 3 - Code, 4 - Learn",
+    ({ full: "2", code: "3", learn: "4" })[previous.mode] || (standalone ? "2" : "1")
+  );
+  const mode = ({ "2": "full", "3": "code", "4": "learn" })[modeChoice] || "minimal";
+  const entry = {
+    id: previous.id || "postman", provider: "postman", enabled: true, kind: "remote", region, mode,
+    url: `https://mcp.${region === "eu" ? "eu." : ""}postman.com/${mode === "full" ? "mcp" : mode}`,
+    authMode: region === "us" ? "oauth" : "env_header"
+  };
+  if (region === "eu") {
+    entry.envHttpHeaders = { Authorization: previous.envHttpHeaders?.Authorization || "TESTDOCS_POSTMAN_AUTH_HEADER" };
+    console.log(`Для Postman EU задайте ${entry.envHttpHeaders.Authorization}='Bearer <API key>' вне репозитория.`);
+  }
+  return entry;
+}
+
 async function collectExternalMcp(config, clients = []) {
   const previousItems = config.connections.mcp || [];
   const items = [];
@@ -441,31 +461,8 @@ async function collectExternalMcp(config, clients = []) {
     items.push(entry);
   }
 
-  const postmanPrevious = previousMcp(previousItems, "postman");
-  if (await confirm("Подключить официальный Postman MCP", postmanPrevious.enabled ?? false)) {
-    const region = (await ask("Postman region: 1 — US с OAuth, 2 — EU с API key", postmanPrevious.region === "eu" ? "2" : "1")) === "2" ? "eu" : "us";
-    const modeChoice = await ask(
-      "Postman tools: 1 — Minimal, 2 — Full (включая управление коллекциями), 3 — Code, 4 — Learn",
-      ({ full: "2", code: "3", learn: "4" })[postmanPrevious.mode] || "1"
-    );
-    const mode = ({ "2": "full", "3": "code", "4": "learn" })[modeChoice] || "minimal";
-    const endpoint = mode === "full" ? "mcp" : mode;
-    const entry = {
-      id: "postman",
-      provider: "postman",
-      enabled: true,
-      kind: "remote",
-      region,
-      mode,
-      url: `https://mcp.${region === "eu" ? "eu." : ""}postman.com/${endpoint}`,
-      authMode: region === "us" ? "oauth" : "env_header"
-    };
-    if (region === "eu") {
-      entry.envHttpHeaders = { Authorization: "TESTDOCS_POSTMAN_AUTH_HEADER" };
-      console.log("Для Postman EU задайте TESTDOCS_POSTMAN_AUTH_HEADER='Bearer <API key>' вне репозитория.");
-    }
-    items.push(entry);
-  }
+  const postman = await collectPostmanMcp(previousMcp(previousItems, "postman"));
+  if (postman) items.push(postman);
 
   const elasticPrevious = previousMcp(previousItems, "elastic");
   if (await confirm("Подключить Elastic Agent Builder MCP для чтения логов", elasticPrevious.enabled ?? false)) {
@@ -703,7 +700,7 @@ async function collectConfig(args, clients, existing = null) {
   if (args.add && !["jira", "confluence", "eva"].includes(args.add)) {
     throw new Error("--add поддерживает jira, confluence или eva.");
   }
-  if (!["jira", "confluence", "eva", "tms", "delivery", "integrations", "repositories", "postman-repository", "repository-sources", "gitlab", "figma", "browser", "maestro", "sp-secret", "all"].includes(target)) {
+  if (!["jira", "confluence", "eva", "tms", "delivery", "integrations", "repositories", "postman-repository", "postman", "repository-sources", "gitlab", "figma", "browser", "maestro", "sp-secret", "all"].includes(target)) {
     throw new Error("Неизвестный раздел настройки.");
   }
   if (target === "sp-secret") {
@@ -774,6 +771,10 @@ async function collectConfig(args, clients, existing = null) {
   }
   if (["all", "integrations"].includes(target)) {
     previous.connections.mcp = await collectExternalMcp(previous, clients);
+  }
+  if (target === "postman") {
+    const entry = await collectPostmanMcp(previousMcp(previous.connections.mcp, "postman"), { standalone: true });
+    previous.connections.mcp = [...previous.connections.mcp.filter(item => item.provider !== "postman"), entry];
   }
   if (["all", "integrations", "repositories", "postman-repository", "repository-sources", "gitlab"].includes(target)) {
     previous.repositories = await collectRepositories(previous.repositories, {
@@ -1338,7 +1339,7 @@ function authenticateBrowserSessions(config, args) {
 function authenticateRemoteMcp(config, clients, args) {
   const oauthServers = configuredServers(config).filter(
     (server) => server.kind === "remote" && server.authMode === "oauth" &&
-      (args.configure !== "figma" || server.provider === "figma")
+      (!["figma", "postman"].includes(args.configure) || server.provider === args.configure)
   );
   if (!oauthServers.length) return;
   if (args.noCli || args.skipBrowserAuth || !clients.includes("codex") || !commandAvailable("codex")) {
@@ -1372,6 +1373,13 @@ async function main() {
       : await chooseClients(args);
   if (!clients.length) throw new Error("Не выбран ни один клиент.");
   const config = await collectConfig(args, clients, existing);
+  if (args.configure === "postman") {
+    savePrivateConfig(config);
+    configureClients(config, clients, args);
+    authenticateRemoteMcp(config, clients, args);
+    console.log("Настройка Postman сохранена. Завершите вход в выбранном AI-клиенте и перезапустите его, чтобы появились инструменты Postman.");
+    return;
+  }
   if (repositoriesOnly) {
     if (args.caFile) {
       applyCaFile(config, args.caFile);

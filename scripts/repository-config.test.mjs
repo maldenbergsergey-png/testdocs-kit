@@ -301,11 +301,11 @@ test("isolated installer round-trips repository bindings, private tokens remain 
   } finally { fs.rmSync(temp, { recursive: true, force: true }); }
 });
 
-function driveGitlabWizard(env, interactions, target = "gitlab") {
+function driveConfigurationWizard(env, interactions, target = "gitlab") {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [path.join(root, "scripts/install.mjs"), "--configure", target], { cwd: root, env, stdio: ["pipe", "pipe", "pipe"] });
     let output = "", index = 0, cursor = 0;
-    const timer = setTimeout(() => { child.kill("SIGKILL"); reject(new Error("GitLab wizard timed out")); }, 15000);
+    const timer = setTimeout(() => { child.kill("SIGKILL"); reject(new Error("Configuration wizard timed out")); }, 15000);
     const read = chunk => {
       output += chunk;
       const step = interactions[index];
@@ -335,7 +335,7 @@ test("interactive GitLab saves on No, reuses the same host, and preserves saved 
     const previous = { version: 3, clients: ["codex"], connections: { jira: [], confluence: [], eva: [], mcp: [] }, tms: { category: "none", provider: "none" }, repositories: { postman, sources: [] }, qaReport: { enabled: false } };
     fs.writeFileSync(configFile, JSON.stringify(previous));
     fs.writeFileSync(clientFile, "# leave existing clients unchanged\n");
-    const first = await driveGitlabWizard(env, [
+    const first = await driveConfigurationWizard(env, [
       { prompt: "1. Адрес сервера GitLab", answer: source.url },
       { prompt: "2. Токен GitLab", answer: "sentinel-private-pat" },
       { prompt: "Добавить ещё один сервер GitLab?", answer: "нет" }
@@ -353,14 +353,14 @@ test("interactive GitLab saves on No, reuses the same host, and preserves saved 
     assert(!fs.readFileSync(configFile, "utf8").includes("sentinel-private-pat"));
     assert.deepEqual(saved.repositories.postman, postman);
     assert.deepEqual(saved.connections, previous.connections);
-    const reuse = await driveGitlabWizard(env, [
+    const reuse = await driveConfigurationWizard(env, [
       { prompt: "1. Адрес сервера GitLab", answer: "" },
       { prompt: "2. Токен GitLab", answer: "" },
       { prompt: "Добавить ещё один сервер GitLab?", answer: "" }
     ], "repository-sources");
     assert.equal(reuse.status, 0, reuse.output);
     assert.deepEqual(read().repositories.sources, saved.repositories.sources);
-    const aborted = await driveGitlabWizard(env, [
+    const aborted = await driveConfigurationWizard(env, [
       { prompt: "1. Адрес сервера GitLab", answer: "https://second.example.invalid" },
       { prompt: "2. Токен GitLab", answer: "dummy-second-pat" },
       { prompt: "Добавить ещё один сервер GitLab?", answer: "да" },
@@ -374,5 +374,50 @@ test("interactive GitLab saves on No, reuses the same host, and preserves saved 
     assert.equal(fs.readFileSync(clientFile, "utf8"), "# leave existing clients unchanged\n");
     assert.equal(fs.existsSync(path.join(temp, "config/client-snippets")), false);
     assert(!aborted.output.includes("dummy-second-pat"));
+  } finally { fs.rmSync(temp, { recursive: true, force: true }); }
+});
+
+test("standalone Postman config asks only its two questions, preserves GitLab/repositories/CA and switches auth without stale headers", async () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "testdocs-postman-config-"));
+  const configFile = path.join(temp, "settings/config.json");
+  const env = { ...process.env, TESTDOCS_INSTALL_ROOT: temp, TESTDOCS_CONFIG_DIR: path.dirname(configFile), TESTDOCS_CONFIG_FILE: configFile };
+  try {
+    fs.mkdirSync(path.dirname(configFile));
+    const others = [
+      { id: "figma", enabled: true, provider: "figma", kind: "remote", url: "https://mcp.figma.com/mcp", authMode: "oauth" },
+      { id: "gitlab", enabled: true, provider: "gitlab", kind: "remote", url: "https://code.example.invalid/api/v4/mcp", authMode: "oauth" }
+    ];
+    const original = { version: 3, clients: ["generic"], connections: { jira: [], confluence: [], eva: [], mcp: others }, tms: { category: "none", provider: "none" }, repositories: { postman, sources: [source] }, caFile: path.join(root, "certificates/globalsign-gcc-r3-dv-tls-ca-2020.pem") };
+    fs.writeFileSync(configFile, JSON.stringify(original));
+    for (const choice of [
+      { answers: ["", ""], region: "us", mode: "full", url: "https://mcp.postman.com/mcp", auth: "oauth" },
+      { answers: ["2", "2"], region: "eu", mode: "full", url: "https://mcp.eu.postman.com/mcp", auth: "env_header" },
+      { answers: ["1", "1"], region: "us", mode: "minimal", url: "https://mcp.postman.com/minimal", auth: "oauth" }
+    ]) {
+      const result = await driveConfigurationWizard(env, [
+        { prompt: "Регион аккаунта Postman", answer: choice.answers[0] },
+        { prompt: "Инструменты Postman", answer: choice.answers[1] }
+      ], "postman");
+      assert.equal(result.status, 0, result.output);
+      assert.equal(result.answered, 2);
+      assert.match(result.output, /Настройка Postman сохранена/);
+      assert(!/Подключить официальный GitLab|Настроить доступ к GitLab|Настроить чтение макетов Figma|локальный MCP-handshake|Maestro/.test(result.output));
+      const saved = JSON.parse(fs.readFileSync(configFile, "utf8"));
+      assert.deepEqual(saved.connections.mcp.filter(item => item.provider !== "postman"), others);
+      assert.deepEqual(saved.repositories, normalizeRepositories(original.repositories));
+      assert.equal(saved.caFile, original.caFile);
+      const entries = saved.connections.mcp.filter(item => item.provider === "postman");
+      assert.equal(entries.length, 1);
+      assert.equal(entries[0].region, choice.region);
+      assert.equal(entries[0].mode, choice.mode);
+      assert.equal(entries[0].authMode, choice.auth);
+      assert.equal(entries[0].url, choice.url);
+      const servers = JSON.parse(fs.readFileSync(path.join(temp, "settings/client-snippets/generic-mcp.json"), "utf8")).mcpServers;
+      assert.equal(servers.testdocs_gitlab.url, others[1].url);
+      assert.equal(servers.testdocs_postman.url, choice.url);
+      if (choice.region === "eu") assert.equal(servers.testdocs_postman.headers.Authorization, "${TESTDOCS_POSTMAN_AUTH_HEADER}");
+      else assert.equal(servers.testdocs_postman.headers, undefined);
+    }
+    assert.equal(fs.existsSync(path.join(temp, ".agents/skills")), false);
   } finally { fs.rmSync(temp, { recursive: true, force: true }); }
 });

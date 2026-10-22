@@ -24,6 +24,7 @@
     "configure:integrations": "node scripts/install.mjs --configure integrations",
     "configure:repositories": "node scripts/install.mjs --configure repositories",
     "configure:postman-repository": "node scripts/install.mjs --configure postman-repository",
+    "configure:postman": "node scripts/install.mjs --configure postman",
     "configure:repository-sources": "node scripts/install.mjs --configure repository-sources",
     "configure:gitlab": "node scripts/install.mjs --configure gitlab",
     "check:gitlab": "node scripts/check-repositories.mjs --gitlab",
