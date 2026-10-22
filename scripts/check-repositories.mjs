@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import { getConfigFile } from "./paths.mjs";
 import { gitTransport, normalizeRepositories } from "./repository-config.mjs";
 import { gitlabGet, sourceToken } from "./gitlab-read.mjs";
+import { restartForRepositoryCa } from "./repository-tls.mjs";
 
 function runGit(args) {
   const result = spawnSync("git", args, {
@@ -87,7 +88,6 @@ export async function checkGitLabConnections(repositories, { http = fetch, env =
         : /HTTP 403\b/.test(message) ? "GitLab отказал в доступе. Проверьте у токена право read_api и права вашего аккаунта."
         : /HTTP 404\b/.test(message) ? "API GitLab не найден. Укажите адрес сервера через npm run configure:gitlab. Ссылка на отдельный репозиторий здесь не нужна."
         : /PAT/.test(message) ? "Сохранённый токен недоступен. Введите его через npm run configure:gitlab."
-        : /GitLab REST недоступен/.test(message) ? "Не удалось подключиться к GitLab. Проверьте сеть, VPN и доверенный сертификат сервера."
         : message;
       log(`${source.url}: ${hint}`);
     }
@@ -114,6 +114,8 @@ async function main() {
   catch { throw new Error("Не удалось прочитать JSON настроек; содержимое не выводилось."); }
   const repositories = normalizeRepositories(config.repositories || {});
   if (args.includes("--gitlab")) {
+    const restarted = restartForRepositoryCa(config);
+    if (restarted) { process.exitCode = restarted.status; return; }
     if (!await checkGitLabConnections(repositories)) process.exitCode = 1;
     return;
   }
@@ -123,6 +125,10 @@ async function main() {
   }
   const entry = id === "postman" ? repositories.postman : repositories.sources.find(source => source.id === id);
   if (!entry) throw new Error("Подключение отсутствует; выполните npm run configure:repositories.");
+  if (entry.transport === "gitlab_api" && args.includes("--remote")) {
+    const restarted = restartForRepositoryCa(config);
+    if (restarted) { process.exitCode = restarted.status; return; }
+  }
   const result = await checkRepository(entry, { remote: args.includes("--remote") });
   console.log(JSON.stringify({ id, ...result }, null, 2));
 }

@@ -27,6 +27,8 @@ Recommend personal GitLab PAT `read_api` for discovery, code/contracts, branches
 
 Each tester normally adds a public SSH key to their own Git-host account; the owner grants collection repository access. Reuse a suitable key; never overwrite/share private keys. Deploy keys are a separate explicit automation choice with provider-specific write permissions. SSH inherits account permissions and is not technically read-only for an account that can write. Use a read-only PAT/account/key when restriction must be enforced by credentials. Preserve host-key/TLS checks; use approved CA/VPN configuration, not disabled verification.
 
+For a corporate CA use `npm run configure:gitlab -- --ca-file /absolute/path/company-ca-bundle.pem`. Dedicated repository setup saves the same private `caFile` setting used by the MCP launcher. GitLab check/read CLIs start a fresh Node process with that CA through `NODE_EXTRA_CA_CERTS`; changing the variable after startup would not load it. The file is validated as a PEM CA bundle, remains outside this pack/client snippets, and must stay available. Existing source/token bindings are retained. Diagnostics distinguish certificate trust/date/hostname, DNS, timeout, redirect and HTTP authorization errors without printing raw exceptions or credentials. A certificate error alone is not evidence that a token needs replacing.
+
 Official sources: [PAT](https://docs.gitlab.com/user/profile/personal_access_tokens/), [Files API](https://docs.gitlab.com/api/repository_files/), [GitLab SSH](https://docs.gitlab.com/user/ssh/), [GitHub SSH](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account).
 
 ## Agent Git workflow

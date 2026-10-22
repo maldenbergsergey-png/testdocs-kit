@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { getConfigFile, repoRoot } from "./paths.mjs";
 import { normalizeRepositories } from "./repository-config.mjs";
+import { gitlabConnectionError, restartForRepositoryCa } from "./repository-tls.mjs";
 
 export function sourceToken(entry, env = process.env) {
   const value = env[entry.tokenEnv];
@@ -35,7 +36,7 @@ export async function gitlabGet(entry, apiPath, { method = "GET", http = fetch, 
     response = await http(url.href, {
       method, headers: { "PRIVATE-TOKEN": token }, redirect: "error", signal: AbortSignal.timeout(15000)
     });
-  } catch { throw new Error("GitLab REST недоступен: проверьте сеть/VPN и доверенные CA. Токен не выводился."); }
+  } catch (error) { throw gitlabConnectionError(error); }
   if (!response.ok) throw new Error(`GitLab REST: HTTP ${response.status}; проверьте права, срок и read scope токена, project/ref/путь.`);
   return response;
 }
@@ -56,6 +57,8 @@ async function main() {
   let config;
   try { config = JSON.parse(fs.readFileSync(getConfigFile(), "utf8")); }
   catch { throw new Error("Настройте GitLab: npm run configure:gitlab"); }
+  const restarted = restartForRepositoryCa(config);
+  if (restarted) { process.exitCode = restarted.status; return; }
   const entry = normalizeRepositories(config.repositories || {}).sources.find(source => source.id === options["--source"]);
   if (!entry) throw new Error("Источник GitLab не найден.");
   // Exclusive creation prevents overwriting a task file or following an output symlink.

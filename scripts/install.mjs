@@ -13,6 +13,7 @@ import { spawnSync } from "node:child_process";
 import { requiresShell } from "./command-shell.mjs";
 import { maestroLocalTools, resolveMaestro, validateMaestro } from "./maestro-config.mjs";
 import { collectRepositories, normalizeRepositories } from "./repository-config.mjs";
+import { validateRepositoryCa } from "./repository-tls.mjs";
 import {
   getCodexConfigFile,
   getConfigDir,
@@ -690,6 +691,10 @@ async function collectConfig(args, clients, existing = null) {
     return validateAnswers({ ...migrateConfig(previousRaw), clients });
   }
   const previous = migrateConfig(previousRaw);
+  if (args.caFile && ["gitlab", "repository-sources", "repositories"].includes(args.configure)) {
+    applyCaFile(previous, args.caFile);
+    validateRepositoryCa(previous.caFile);
+  }
   previous.clients = clients;
   previous.connections ||= { jira: [], confluence: [], eva: [], mcp: [] };
   previous.connections.mcp ||= [];
@@ -784,7 +789,7 @@ async function collectConfig(args, clients, existing = null) {
       saveRepositories(repositories) {
         // Finish each server before offering another one. Cancellation of the
         // next entry must not discard credentials that were already entered.
-        savePrivateConfig({ ...readExistingConfig(), repositories }, false);
+        savePrivateConfig({ ...readExistingConfig(), ...(args.caFile ? { caFile: previous.caFile } : {}), repositories }, false);
       },
       advanced: args.advancedRepositories === true && target !== "gitlab",
       section: target === "postman-repository" ? "postman" : ["repository-sources", "gitlab"].includes(target) ? "sources" : "all"
@@ -1368,6 +1373,10 @@ async function main() {
   if (!clients.length) throw new Error("Не выбран ни один клиент.");
   const config = await collectConfig(args, clients, existing);
   if (repositoriesOnly) {
+    if (args.caFile) {
+      applyCaFile(config, args.caFile);
+      validateRepositoryCa(config.caFile);
+    }
     savePrivateConfig(config);
     console.log(["gitlab", "repository-sources"].includes(args.configure) && !args.advancedRepositories
       ? "Настройка GitLab завершена. Проверить доступ: npm run check:gitlab\nВ задаче можно указать ссылку на любой доступный вам репозиторий, файл или merge request."

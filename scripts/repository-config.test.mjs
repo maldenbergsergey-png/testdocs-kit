@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { collectGitLab, collectRepositories, gitTransport, normalizeRepositories } from "./repository-config.mjs";
 import { checkGitLabConnections, checkRepository } from "./check-repositories.mjs";
 import { gitlabGet, sourceToken } from "./gitlab-read.mjs";
+import { gitlabConnectionError, restartForRepositoryCa, validateRepositoryCa } from "./repository-tls.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const postman = { enabled: true, url: "git@git.example.invalid:qa/collection.git", localPath: "", collectionPath: "postman/collections/API", baseBranch: "", allowPush: true };
@@ -189,6 +190,82 @@ test("file probe encodes task bindings and does not imply task SHA verification"
   assert.match(request.url, /group%2Fbackend\/repository\/files\/api%2Fcontract.yaml\?ref=task%2FQA-42$/);
   assert.equal(request.options.method, "HEAD");
   assert.equal(probe.probeOnly, true);
+});
+
+test("GitLab connection errors distinguish TLS, DNS, timeout and redirects without exposing request data", async () => {
+  for (const [cause, expected] of [
+    [{ code: "UNABLE_TO_VERIFY_LEAF_SIGNATURE" }, "GITLAB_TLS_CA"],
+    [{ code: "SELF_SIGNED_CERT_IN_CHAIN" }, "GITLAB_TLS_CA"],
+    [{ code: "CERT_HAS_EXPIRED" }, "GITLAB_TLS_DATE"],
+    [{ code: "ERR_TLS_CERT_ALTNAME_INVALID" }, "GITLAB_TLS_HOST"],
+    [{ code: "ENOTFOUND" }, "GITLAB_DNS"],
+    [{ errors: [{ code: "ENETUNREACH" }, { code: "ETIMEDOUT" }] }, "GITLAB_TIMEOUT"],
+    [{ message: "unexpected redirect" }, "GITLAB_REDIRECT"],
+    [{ code: "ECONNRESET" }, "GITLAB_CONNECTION"]
+  ]) {
+    const error = Object.assign(new Error("sentinel-private-token"), { cause: { ...cause, request: { token: "sentinel-private-token" } } });
+    const result = gitlabConnectionError(error);
+    assert.equal(result.code, expected);
+    assert(!result.message.includes("sentinel-private-token"));
+    await assert.rejects(gitlabGet(source, "/projects", { env: { SOURCE_PAT: "sentinel-private-token" }, http: async () => { throw error; } }), failure => failure.code === expected && !failure.message.includes("sentinel-private-token"));
+  }
+  assert.match(gitlabConnectionError({ cause: { code: "UNABLE_TO_VERIFY_LEAF_SIGNATURE" } }).message, /--ca-file/);
+});
+
+test("repository CA starts a fresh Node process once, keeps secrets out of arguments and rejects invalid CA files", () => {
+  const caFile = path.join(root, "certificates/globalsign-gcc-r3-dv-tls-ca-2020.pem");
+  validateRepositoryCa(caFile);
+  let call;
+  const env = { SOURCE_PAT: "sentinel-private-token" };
+  const result = restartForRepositoryCa({ caFile }, { env, args: ["check.mjs", "--gitlab"], run: (...args) => { call = args; return { status: 0 }; } });
+  assert.equal(result.status, 0);
+  assert.deepEqual(call[1], ["check.mjs", "--gitlab"]);
+  assert(!JSON.stringify(call.slice(0, 2)).includes("sentinel-private-token"));
+  assert.equal(call[2].env.NODE_EXTRA_CA_CERTS, caFile);
+  assert.equal(call[2].env.SOURCE_PAT, "sentinel-private-token");
+  assert.equal(call[2].env.NODE_TLS_REJECT_UNAUTHORIZED, undefined);
+  assert.equal(restartForRepositoryCa({ caFile }, { env: call[2].env, run: () => { throw new Error("Unexpected respawn"); } }), null);
+  assert.throws(() => restartForRepositoryCa({ caFile }, { env: { TESTDOCS_REPOSITORY_CA_READY: "1" } }), /Не удалось применить/);
+  assert.throws(() => validateRepositoryCa(path.join(root, "package.json")), /PEM-файл/);
+});
+
+test("dedicated GitLab setup saves the CA flag and both repository CLIs load it at Node startup", () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "testdocs-gitlab-ca-"));
+  try {
+    const configFile = path.join(temp, "config.json");
+    const caFile = path.join(root, "certificates/globalsign-gcc-r3-dv-tls-ca-2020.pem");
+    const tokenFile = path.join(temp, "private.token");
+    fs.writeFileSync(tokenFile, "sentinel-private-token", { mode: 0o600 });
+    fs.writeFileSync(configFile, JSON.stringify({ version: 3, clients: ["generic"], connections: { jira: [], confluence: [], eva: [], mcp: [] }, tms: { category: "none", provider: "none" }, repositories: { sources: [{ ...source, tokenFile }] } }));
+    const env = { ...process.env, TESTDOCS_INSTALL_ROOT: temp, TESTDOCS_CONFIG_FILE: configFile, TESTDOCS_CONFIG_DIR: path.join(temp, "settings") };
+    delete env.SOURCE_PAT;
+    delete env.NODE_EXTRA_CA_CERTS;
+    delete env.TESTDOCS_REPOSITORY_CA_READY;
+    const configured = spawnSync(process.execPath, [path.join(root, "scripts/install.mjs"), "--configure", "gitlab", "--answers", configFile, "--ca-file", caFile], { cwd: root, env, encoding: "utf8" });
+    assert.equal(configured.status, 0, configured.stderr);
+    const saved = JSON.parse(fs.readFileSync(configFile, "utf8"));
+    assert.equal(saved.caFile, caFile);
+    assert.equal(saved.repositories.sources[0].tokenFile, tokenFile);
+    assert(!JSON.stringify(saved).includes("sentinel-private-token"));
+    const preload = path.join(temp, "mock-fetch.mjs");
+    fs.writeFileSync(preload, `
+      globalThis.fetch = async (_, options) => {
+        if (process.env.NODE_EXTRA_CA_CERTS !== ${JSON.stringify(caFile)}) throw new Error('CA was not loaded at startup');
+        if (options.headers['PRIVATE-TOKEN'] !== 'sentinel-private-token') throw new Error('Token was not loaded privately');
+        return new Response('[]', { status: 200 });
+      };
+    `);
+    const output = path.join(temp, "task-response.json");
+    for (const args of [
+      [path.join(root, "scripts/check-repositories.mjs"), "--gitlab"],
+      [path.join(root, "scripts/gitlab-read.mjs"), "--source", "backend", "--api-path", "/projects", "--output", output]
+    ]) {
+      const checked = spawnSync(process.execPath, ["--import", preload, ...args], { cwd: root, env, encoding: "utf8" });
+      assert.equal(checked.status, 0, checked.stderr);
+      assert(!(checked.stdout + checked.stderr).includes("sentinel-private-token"));
+    }
+    assert.equal(fs.readFileSync(output, "utf8"), "[]");
+  } finally { fs.rmSync(temp, { recursive: true, force: true }); }
 });
 
 test("isolated installer round-trips repository bindings, private tokens remain references in show/client config", () => {
