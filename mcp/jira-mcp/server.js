@@ -61,11 +61,11 @@ app.post("/mcp", async (req, res) => {
       });
     }
 
-    if (["zephyr_create_test_case", "zephyr_update_session_test_case"].includes(tool) && !zephyrEnabled) {
+    if (["zephyr_create_test_case", "zephyr_update_session_test_case", "zephyr_add_session_step_image", "zephyr_get_test_case_attachments"].includes(tool) && !zephyrEnabled) {
       return res.status(403).json({ error: "Zephyr is not the selected TMS provider." });
     }
 
-    if (tool === "zephyr_update_session_test_case") {
+    if (["zephyr_update_session_test_case", "zephyr_add_session_step_image"].includes(tool)) {
       sessionCases.assertEditable(params?.testCaseKey);
     }
 

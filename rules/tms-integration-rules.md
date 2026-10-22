@@ -19,9 +19,12 @@ Map any supported test-management product to the neutral test-case fields:
 Связи с требованиями и задачами
 Комментарии и причина изменения при актуализации
 Переиспользуемая подготовка или вызываемые общие шаги
+Изображения шагов: файл/ID/URL, подпись, точный шаг и назначение
 ```
 
 Do not assume that test cases are Jira issues. Some products store them as separate test objects; others represent them through Jira issue types or vendor-specific entities. Use the capabilities exposed by the connected MCP server and preserve unsupported fields as explicit gaps.
+
+For [case images](test-case-image-rules.md), confirm file upload, exact step and target cell, clickable inline thumbnails, display/read-back, and replacement/removal separately. Thumbnails belong under the action or expected-result text and must open the original image. Case-level attachments, links, execution evidence and inline step images are different capabilities. Use only the selected provider's supported schema; never infer an attachment endpoint or embed local paths, base64 or expiring export URLs in published steps. A missing capability leaves a prepared file and placement proposal, not a claimed upload. Preserve existing image bindings when replacing scripts; if preservation cannot be verified, stop the affected update at a proposal.
 
 Do not assume that a Test Run/Test Cycle is a Jira issue or that creating the container also attaches cases, links release tasks, creates executions, or assigns testers. Inspect and validate each supported operation and return the stable run identifier and URL supplied by the connector.
 

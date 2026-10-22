@@ -52,6 +52,8 @@
 
 Для ссылок на пункты требований, снимков конкретного макета и подтверждения скачивания использовать [source-evidence.json](source-evidence.json) по [отдельной процедуре](source-evidence.md).
 
+Для необязательных скриншотов в шагах кейсов, выбора реализации/макета и актуализации изображений использовать [case-images.json](case-images.json) по [процедуре](case-images.md).
+
 Для подлинности ответов бэкэнда и Jira-блоков кода использовать [backend-response.json](backend-response.json) по [процедуре проверки](backend-response.md).
 
 Для кратких вводных без общего итога использовать [report-introduction.json](report-introduction.json) по [процедуре](report-introduction.md); для кратких строк, воспроизведения и меток компонента - [compact-report-rows.json](compact-report-rows.json) по [процедуре](compact-report-rows.md). Корпус [reporting.json](reporting.json) дополнительно проверяет выбор общего/локального кадра и шаги UI/API-ошибок, включая неизвестный путь по присланному снимку.

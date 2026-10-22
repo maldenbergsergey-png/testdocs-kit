@@ -1,5 +1,6 @@
 require("dotenv").config({ quiet: true });
 const crypto = require("node:crypto");
+const { readStepAttachments, addStepImage } = require("./step-images");
 const { fetchWithSpSecret, redactSpSecret, withHttpDiagnostics, redactHttpText } = require("../atlassian-http.cjs");
 const { createConnectionDiagnostics } = require("./connection-diagnostics");
 const getConnectionDiagnostics = createConnectionDiagnostics(process.env);
@@ -486,7 +487,7 @@ async function searchIssues({ jql, maxResults = 10 }) {
 
 // --- Zephyr Scale (Test Management) methods ---
 
-async function zephyrRequest(path, method = "GET", body) {
+async function zephyrRequest(path, method = "GET", body, multipart = false) {
   if (!JIRA_URL) {
     throw new Error("JIRA_URL is required");
   }
@@ -498,9 +499,9 @@ async function zephyrRequest(path, method = "GET", body) {
     headers: {
       ...buildAuthHeaders(),
       Accept: "application/json",
-      "Content-Type": "application/json"
+      ...(multipart ? {} : { "Content-Type": "application/json" })
     },
-    body: body ? JSON.stringify(body) : undefined
+    body: body ? (multipart ? body : JSON.stringify(body)) : undefined
   }, "Zephyr");
 
   const contentType = res.headers.get("content-type") || "";
@@ -1310,6 +1311,8 @@ module.exports = {
      zephyr_get_test_plan: zephyrGetTestPlan,
      zephyr_get_iterations: zephyrGetIterations,
      zephyr_get_test_case: zephyrGetTestCase,
+     zephyr_get_test_case_attachments: (input) => readStepAttachments(input, zephyrRequest),
+     zephyr_add_session_step_image: (input) => addStepImage(input, zephyrRequest, zephyrGetTestCase),
      zephyr_get_all_test_cases: zephyrGetAllTestCases,
      zephyr_get_issue_test_cases: zephyrGetIssueTestCases,
      zephyr_get_test_run: zephyrGetTestRun,

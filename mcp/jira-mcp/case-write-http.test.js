@@ -69,6 +69,7 @@ global.fetch = async (url, options = {}) => {
   };
   assert.notEqual((await call("zephyr_create_test_case", { ...create, confirmed: false })).status, 200);
   assert.notEqual((await call("zephyr_update_session_test_case", { confirmed: true, testCaseKey: "DEMO-T1", name: "Changed" })).status, 200);
+  assert.notEqual((await call("zephyr_add_session_step_image", { confirmed: true, testCaseKey: "DEMO-T1", stepIndex: 0, imagePath: "/missing.png", expectedContentHash: "hash" })).status, 200);
   assert(!fs.existsSync(calls), "Unconfirmed creation or an old-case update reached Jira");
   assert.equal((await call("zephyr_create_test_case", create)).body.result.key, "DEMO-T2");
   assert.notEqual((await call("zephyr_update_session_test_case", { confirmed: false, testCaseKey: "DEMO-T2", name: "Changed" })).status, 200);
@@ -77,5 +78,7 @@ global.fetch = async (url, options = {}) => {
   assert.equal((await call("add_comment", {})).status, 403);
   const otherProvider = await start("none");
   assert.equal((await otherProvider("zephyr_create_test_case", create)).status, 403);
+  assert.equal((await otherProvider("zephyr_add_session_step_image", { confirmed: true, testCaseKey: "DEMO-T2" })).status, 403);
+  assert.equal((await otherProvider("zephyr_get_test_case_attachments", { testCaseKey: "DEMO-T2", stepIndex: 0 })).status, 403);
   assert.deepEqual(fs.readFileSync(calls, "utf8").trim().split("\n").map((line) => JSON.parse(line).method), ["POST", "PUT"]);
 });

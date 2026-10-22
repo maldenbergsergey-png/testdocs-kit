@@ -203,6 +203,8 @@ try {
   assert(fs.readFileSync(codexConfig, "utf8").includes("jira_create_qa_work_item"), "Codex не получил разрешённый tool создания связанной QA-задачи.");
   assert(fs.readFileSync(codexConfig, "utf8").includes('"zephyr_create_test_case"'), "Создание новых кейсов должно быть доступно без opt-in.");
   assert(fs.readFileSync(codexConfig, "utf8").includes('"zephyr_update_session_test_case"'), "Исправление новых кейсов должно быть доступно без opt-in.");
+  assert(fs.readFileSync(codexConfig, "utf8").includes('"zephyr_add_session_step_image"'), "Загрузка изображений в шаги новых кейсов должна быть доступна без opt-in.");
+  assert(fs.readFileSync(codexConfig, "utf8").includes('"zephyr_get_test_case_attachments"'), "Чтение вложений шагов должно быть доступно.");
   assert(fs.readFileSync(codexConfig, "utf8").includes("testdocs_delivery"), "Codex не получил QA Report MCP.");
   assert(JSON.parse(fs.readFileSync(genericConfig, "utf8")).mcpServers?.testdocs_delivery, "Generic client не получил QA Report MCP.");
 

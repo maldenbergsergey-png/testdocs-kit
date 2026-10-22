@@ -14,6 +14,8 @@ An external write is permitted only after an explicit apply/update request. A ne
 
 This restriction concerns updating old cases, not creating new ones. In a mixed package, continue explicitly requested creation of new cases under [write rules](external-write-rules.md); the old-case proposals do not block it.
 
+Images and step attachments follow the same restriction. For adding, replacing, removing or preserving screenshots, apply [test-case-image-rules.md](test-case-image-rules.md); an image-only change does not bypass proposal-only mode.
+
 ## Source and version procedure
 
 Before proposing an update:

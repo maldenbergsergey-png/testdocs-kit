@@ -38,7 +38,7 @@ When the current source or case version needs retrieval from an external referen
 
 1. Establish the current case as the baseline and summarize the requested change.
 2. Compare the baseline with the new context using the shared rules.
-3. Preserve unaffected content. List only actual changes; note an unchanged part only when its preservation matters.
+3. Preserve unaffected content. List only actual changes; note an unchanged part only when its preservation matters. For requested or existing screenshots, apply [case image rules](../../rules/test-case-image-rules.md): establish add/replace/remove/keep intent and source, read current bindings, then include image changes at exact steps in the diff and final version. Image-only updates retain the old-case restriction.
 4. Give a source-backed reason for every proposed change. Flag conflicts and unresolved placeholders.
 5. Recheck the proposed case for a focused scenario, repeatable setup, observable results, and independence from transient data or execution order.
 6. Recommend a split instead of expanding the baseline when the new behavior forms an independent regression scenario.

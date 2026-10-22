@@ -158,8 +158,9 @@ async function main() {
       assert(tools.includes("zephyr_list_test_run_folders"), "Jira MCP не отдал поиск папок Test Run.");
       assert(tools.includes("zephyr_create_test_case"), "Jira MCP не отдал создание новых кейсов Zephyr.");
       assert(tools.includes("zephyr_update_session_test_case"), "Jira MCP не отдал защищённый инструмент исправления кейса текущей сессии.");
+      assert(tools.includes("zephyr_get_test_case_attachments") && tools.includes("zephyr_add_session_step_image"), "Jira MCP не отдал чтение и защищённую загрузку изображений в шаги.");
     } else {
-      assert(!tools.includes("zephyr_create_test_case") && !tools.includes("zephyr_update_session_test_case"), "Zephyr write-tools доступны при другом TMS.");
+      assert(!tools.includes("zephyr_create_test_case") && !tools.includes("zephyr_update_session_test_case") && !tools.includes("zephyr_add_session_step_image"), "Zephyr write-tools доступны при другом TMS.");
     }
     assert(!tools.includes("zephyr_update_test_case"), "MCP нарушает временный запрет обновления существующих кейсов.");
     if (jira.enableReleaseTestRunCreation === true) {

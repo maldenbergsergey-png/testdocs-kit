@@ -6,6 +6,8 @@ Use this standard to create executable test cases from supported requirements. R
 
 Read [test-case-format.md](test-case-format.md) whenever drafting or rendering a complete case. Read [test-case-setup-rules.md](test-case-setup-rules.md) when a case configures an entity in administration or consumes such configuration; it owns property-specific hints and administration assertions. Read [reusable-setup-rules.md](reusable-setup-rules.md) when shared preparation or dependencies exist.
 
+When images are requested, already present, or useful for finding the UI in a step, read [test-case-image-rules.md](test-case-image-rules.md) for optional source selection, capture, step placement and actualization.
+
 ## First-pass executability
 
 Apply [shared quality criteria](core.md#качество-всех-qa-артефактов). A tester unfamiliar with the project must be able to find the starting point, prepare the necessary role, state and data, perform the actions and compare the observable result. State dependencies and cleanup when they affect another run. Links support these instructions, not replace them.

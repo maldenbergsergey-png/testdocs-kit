@@ -321,6 +321,38 @@ async function main() {
    );
 
    server.registerTool(
+     "zephyr_get_test_case_attachments",
+     {
+       description: "Read Zephyr Server/DC case attachments (source files for inline previews), or native attachments of one step if stepIndex is supplied. Use the exact API step index, not the displayed row number. An unsupported response is a capability gap, not an empty inventory.",
+       annotations: { readOnlyHint: true },
+       inputSchema: z.object({ testCaseKey: z.string().min(1), stepIndex: z.number().int().min(0).optional() })
+     },
+     async (input) => toTextResult(await tools.zephyr_get_test_case_attachments(input))
+   );
+
+   server.registerTool(
+     "zephyr_add_session_step_image",
+     {
+       description: "Upload one inspected local screenshot/mockup and append a clickable thumbnail below the text of description (Шаг) or expectedResult in an exact step. Only for a case created earlier in this chat by this MCP process, on explicit publication-with-images or correction intent; registry enforced. Supply current contentHash and exact API index. Uploads the source as a case attachment, then writes and reads back the full script preserving text/IDs; stops for unsupported step fields or native attachments. Does not replace/delete images. preview_saved confirms markup, not visual display; inspect UI separately. Never retry partial/uncertain mutations automatically.",
+       inputSchema: z.object({
+         confirmed: z.literal(true),
+         testCaseKey: z.string().min(1),
+         stepIndex: z.number().int().min(0),
+         targetField: z.enum(["description", "expectedResult"]),
+         caption: z.string().min(1).describe("Source, screen and state; also used as thumbnail alternative text."),
+         thumbnailWidth: z.number().int().min(120).max(480).optional().describe("Preview width in pixels; default 320, aspect ratio preserved; click opens the full image."),
+         expectedContentHash: z.string().min(1),
+         imagePath: z.string().min(1).describe("Absolute path of the inspected PNG, JPEG, GIF or WebP in the task workspace, at most 25 MiB."),
+         filename: z.string().min(1).optional().describe("Safe filename identifying source, screen and state; defaults to the local basename.")
+       })
+     },
+     async (input) => {
+       sessionCases.assertEditable(input.testCaseKey);
+       return toTextResult(await tools.zephyr_add_session_step_image(input));
+     }
+   );
+
+   server.registerTool(
      "zephyr_get_all_test_cases",
      {
        description: "Get up to 1000 test cases for an explicitly requested project overview or bulk operation. Do not use this tool to find one known case key.",

@@ -926,9 +926,9 @@ function configuredServers(config) {
       tools.push(
         "zephyr_get_projects", "zephyr_get_project", "zephyr_search_test_cases",
         "zephyr_get_test_plans", "zephyr_get_test_plan", "zephyr_get_iterations",
-        "zephyr_get_test_case", "zephyr_get_all_test_cases", "zephyr_get_issue_test_cases", "zephyr_get_test_run", "zephyr_list_test_run_folders"
+        "zephyr_get_test_case", "zephyr_get_test_case_attachments", "zephyr_get_all_test_cases", "zephyr_get_issue_test_cases", "zephyr_get_test_run", "zephyr_list_test_run_folders"
       );
-      tools.push("zephyr_create_test_case", "zephyr_update_session_test_case");
+      tools.push("zephyr_create_test_case", "zephyr_update_session_test_case", "zephyr_add_session_step_image");
       if (jira.enableReleaseTestRunCreation === true) tools.push("zephyr_create_test_run", "zephyr_assign_test_run_item");
     }
     servers.push({ name: serverName("jira", jira.id, jiraItems.length), service: "jira", id: jira.id, tools });

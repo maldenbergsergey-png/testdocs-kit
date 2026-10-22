@@ -180,5 +180,19 @@
     "skill": "generate-test-cases",
     "artifact": "cases",
     "collect": false
+  },
+  {
+    "id": "new_case_with_design_images",
+    "prompt": "Подготовь новый кейс со скринами по макету из https://requirements.example.invalid/profile. Не публикуй.",
+    "skill": "generate-test-cases",
+    "artifact": "cases",
+    "collect": true
+  },
+  {
+    "id": "old_case_image_only_update",
+    "prompt": "Предложи замену скрина в шаге 1 старого кейса. Текущий кейс и обе картинки приложены полностью, новый источник подтверждён в чате. Текст шагов не меняй.",
+    "skill": "update-test-cases",
+    "artifact": "proposal",
+    "collect": false
   }
 ]
