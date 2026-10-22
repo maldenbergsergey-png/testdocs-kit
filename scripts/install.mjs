@@ -78,6 +78,7 @@ function parseArgs(argv) {
       result.skipDependencies = true;
     }
     else if (arg === "--configure") result.configure = argv[++index];
+    else if (arg === "--advanced-repositories") result.advancedRepositories = true;
     else if (arg === "--add") result.add = argv[++index];
     else if (arg === "--opencode-format") result.openCodeFormat = argv[++index];
     else if (arg === "--figma-mode") result.figmaMode = argv[++index];
@@ -112,8 +113,9 @@ function showHelp() {
   --reuse                                 Применить сохранённые настройки без вопросов
   --auto-update on|off                     Автообновление всего пакета (по умолчанию on)
   --update-interval-hours 4                Проверять обновления раз в заданное число часов
-  --configure jira|confluence|eva|tms|delivery|integrations|repositories|postman-repository|repository-sources|figma|browser|maestro|all
+  --configure jira|confluence|eva|tms|delivery|integrations|repositories|postman-repository|repository-sources|gitlab|figma|browser|maestro|all
                                           Перенастроить только выбранную часть
+  --advanced-repositories                 Дополнительные настройки источников: Git, ID, файл и ветка
   --configure sp-secret                   Задать/заменить/удалить X-Sp-Secret для Jira/Confluence
   --add jira|confluence|eva               Добавить подключение, сохранив существующие
   --opencode-format stable|v2              Явно выбрать формат OpenCode
@@ -167,8 +169,8 @@ async function askReusable(question, previous = "", initial = "") {
   return ask(`${question}${keepHint}`, previous || initial);
 }
 
-async function confirm(question, fallback = true) {
-  const hint = fallback ? "Y/n" : "y/N";
+async function confirm(question, fallback = true, { plain = false } = {}) {
+  const hint = plain ? (fallback ? "Да/нет, Enter - да" : "да/Нет, Enter - нет") : fallback ? "Y/n" : "y/N";
   const answer = (await ask(`${question} (${hint})`)).toLowerCase();
   if (!answer) return fallback;
   return ["y", "yes", "д", "да"].includes(answer);
@@ -696,7 +698,7 @@ async function collectConfig(args, clients, existing = null) {
   if (args.add && !["jira", "confluence", "eva"].includes(args.add)) {
     throw new Error("--add поддерживает jira, confluence или eva.");
   }
-  if (!["jira", "confluence", "eva", "tms", "delivery", "integrations", "repositories", "postman-repository", "repository-sources", "figma", "browser", "maestro", "sp-secret", "all"].includes(target)) {
+  if (!["jira", "confluence", "eva", "tms", "delivery", "integrations", "repositories", "postman-repository", "repository-sources", "gitlab", "figma", "browser", "maestro", "sp-secret", "all"].includes(target)) {
     throw new Error("Неизвестный раздел настройки.");
   }
   if (target === "sp-secret") {
@@ -768,7 +770,7 @@ async function collectConfig(args, clients, existing = null) {
   if (["all", "integrations"].includes(target)) {
     previous.connections.mcp = await collectExternalMcp(previous, clients);
   }
-  if (["all", "integrations", "repositories", "postman-repository", "repository-sources"].includes(target)) {
+  if (["all", "integrations", "repositories", "postman-repository", "repository-sources", "gitlab"].includes(target)) {
     previous.repositories = await collectRepositories(previous.repositories, {
       ask, confirm, askSecret,
       saveToken(id, token) {
@@ -779,7 +781,13 @@ async function collectConfig(args, clients, existing = null) {
         try { fs.chmodSync(file, 0o600); } catch { /* Windows uses ACL. */ }
         return file;
       },
-      section: target === "postman-repository" ? "postman" : target === "repository-sources" ? "sources" : "all"
+      saveRepositories(repositories) {
+        // Finish each server before offering another one. Cancellation of the
+        // next entry must not discard credentials that were already entered.
+        savePrivateConfig({ ...readExistingConfig(), repositories }, false);
+      },
+      advanced: args.advancedRepositories === true && target !== "gitlab",
+      section: target === "postman-repository" ? "postman" : ["repository-sources", "gitlab"].includes(target) ? "sources" : "all"
     });
   }
   if (target === "figma" && !args.figmaMode) {
@@ -827,12 +835,12 @@ function writeAtomic(target, text, mode) {
   } finally { fs.rmSync(temporary, { force: true }); }
 }
 
-function savePrivateConfig(config) {
+function savePrivateConfig(config, announce = true) {
   const configFile = getConfigFile();
   fs.mkdirSync(path.dirname(configFile), { recursive: true, mode: 0o700 });
   writeAtomic(configFile, `${JSON.stringify(config, null, 2)}\n`, 0o600);
   try { fs.chmodSync(configFile, 0o600); } catch { /* Windows ACL управляется системой. */ }
-  console.log(`Настройки сохранены: ${configFile}`);
+  if (announce) console.log(`Настройки сохранены: ${configFile}`);
 }
 
 function run(command, commandArgs, options = {}) {
@@ -1349,16 +1357,21 @@ async function main() {
 
   console.log(`Testdocs Kit\nРепозиторий: ${repoRoot}\n`);
   const existing = readExistingConfig();
+  const repositoriesOnly = ["repositories", "postman-repository", "repository-sources", "gitlab"].includes(args.configure);
   const clients = args.clients
     ? normalizeClients(args.clients)
+    : repositoriesOnly && !Array.isArray(existing.clients)
+      ? ["generic"]
     : (args.reuse || args.configure || args.add) && Array.isArray(existing.clients)
       ? normalizeClients(existing.clients)
       : await chooseClients(args);
   if (!clients.length) throw new Error("Не выбран ни один клиент.");
   const config = await collectConfig(args, clients, existing);
-  if (["repositories", "postman-repository", "repository-sources"].includes(args.configure)) {
+  if (repositoriesOnly) {
     savePrivateConfig(config);
-    console.log("Привязки репозиториев сохранены. Другие интеграции и конфигурации клиентов не перенастраивались.\nПроверка: npm run check:repositories -- --show; для проверки доступа добавьте --id <id> --remote.");
+    console.log(["gitlab", "repository-sources"].includes(args.configure) && !args.advancedRepositories
+      ? "Настройка GitLab завершена. Проверить доступ: npm run check:gitlab\nВ задаче можно указать ссылку на любой доступный вам репозиторий, файл или merge request."
+      : "Настройки репозиториев сохранены. Проверка: npm run check:repositories -- --show");
     return;
   }
   validateMaestro(config.maestro);
@@ -1459,6 +1472,9 @@ try {
   }
   await main();
 } catch (error) {
-  console.error(`\nОшибка установки: ${error.message}`);
-  process.exitCode = 1;
+  const cancelled = error.code === "ABORT_ERR" || /Aborted with Ctrl\+C|Установка отменена/.test(error.message);
+  console.error(cancelled
+    ? "\nНастройка отменена. Уже сохранённые подключения GitLab остались доступны."
+    : `\nОшибка установки: ${error.message}`);
+  process.exitCode = cancelled ? 130 : 1;
 } finally { releaseInstallLock?.(); }

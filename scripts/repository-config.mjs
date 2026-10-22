@@ -1,4 +1,5 @@
 import path from "node:path";
+import fs from "node:fs";
 
 function text(value, label) {
   if (value !== undefined && typeof value !== "string") throw new Error(`${label}: ожидается строка.`);
@@ -96,7 +97,80 @@ export function normalizeRepositories(input = {}) {
   return output;
 }
 
-export async function collectRepositories(previous = {}, { ask, confirm, askSecret, saveToken, section = "all" }) {
+function gitlabAddress(value) {
+  let address = text(value, "Адрес GitLab");
+  // Chat applications can wrap a pasted address in Markdown.
+  const markdown = /^\[[^\]\r\n]*\]\((https:\/\/[^\s)]+)\)$/.exec(address);
+  if (markdown) address = markdown[1];
+  if (!address.includes("://")) address = `https://${address}`;
+  let parsed;
+  try { parsed = new URL(address); } catch { /* Report a constant message without echoing input. */ }
+  if (!parsed || parsed.protocol !== "https:" || !parsed.hostname || parsed.username || parsed.password || parsed.search || parsed.hash || /[\s\x00-\x1f]/.test(address)) {
+    throw new Error("Укажите HTTPS-адрес сервера GitLab, без токена, логина и пароля.");
+  }
+  return parsed.href.replace(/\/+$/, "");
+}
+
+function nextGitlabId(url, sources) {
+  const host = new URL(url).hostname.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const base = `gitlab-${host}`.slice(0, 58).replace(/-+$/, "");
+  const ids = new Set(sources.map(source => source.id));
+  let id = base;
+  for (let suffix = 2; ids.has(id); suffix++) id = `${base}-${suffix}`;
+  return id;
+}
+
+export async function collectGitLab(previous = {}, { ask, confirm, askSecret, saveToken, saveRepositories, env = process.env, log = console.log }) {
+  let config = normalizeRepositories(previous);
+  log("\nДоступ к GitLab: нужны только адрес сервера и токен.");
+  log("Одно подключение подходит для всех доступных вам проектов. Репозиторий, файл и ветку можно указать вместе с задачей.");
+  let another = false;
+  do {
+    const existing = config.sources.filter(source => source.transport === "gitlab_api");
+    let url;
+    while (!url) {
+      const answer = await ask("1. Адрес сервера GitLab (например, https://git.company.ru)", !another && existing.length === 1 ? existing[0].url : "");
+      try {
+        if (!answer.trim()) throw new Error("Введите адрес сервера GitLab.");
+        url = gitlabAddress(answer);
+      } catch (error) { log(error.message); }
+    }
+    const old = existing.find(source => gitlabAddress(source.url) === url);
+    const id = old?.id || nextGitlabId(url, config.sources);
+    const result = old ? { ...old, enabled: true, url } : {
+      id, enabled: true, transport: "gitlab_api", url, localPath: "", project: "", contractPath: "", defaultRef: "",
+      tokenEnv: `TESTDOCS_${id.toUpperCase().replaceAll("-", "_")}_TOKEN`, tokenFile: ""
+    };
+    if (!askSecret || !saveToken) throw new Error("Для ввода токена нужен терминал со скрытым вводом.");
+    let savedToken = false;
+    if (result.tokenFile) {
+      try { savedToken = Boolean(fs.readFileSync(result.tokenFile, "utf8").trim()); } catch { /* Ask for a replacement below. */ }
+    }
+    const reusable = savedToken || (typeof env[result.tokenEnv] === "string" && Boolean(env[result.tokenEnv].trim()));
+    log("Токен создаётся в GitLab: Access → Personal access tokens. Для чтения отметьте read_api.");
+    while (true) {
+      const token = (await askSecret(`2. Токен GitLab (вставьте сюда; ввод скрыт${reusable ? "; Enter - оставить сохранённый" : ""})`)).trim();
+      if (!token && reusable) break;
+      if (!token || /\s/.test(token) || token.startsWith("TESTDOCS_")) {
+        log("Вставьте значение токена из GitLab. Его нужно вводить в это скрытое поле.");
+        continue;
+      }
+      result.tokenFile = await saveToken(id, token);
+      break;
+    }
+    if (old) config.sources[config.sources.indexOf(old)] = result;
+    else config.sources.push(result);
+    config = normalizeRepositories(config);
+    if (saveRepositories) {
+      await saveRepositories(config);
+      log("Подключение GitLab сохранено.");
+    }
+    another = await confirm("Добавить ещё один сервер GitLab?", false, { plain: true });
+  } while (another);
+  return config;
+}
+
+export async function collectRepositories(previous = {}, { ask, confirm, askSecret, saveToken, saveRepositories, section = "all", advanced = false, env = process.env, log = console.log }) {
   const config = normalizeRepositories(previous);
   if (["all", "postman"].includes(section)) {
     const old = config.postman || {};
@@ -113,6 +187,12 @@ export async function collectRepositories(previous = {}, { ask, confirm, askSecr
     } else if (config.postman) config.postman.enabled = false;
   }
   if (["all", "sources"].includes(section)) {
+    if (!advanced) {
+      if (section === "sources" || await confirm("Настроить доступ к GitLab для чтения кода и контрактов", false, { plain: true })) {
+        return collectGitLab(config, { ask, confirm, askSecret, saveToken, saveRepositories, env, log });
+      }
+      return config;
+    }
     const collect = async old => {
       if (!await confirm(`Настроить источник кода/контрактов ${old.id}`, old.enabled ?? true)) return old.transport ? { ...old, enabled: false } : null;
       const transport = await ask("Чтение источника: gitlab_api - REST с read-only PAT; git - SSH/HTTPS checkout", old.transport || "gitlab_api");

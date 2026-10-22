@@ -25,6 +25,8 @@
     "configure:repositories": "node scripts/install.mjs --configure repositories",
     "configure:postman-repository": "node scripts/install.mjs --configure postman-repository",
     "configure:repository-sources": "node scripts/install.mjs --configure repository-sources",
+    "configure:gitlab": "node scripts/install.mjs --configure gitlab",
+    "check:gitlab": "node scripts/check-repositories.mjs --gitlab",
     "check:repositories": "node scripts/check-repositories.mjs",
     "add:jira": "node scripts/install.mjs --add jira",
     "add:confluence": "node scripts/install.mjs --add confluence",

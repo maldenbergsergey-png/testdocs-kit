@@ -55,7 +55,7 @@ async function main() {
   if (!relative || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative))) throw new Error("Сохраните результат вне переносимого QA pack.");
   let config;
   try { config = JSON.parse(fs.readFileSync(getConfigFile(), "utf8")); }
-  catch { throw new Error("Настройте источник через configure:repository-sources."); }
+  catch { throw new Error("Настройте GitLab: npm run configure:gitlab"); }
   const entry = normalizeRepositories(config.repositories || {}).sources.find(source => source.id === options["--source"]);
   if (!entry) throw new Error("Источник GitLab не найден.");
   // Exclusive creation prevents overwriting a task file or following an output symlink.

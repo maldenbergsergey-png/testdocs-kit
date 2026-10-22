@@ -30,7 +30,13 @@ export async function checkRepository(entry, { remote = false, git = runGit, htt
       ? `/projects/${encodeURIComponent(entry.project)}/repository/files/${encodeURIComponent(entry.contractPath)}?ref=${encodeURIComponent(probeRef)}`
       : "/projects?membership=true&per_page=1&simple=true";
     const response = await gitlabGet(entry, apiPath, { method: fileProbe ? "HEAD" : "GET", http, env });
-    await response.body?.cancel();
+    if (fileProbe) await response.body?.cancel();
+    else {
+      // A login page or proxy's HTTP 200 is not proof of API access.
+      let data;
+      try { data = await response.json(); } catch { throw new Error("GitLab вернул страницу вместо списка проектов. Проверьте адрес сервера GitLab."); }
+      if (!Array.isArray(data)) throw new Error("GitLab не вернул список проектов. Проверьте адрес сервера GitLab.");
+    }
     result.readAccess = fileProbe ? "verified_for_probe_file" : "verified_for_projects_api";
     if (fileProbe) result.probeRef = probeRef;
     result.readOnlyScopesVerified = false;
@@ -63,29 +69,60 @@ export async function checkRepository(entry, { remote = false, git = runGit, htt
   return result;
 }
 
+export async function checkGitLabConnections(repositories, { http = fetch, env = process.env, log = console.log } = {}) {
+  const sources = normalizeRepositories(repositories).sources.filter(source => source.enabled && source.transport === "gitlab_api");
+  if (!sources.length) {
+    log("GitLab ещё не подключён. Выполните: npm run configure:gitlab");
+    return false;
+  }
+  let ok = true;
+  for (const source of sources) {
+    try {
+      await checkRepository({ ...source, project: "", contractPath: "" }, { remote: true, http, env });
+      log(`${source.url}: доступ подтверждён. Проверено чтение списка проектов.`);
+    } catch (error) {
+      ok = false;
+      const message = error.message;
+      const hint = /HTTP 401\b/.test(message) ? "GitLab не принял токен. Он мог истечь или быть отозван. Введите действующий токен через npm run configure:gitlab."
+        : /HTTP 403\b/.test(message) ? "GitLab отказал в доступе. Проверьте у токена право read_api и права вашего аккаунта."
+        : /HTTP 404\b/.test(message) ? "API GitLab не найден. Укажите адрес сервера через npm run configure:gitlab. Ссылка на отдельный репозиторий здесь не нужна."
+        : /PAT/.test(message) ? "Сохранённый токен недоступен. Введите его через npm run configure:gitlab."
+        : /GitLab REST недоступен/.test(message) ? "Не удалось подключиться к GitLab. Проверьте сеть, VPN и доверенный сертификат сервера."
+        : message;
+      log(`${source.url}: ${hint}`);
+    }
+  }
+  return ok;
+}
+
 async function main() {
   const args = process.argv.slice(2);
-  const allowed = new Set(["--show", "--remote", "--id"]);
+  const allowed = new Set(["--show", "--remote", "--id", "--gitlab"]);
   let id = "postman";
   for (let i = 0; i < args.length; i++) {
-    if (!allowed.has(args[i])) throw new Error("Параметры: --show или --id postman|source-id [--remote].");
+    if (!allowed.has(args[i])) throw new Error("Параметры: --gitlab, --show или --id postman|source-id [--remote].");
     if (args[i] === "--id") {
       id = args[++i];
       if (!id || id.startsWith("--")) throw new Error("После --id нужен ID привязки.");
     }
   }
+  if (args.includes("--gitlab") && args.length !== 1) throw new Error("Для проверки GitLab выполните: npm run check:gitlab");
   const configFile = getConfigFile();
-  if (!fs.existsSync(configFile)) throw new Error("Настройки отсутствуют; выполните configure:repositories в установленной копии пакета.");
+  if (!fs.existsSync(configFile)) throw new Error(args.includes("--gitlab") ? "GitLab ещё не подключён. Выполните: npm run configure:gitlab" : "Настройки отсутствуют; выполните npm run configure:repositories в установленной копии пакета.");
   let config;
   try { config = JSON.parse(fs.readFileSync(configFile, "utf8")); }
   catch { throw new Error("Не удалось прочитать JSON настроек; содержимое не выводилось."); }
   const repositories = normalizeRepositories(config.repositories || {});
+  if (args.includes("--gitlab")) {
+    if (!await checkGitLabConnections(repositories)) process.exitCode = 1;
+    return;
+  }
   if (args.includes("--show")) {
     console.log(JSON.stringify(repositories, null, 2));
     return;
   }
   const entry = id === "postman" ? repositories.postman : repositories.sources.find(source => source.id === id);
-  if (!entry) throw new Error("Привязка отсутствует; выполните configure:repositories.");
+  if (!entry) throw new Error("Подключение отсутствует; выполните npm run configure:repositories.");
   const result = await checkRepository(entry, { remote: args.includes("--remote") });
   console.log(JSON.stringify({ id, ...result }, null, 2));
 }
