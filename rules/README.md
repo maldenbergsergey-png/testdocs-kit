@@ -27,6 +27,7 @@ Read [core.md](core.md) once per task. This index is for discovery; follow only 
 - [`test-run-rules.md`](test-run-rules.md) — release Test Run discovery, eligibility, depth, assignment, and creation rules.
 - [`update-rules.md`](update-rules.md) — safe changes to existing cases.
 - [`postman-collection-rules.md`](postman-collection-rules.md) - contract provenance, request/schema deltas, required/types dialect and collection publication.
+- [`postman-workflow-rules.md`](postman-workflow-rules.md) - dependency-aware insertion, variable handoff, acquired/external auth and restricted endpoint inclusion.
 - [`review-rules.md`](review-rules.md) — review criteria and finding severity.
 - [`standard-derivation-rules.md`](standard-derivation-rules.md) — evidence and approval rules for deriving shared policy from a documentation corpus.
 - [`project-conventions.md`](project-conventions.md) — cross-company isolation rules for runtime-only project conventions.

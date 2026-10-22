@@ -19,7 +19,13 @@ Identify an operation by API/service and version, HTTP verb and normalized path 
 
 Update existing matching request(s); do not add a duplicate because a parameter changed. Retain stable item IDs, unrelated assertions, inherited scripts/authentication, examples, setup, cleanup, order and variables. Inspect shared validators before editing data or moving a request: a helper change can affect the whole collection. Keep the patch local to the task unless broader impact is supported by the source.
 
+The existing collection is the editing baseline. Do not rebuild/reimport it, normalize all requests, sort the tree, rename folders/items, move old methods or replace working scripts for stylistic consistency. Preserve folder IDs, names, nesting and the relative order of existing items. A structural change is justified only by a source-backed task requirement or an actual dependency that cannot be satisfied by inserting the affected request in place. Show each such change and its reason in the diff; preserve independent structure and content. A parameter-only change normally requires no structural edit. Verify those preservation boundaries against the baseline before and after publication, including whole-collection replacements.
+
+Reuse actual URL/auth variable names and bindings from the baseline. If they have not been read or supplied, leave the exact binding unresolved rather than introducing a conventional placeholder and calling the request ready.
+
 Place new methods using an established folder mapping first, then the service/tag/path meaning and neighboring requests. If no suitable folder exists, add one meaningful folder. Do not generate a replacement collection from scratch to apply a small delta.
+
+For dependent placement, data extraction, authorization or restricted endpoints, also apply [workflow rules](postman-workflow-rules.md). A suitable folder alone does not establish a runnable order; include the necessary setup in the intended run without reorganizing unrelated folders.
 
 Handle query/path/header/cookie/body parameters in their actual request location, with source-backed defaults/examples and constraints. A new input parameter does not automatically become a required response field. Do not invent working IDs, credentials, response codes, payloads or negative outcomes. Mark unresolved execution data separately from a ready contract patch.
 

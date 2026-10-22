@@ -39,3 +39,12 @@ Inspect the exposed inventory for full nested collection reads, inherited script
 Preserve workspace/collection/item IDs, server revision/ETag when supplied, sanitized baseline hash, desired diff and write receipts. Follow read-before-write, conflict handling and uncertain-outcome reconciliation from the shared rules. Use sanitized collection exports/local files as the baseline when live reads are unavailable; never claim that a local patch was saved to Postman.
 
 Remote MCP accesses server-side assets. For [Native Git](https://learning.postman.com/docs/use/native-git/overview/), verify whether the intended element is local or cloud-synced and use the matching access path. See the [setup and automation guide](../postman-collection-sync.md) for optional bindings and host-driven invocations.
+
+## Runner and credential transport
+
+For ordering, variable handoff, auth modes and restricted methods, apply [workflow rules](../../rules/postman-workflow-rules.md). Read actual item/folder order and route scripts; verify the selected runner supports the planned skip/stop/routing behavior. A thrown pre-request error is not a reliable send guard.
+
+- [Request workflows](https://learning.postman.com/docs/tests-and-scripts/running-collections/building-workflows/): pm.execution.setNextRequest affects collection runs, not individual Send. Prefer item IDs; a folder run cannot route outside that folder. Do not assume the selected MCP exposes runner or saved run-selection editing.
+- [Variable scopes](https://learning.postman.com/docs/use/send-requests/variables/variables/): global, collection, environment, data and local values have increasing precedence. Inspect scope-specific reads/writes and effective resolution; do not expose values while checking bindings.
+- [Authorization](https://learning.postman.com/docs/use/send-requests/authorization/specifying-authorization-details/): preserve parent inheritance and request overrides. Runtime token/cookie references can be configured without an API login method; MCP OAuth/API-key credentials are separate.
+- [Cookie scripting](https://learning.postman.com/docs/tests-and-scripts/write-scripts/postman-sandbox-reference/pm-cookies/): jar access needs permitted domains and asynchronous completion. Confirm runner/client support and cookie-header/jar behavior before relying on it. Never assume browser cookies are available to the MCP runner.
