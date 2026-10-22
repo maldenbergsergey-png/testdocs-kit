@@ -585,7 +585,7 @@ try {
     assert(remoteOpenCode.mcp.servers[name]?.type === "remote", `OpenCode не получил remote ${name}.`);
     assert(remoteGeneric.mcpServers[name]?.url, `Generic snippet не получил ${name}.`);
   }
-  assert(remoteCodex.includes('default_tools_approval_mode = "writes"'), "Remote MCP не защищены approval mode для записей.");
+  assert(remoteCodex.includes('default_tools_approval_mode = "prompt"'), "Без проверки CLI нужен совместимый режим подтверждения remote MCP.");
   assert(remoteCodex.includes('Authorization = "TESTDOCS_ELASTIC_AUTH_HEADER"'), "Codex не получил безопасную env-ссылку Elastic auth.");
   assert(!remoteCodex.includes("ApiKey "), "В Codex config попал Elastic API key.");
   assert(remoteOpenCode.mcp.servers.testdocs_elastic.headers.Authorization === "{env:TESTDOCS_ELASTIC_AUTH_HEADER}", "OpenCode не получил env-подстановку Elastic auth.");

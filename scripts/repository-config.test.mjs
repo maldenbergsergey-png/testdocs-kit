@@ -301,9 +301,9 @@ test("isolated installer round-trips repository bindings, private tokens remain 
   } finally { fs.rmSync(temp, { recursive: true, force: true }); }
 });
 
-function driveConfigurationWizard(env, interactions, target = "gitlab") {
+function driveConfigurationWizard(env, interactions, target = "gitlab", extraArgs = []) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [path.join(root, "scripts/install.mjs"), "--configure", target], { cwd: root, env, stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(process.execPath, [path.join(root, "scripts/install.mjs"), "--configure", target, ...extraArgs], { cwd: root, env, stdio: ["pipe", "pipe", "pipe"] });
     let output = "", index = 0, cursor = 0;
     const timer = setTimeout(() => { child.kill("SIGKILL"); reject(new Error("Configuration wizard timed out")); }, 15000);
     const read = chunk => {
@@ -377,7 +377,7 @@ test("interactive GitLab saves on No, reuses the same host, and preserves saved 
   } finally { fs.rmSync(temp, { recursive: true, force: true }); }
 });
 
-test("standalone Postman config asks only its two questions, preserves GitLab/repositories/CA and switches auth without stale headers", async () => {
+test("advanced Postman config preserves GitLab/repositories/CA and switches auth without stale headers", async () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "testdocs-postman-config-"));
   const configFile = path.join(temp, "settings/config.json");
   const env = { ...process.env, TESTDOCS_INSTALL_ROOT: temp, TESTDOCS_CONFIG_DIR: path.dirname(configFile), TESTDOCS_CONFIG_FILE: configFile };
@@ -397,7 +397,7 @@ test("standalone Postman config asks only its two questions, preserves GitLab/re
       const result = await driveConfigurationWizard(env, [
         { prompt: "Регион аккаунта Postman", answer: choice.answers[0] },
         { prompt: "Инструменты Postman", answer: choice.answers[1] }
-      ], "postman");
+      ], "postman", ["--advanced-postman"]);
       assert.equal(result.status, 0, result.output);
       assert.equal(result.answered, 2);
       assert.match(result.output, /Настройка Postman сохранена/);
@@ -419,5 +419,15 @@ test("standalone Postman config asks only its two questions, preserves GitLab/re
       else assert.equal(servers.testdocs_postman.headers, undefined);
     }
     assert.equal(fs.existsSync(path.join(temp, ".agents/skills")), false);
+    const personal = await driveConfigurationWizard(env, [], "postman");
+    assert.equal(personal.status, 0, personal.output);
+    assert.equal(personal.answered, 0);
+    assert(!/Регион аккаунта|Инструменты Postman|API key/.test(personal.output));
+    assert.match(personal.output, /Postman: личный аккаунт/);
+    assert.match(personal.output, /Репозиторий коллекции уже подключён/);
+    const saved = JSON.parse(fs.readFileSync(configFile, "utf8"));
+    assert.deepEqual(saved.repositories, normalizeRepositories(original.repositories));
+    assert.equal(saved.caFile, original.caFile);
+    assert.deepEqual(saved.connections.mcp.find(item => item.provider === "postman"), { id: "postman", provider: "postman", enabled: true, kind: "remote", region: "us", mode: "full", url: "https://mcp.postman.com/mcp", authMode: "oauth" });
   } finally { fs.rmSync(temp, { recursive: true, force: true }); }
 });

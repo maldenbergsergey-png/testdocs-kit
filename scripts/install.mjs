@@ -14,6 +14,7 @@ import { requiresShell } from "./command-shell.mjs";
 import { maestroLocalTools, resolveMaestro, validateMaestro } from "./maestro-config.mjs";
 import { collectRepositories, normalizeRepositories } from "./repository-config.mjs";
 import { validateRepositoryCa } from "./repository-tls.mjs";
+import { authenticateMcpClients, codexWriteApprovalMode } from "./client-mcp.mjs";
 import {
   getCodexConfigFile,
   getConfigDir,
@@ -80,6 +81,7 @@ function parseArgs(argv) {
     }
     else if (arg === "--configure") result.configure = argv[++index];
     else if (arg === "--advanced-repositories") result.advancedRepositories = true;
+    else if (arg === "--advanced-postman") result.advancedPostman = true;
     else if (arg === "--add") result.add = argv[++index];
     else if (arg === "--opencode-format") result.openCodeFormat = argv[++index];
     else if (arg === "--figma-mode") result.figmaMode = argv[++index];
@@ -117,6 +119,7 @@ function showHelp() {
   --configure jira|confluence|eva|tms|delivery|integrations|repositories|postman-repository|postman|repository-sources|gitlab|figma|browser|maestro|all
                                           Перенастроить только выбранную часть
   --advanced-repositories                 Дополнительные настройки источников: Git, ID, файл и ветка
+  --advanced-postman                      Дополнительные настройки Postman: регион и инструменты
   --configure sp-secret                   Задать/заменить/удалить X-Sp-Secret для Jira/Confluence
   --add jira|confluence|eva               Добавить подключение, сохранив существующие
   --opencode-format stable|v2              Явно выбрать формат OpenCode
@@ -401,14 +404,17 @@ function previousMcp(items, provider) {
   return (items || []).find((item) => item.provider === provider) || {};
 }
 
-async function collectPostmanMcp(previous = {}, { standalone = false } = {}) {
-  if (!standalone && !await confirm("Подключить официальный Postman MCP", previous.enabled ?? false)) return null;
-  const region = (await ask("Регион аккаунта Postman: 1 - US (вход через браузер), 2 - EU (API key)", previous.region === "eu" ? "2" : "1")) === "2" ? "eu" : "us";
-  const modeChoice = await ask(
-    "Инструменты Postman: 1 - основной набор, 2 - полный (управление коллекциями), 3 - Code, 4 - Learn",
-    ({ full: "2", code: "3", learn: "4" })[previous.mode] || (standalone ? "2" : "1")
-  );
-  const mode = ({ "2": "full", "3": "code", "4": "learn" })[modeChoice] || "minimal";
+async function collectPostmanMcp(previous = {}, { standalone = false, advanced = false } = {}) {
+  if (!standalone && !await confirm("Подключить Postman (личный аккаунт, вход через браузер)", previous.enabled ?? false)) return null;
+  let region = "us", mode = "full";
+  if (advanced) {
+    region = (await ask("Регион аккаунта Postman: 1 - US (вход через браузер), 2 - EU (API key)", previous.region === "eu" ? "2" : "1")) === "2" ? "eu" : "us";
+    const modeChoice = await ask(
+      "Инструменты Postman: 1 - основной набор, 2 - полный (управление коллекциями), 3 - Code, 4 - Learn",
+      ({ full: "2", code: "3", learn: "4" })[previous.mode] || "2"
+    );
+    mode = ({ "2": "full", "3": "code", "4": "learn" })[modeChoice] || "minimal";
+  } else console.log("Postman: личный аккаунт, вход через браузер. Управление коллекциями включено.");
   const entry = {
     id: previous.id || "postman", provider: "postman", enabled: true, kind: "remote", region, mode,
     url: `https://mcp.${region === "eu" ? "eu." : ""}postman.com/${mode === "full" ? "mcp" : mode}`,
@@ -421,7 +427,7 @@ async function collectPostmanMcp(previous = {}, { standalone = false } = {}) {
   return entry;
 }
 
-async function collectExternalMcp(config, clients = []) {
+async function collectExternalMcp(config, clients = [], args = {}) {
   const previousItems = config.connections.mcp || [];
   const items = [];
 
@@ -461,7 +467,7 @@ async function collectExternalMcp(config, clients = []) {
     items.push(entry);
   }
 
-  const postman = await collectPostmanMcp(previousMcp(previousItems, "postman"));
+  const postman = await collectPostmanMcp(previousMcp(previousItems, "postman"), { advanced: args.advancedPostman });
   if (postman) items.push(postman);
 
   const elasticPrevious = previousMcp(previousItems, "elastic");
@@ -770,10 +776,10 @@ async function collectConfig(args, clients, existing = null) {
       : false;
   }
   if (["all", "integrations"].includes(target)) {
-    previous.connections.mcp = await collectExternalMcp(previous, clients);
+    previous.connections.mcp = await collectExternalMcp(previous, clients, args);
   }
   if (target === "postman") {
-    const entry = await collectPostmanMcp(previousMcp(previous.connections.mcp, "postman"), { standalone: true });
+    const entry = await collectPostmanMcp(previousMcp(previous.connections.mcp, "postman"), { standalone: true, advanced: args.advancedPostman });
     previous.connections.mcp = [...previous.connections.mcp.filter(item => item.provider !== "postman"), entry];
   }
   if (["all", "integrations", "repositories", "postman-repository", "repository-sources", "gitlab"].includes(target)) {
@@ -1002,7 +1008,7 @@ function configuredServers(config) {
   return servers;
 }
 
-function codexBlock(config) {
+function codexBlock(config, writeApprovalMode) {
   const sections = [MANAGED_BEGIN];
   for (const server of configuredServers(config)) {
     if (server.kind === "remote") {
@@ -1014,7 +1020,7 @@ function codexBlock(config) {
 url = ${tomlString(server.url)}
 enabled = true
 required = false${envHeaders}
-default_tools_approval_mode = "writes"`);
+default_tools_approval_mode = "${writeApprovalMode}"`);
       continue;
     }
     const args = [launcherFile, server.service, ...(server.id ? [server.id] : [])];
@@ -1028,13 +1034,13 @@ args = [${args.map(tomlString).join(", ")}]
 enabled = true
 required = false${server.service === "maestro" ? "\nstartup_timeout_sec = 60\ntool_timeout_sec = 180" : ""}
 ${enabledTools}
-default_tools_approval_mode = "${server.service === "maestro" ? "writes" : "approve"}"`);
+default_tools_approval_mode = "${server.service === "maestro" ? writeApprovalMode : "approve"}"`);
   }
   sections.push(MANAGED_END);
   return `${sections.join("\n")}\n`;
 }
 
-function writeManagedCodexConfig(config) {
+function writeManagedCodexConfig(config, args) {
   const target = getCodexConfigFile();
   fs.mkdirSync(path.dirname(target), { recursive: true });
   const existing = fs.existsSync(target) ? fs.readFileSync(target, "utf8") : "";
@@ -1042,7 +1048,8 @@ function writeManagedCodexConfig(config) {
   const escapedEnd = MANAGED_END.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const managedPattern = new RegExp(`${escapedBegin}[\\s\\S]*?${escapedEnd}\\n?`, "g");
   const withoutManaged = existing.replace(managedPattern, "").trimEnd();
-  const next = `${withoutManaged}${withoutManaged ? "\n\n" : ""}${codexBlock(config)}`;
+  const writeApprovalMode = codexWriteApprovalMode({ noCli: args.noCli });
+  const next = `${withoutManaged}${withoutManaged ? "\n\n" : ""}${codexBlock(config, writeApprovalMode)}`;
   if (existing && existing !== next) fs.copyFileSync(target, `${target}.backup-${stamp}`);
   writeAtomic(target, next);
   console.log(`Codex настроен: ${target}`);
@@ -1195,6 +1202,7 @@ function mergeOpenCodeConfig(config, args) {
   }
 
   const format = detectOpenCodeFormat(data, requestedFormat);
+  args.resolvedOpenCodeFormat = format;
   ensureSafeFormatMigration(data, format);
   removeManagedOpenCodePermissions(data);
   data.mcp ||= {};
@@ -1303,7 +1311,7 @@ function writeGenericSnippet(config) {
 
 function configureClients(config, clients, args) {
   writeGenericSnippet(config);
-  if (clients.includes("codex")) writeManagedCodexConfig(config);
+  if (clients.includes("codex")) writeManagedCodexConfig(config, args);
   if (clients.includes("opencode")) mergeOpenCodeConfig(config, args);
   if (clients.includes("claude")) configureClaude(config, args.noCli, args.activateUpdate);
 }
@@ -1341,18 +1349,10 @@ function authenticateRemoteMcp(config, clients, args) {
     (server) => server.kind === "remote" && server.authMode === "oauth" &&
       (!["figma", "postman"].includes(args.configure) || server.provider === args.configure)
   );
-  if (!oauthServers.length) return;
-  if (args.noCli || args.skipBrowserAuth || !clients.includes("codex") || !commandAvailable("codex")) {
-    console.log("OAuth remote MCP завершите через MCP-интерфейс выбранного клиента после перезапуска.");
-    return;
-  }
-  for (const server of oauthServers) {
-    console.log(`\nАвторизация remote MCP ${server.name}...`);
-    const result = spawnSync("codex", ["mcp", "login", server.name], { stdio: "inherit" });
-    if (result.status !== 0) {
-      console.warn(`Авторизация ${server.name} не завершена; повторите: codex mcp login ${server.name}`);
-    }
-  }
+  authenticateMcpClients(oauthServers, clients, {
+    noCli: args.noCli, skipBrowserAuth: args.skipBrowserAuth,
+    openCodeFormat: args.resolvedOpenCodeFormat || args.openCodeFormat || "stable"
+  });
 }
 
 async function main() {
@@ -1378,6 +1378,9 @@ async function main() {
     configureClients(config, clients, args);
     authenticateRemoteMcp(config, clients, args);
     console.log("Настройка Postman сохранена. Завершите вход в выбранном AI-клиенте и перезапустите его, чтобы появились инструменты Postman.");
+    console.log(config.repositories?.postman?.enabled
+      ? "Репозиторий коллекции уже подключён. Агент получает и отправляет изменения коллекции через Git; локальная коллекция открывается в Postman."
+      : "Для общей коллекции подключите её репозиторий отдельно: npm run configure:postman-repository");
     return;
   }
   if (repositoriesOnly) {

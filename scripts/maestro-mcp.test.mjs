@@ -98,7 +98,7 @@ for (const format of ["stable", "v2"]) {
       assert.match(codex, /\[mcp_servers.foreign\]/);
       assert.equal((codex.match(/\[mcp_servers.testdocs_maestro\]/g) || []).length, active ? 1 : 0);
       if (active) {
-        assert.match(codex, /default_tools_approval_mode = "writes"/);
+        assert.match(codex, /default_tools_approval_mode = "prompt"/);
         assert.match(codex, /"inspect_screen"/);
         assert.doesNotMatch(codex, /run_on_cloud/);
         assert.equal(servers.testdocs_maestro.command.at(-1), "maestro");
