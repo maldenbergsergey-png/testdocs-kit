@@ -32,6 +32,8 @@ Prefer OAuth where the selected endpoint and client support it. For an API key, 
 
 ## Collection maintenance capabilities
 
+For a Git-backed collection use its [repository binding](git-repositories.md) and actual local files. Each tester can use their own Postman account; Git publication and Postman Cloud synchronization are different operations. MCP is not required for local Git edits or Git push/pull.
+
 For request/schema updates, use [update-postman-collection](../../skills/update-postman-collection/SKILL.md) and its [shared rules](../../rules/postman-collection-rules.md). File-based input/output remains available without a connection; an HTTP run is not a substitute for reading the collection baseline.
 
 Inspect the exposed inventory for full nested collection reads, inherited scripts/auth/variables, stable item IDs, folder/item creation and updates, and post-write reads. Minimal discovery need not expose these writes; select Full when required. Confirm whether an update patches an item or replaces a whole collection; map the desired payload to that exact operation. Do not assume conditional revisions, fork creation, JavaScript execution or monitor controls exist.

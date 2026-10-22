@@ -12,6 +12,7 @@ import readline from "node:readline/promises";
 import { spawnSync } from "node:child_process";
 import { requiresShell } from "./command-shell.mjs";
 import { maestroLocalTools, resolveMaestro, validateMaestro } from "./maestro-config.mjs";
+import { collectRepositories, normalizeRepositories } from "./repository-config.mjs";
 import {
   getCodexConfigFile,
   getConfigDir,
@@ -111,7 +112,7 @@ function showHelp() {
   --reuse                                 Применить сохранённые настройки без вопросов
   --auto-update on|off                     Автообновление всего пакета (по умолчанию on)
   --update-interval-hours 4                Проверять обновления раз в заданное число часов
-  --configure jira|confluence|eva|tms|delivery|integrations|figma|browser|maestro|all
+  --configure jira|confluence|eva|tms|delivery|integrations|repositories|postman-repository|repository-sources|figma|browser|maestro|all
                                           Перенастроить только выбранную часть
   --configure sp-secret                   Задать/заменить/удалить X-Sp-Secret для Jira/Confluence
   --add jira|confluence|eva               Добавить подключение, сохранив существующие
@@ -417,15 +418,24 @@ async function collectExternalMcp(config, clients = []) {
       gitlabPrevious.host || "",
       "https://gitlab.com"
     )).replace(/\/+$/, "");
-    items.push({
+    const authChoice = await ask("GitLab MCP: 1 - OAuth; 2 - fine-grained PAT с MCP tool Execute (не legacy PAT)", gitlabPrevious.authMode === "env_header" ? "2" : "1");
+    if (!["1", "2"].includes(authChoice)) throw new Error("Выберите OAuth или fine-grained PAT для GitLab MCP.");
+    const entry = {
       id: "gitlab",
       provider: "gitlab",
       enabled: true,
       kind: "remote",
       host,
       url: `${host}/api/v4/mcp`,
-      authMode: "oauth"
-    });
+      authMode: authChoice === "2" ? "env_header" : "oauth"
+    };
+    if (entry.authMode === "env_header") {
+      const variable = await ask("Имя переменной с полным Bearer заголовком GitLab MCP", gitlabPrevious.envHttpHeaders?.Authorization || "TESTDOCS_GITLAB_MCP_AUTH_HEADER");
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(variable)) throw new Error("Нужно имя переменной окружения, не токен.");
+      entry.envHttpHeaders = { Authorization: variable };
+      console.log("Значение Bearer <fine-grained PAT> задаётся вне репозитория; REST PAT с read_api/read_repository не подходит для официального MCP.");
+    }
+    items.push(entry);
   }
 
   const postmanPrevious = previousMcp(previousItems, "postman");
@@ -551,6 +561,7 @@ async function collectTms(previousTms = {}, previousQaTools = {}, previousWriteS
 function validateAnswers(config) {
   if (!config || typeof config !== "object") throw new Error("Файл ответов должен содержать JSON-объект.");
   config = migrateConfig(config);
+  if (config.repositories) config.repositories = normalizeRepositories(config.repositories);
   if (config.browser && (typeof config.browser.enabled !== "boolean" || !["persistent", "extension"].includes(config.browser.mode))) {
     throw new Error("Некорректные настройки browser: enabled boolean, mode persistent|extension.");
   }
@@ -685,7 +696,7 @@ async function collectConfig(args, clients, existing = null) {
   if (args.add && !["jira", "confluence", "eva"].includes(args.add)) {
     throw new Error("--add поддерживает jira, confluence или eva.");
   }
-  if (!["jira", "confluence", "eva", "tms", "delivery", "integrations", "figma", "browser", "maestro", "sp-secret", "all"].includes(target)) {
+  if (!["jira", "confluence", "eva", "tms", "delivery", "integrations", "repositories", "postman-repository", "repository-sources", "figma", "browser", "maestro", "sp-secret", "all"].includes(target)) {
     throw new Error("Неизвестный раздел настройки.");
   }
   if (target === "sp-secret") {
@@ -756,6 +767,20 @@ async function collectConfig(args, clients, existing = null) {
   }
   if (["all", "integrations"].includes(target)) {
     previous.connections.mcp = await collectExternalMcp(previous, clients);
+  }
+  if (["all", "integrations", "repositories", "postman-repository", "repository-sources"].includes(target)) {
+    previous.repositories = await collectRepositories(previous.repositories, {
+      ask, confirm, askSecret,
+      saveToken(id, token) {
+        const directory = path.join(getConfigDir(), "credentials", "repositories");
+        fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+        const file = path.join(directory, `${id}.token`);
+        writeAtomic(file, token, 0o600);
+        try { fs.chmodSync(file, 0o600); } catch { /* Windows uses ACL. */ }
+        return file;
+      },
+      section: target === "postman-repository" ? "postman" : target === "repository-sources" ? "sources" : "all"
+    });
   }
   if (target === "figma" && !args.figmaMode) {
     const current = previous.figma || previousMcp(previous.connections.mcp, "figma");
@@ -1331,6 +1356,11 @@ async function main() {
       : await chooseClients(args);
   if (!clients.length) throw new Error("Не выбран ни один клиент.");
   const config = await collectConfig(args, clients, existing);
+  if (["repositories", "postman-repository", "repository-sources"].includes(args.configure)) {
+    savePrivateConfig(config);
+    console.log("Привязки репозиториев сохранены. Другие интеграции и конфигурации клиентов не перенастраивались.\nПроверка: npm run check:repositories -- --show; для проверки доступа добавьте --id <id> --remote.");
+    return;
+  }
   validateMaestro(config.maestro);
   config.maestro = resolveMaestro({
     ...config.maestro,

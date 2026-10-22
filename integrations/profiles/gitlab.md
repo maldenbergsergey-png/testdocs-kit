@@ -1,6 +1,6 @@
 # GitLab MCP capability profile
 
-Use GitLab for explicitly scoped issue, merge request, commit, diff, pipeline and repository context that can affect test scope. Prefer GitLab's official remote MCP endpoint:
+Use GitLab as a general source for scoped code, contracts, issue, MR, commit, diff and pipeline context during analysis, testing and bug preparation. Source links can support a bug in Jira/Eva without GitLab writes. For one-time read access across a user's repositories, use a personal REST PAT with `read_api` through the [repository integration](git-repositories.md). No per-project token or Postman connection is required. Optional official MCP endpoint:
 
 ```text
 https://<gitlab-host>/api/v4/mcp
@@ -11,6 +11,7 @@ Official documentation: <https://docs.gitlab.com/user/model_context_protocol/mcp
 ## Availability and authentication
 
 - The official server requires a compatible GitLab version and administrator/group enablement. Treat a missing endpoint as `CAPABILITY_UNAVAILABLE`, not as an authentication failure.
+- Current official MCP accepts OAuth with `mcp` scope or a fine-grained PAT with MCP tool Execute permission, subject to instance support. Legacy PATs and project/group tokens, including `api`/`read_api` tokens, are not interchangeable with MCP credentials. Setup supports OAuth and an environment-header reference for the fine-grained token. Check actual instance/version/tool availability; do not assume current public features exist on an older corporate server.
 - The server uses OAuth 2.0 Dynamic Client Registration unless the GitLab administrator supplies a pre-registered client ID.
 - A company Keycloak login normally appears inside GitLab's browser authorization flow. Do not attempt to reproduce Keycloak credentials in the installer or ask the user for them.
 - If DCR is disabled, record that an administrator-supplied client ID and the client's exact redirect URI are required. Do not invent either value.
@@ -27,7 +28,7 @@ Use read capabilities during testing. Creating or updating issues, merge request
 
 ## Fallback
 
-If the official MCP is unavailable on the company's GitLab version, request a scoped MR/commit diff or approved read-only alternative. Keycloak browser login does not by itself provide an API session to an arbitrary adapter.
+If MCP is unavailable, use a configured read-only REST source, an authorized checkout, or supplied diff/file. Keycloak browser login does not itself provide an API session to an arbitrary adapter. REST `read_api` covers analysis metadata; add `read_repository` for Git-over-HTTPS. SSH is not inherently read-only. Do not broaden scopes to create a GitLab issue through a read-only source; use the requested tracker or a draft, and configure writing separately only on explicit request.
 
 ## Contract files and refs
 

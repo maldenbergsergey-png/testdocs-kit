@@ -22,6 +22,10 @@
     "configure:tms": "node scripts/install.mjs --configure tms",
     "configure:delivery": "node scripts/install.mjs --configure delivery",
     "configure:integrations": "node scripts/install.mjs --configure integrations",
+    "configure:repositories": "node scripts/install.mjs --configure repositories",
+    "configure:postman-repository": "node scripts/install.mjs --configure postman-repository",
+    "configure:repository-sources": "node scripts/install.mjs --configure repository-sources",
+    "check:repositories": "node scripts/check-repositories.mjs",
     "add:jira": "node scripts/install.mjs --add jira",
     "add:confluence": "node scripts/install.mjs --add confluence",
     "add:eva": "node scripts/install.mjs --add eva",
@@ -41,11 +45,13 @@
     "test:workspace": "node --test scripts/task-workspace.test.mjs scripts/context-store.test.mjs",
     "test:format": "node scripts/validate-test-case-format.mjs",
     "test:checklist": "node scripts/validate-checklist-format.mjs && node --test scripts/validate-checklist-format.test.mjs",
-    "test": "npm run test:skills && npm run test:format && npm run test:checklist && npm run test:bootstrap && npm run test:command-shell && npm run test:browser-auth && npm run test:session-auth && npm run test:atlassian-transport && npm run test:workspace && npm run test:mcp && npm run test:qa-tools-mcp && npm run test:installer && npm run test:browser-mcp && npm run test:maestro && npm run test:auto-update",
+    "test": "npm run test:skills && npm run test:repositories && npm run test:format && npm run test:checklist && npm run test:bootstrap && npm run test:command-shell && npm run test:browser-auth && npm run test:session-auth && npm run test:atlassian-transport && npm run test:workspace && npm run test:mcp && npm run test:qa-tools-mcp && npm run test:installer && npm run test:browser-mcp && npm run test:maestro && npm run test:auto-update",
     "test:browser-mcp": "node --test scripts/browser-mcp.test.mjs",
     "test:maestro": "node --test scripts/maestro-mcp.test.mjs",
+    "test:repositories": "node --test scripts/repository-config.test.mjs",
     "test:skills": "node --test scripts/skill-pack.test.mjs scripts/install-skills.test.mjs",
-    "eval:routing": "node scripts/check-routing-eval.mjs"
+    "eval:routing": "node scripts/check-routing-eval.mjs",
+    "gitlab:read": "node scripts/gitlab-read.mjs"
   },
   "engines": {
     "node": ">=20"

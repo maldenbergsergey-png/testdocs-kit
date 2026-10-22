@@ -5,7 +5,7 @@ description: Retrieve and normalize scoped QA sources or verified saved task/fea
 
 # Collect test context
 
-Return a minimal, traceable neutral context bundle to the calling QA skill.
+Return a traceable context bundle to the calling QA skill.
 
 Read [the common contract](../../rules/core.md) once per task. Follow conditional rule links only when their condition applies.
 
@@ -22,7 +22,7 @@ Read [`../../integrations/README.md`](../../integrations/README.md) only when co
 Accept:
 
 - a Jira issue key or URL plus a QA intent;
-- a GitLab issue, merge request, commit, pipeline, or repository URL;
+- a [GitLab reference](../../integrations/profiles/gitlab.md) via MCP, REST or Git;
 - a Figma node URL, Postman object URL, or scoped log/server reference;
 - an exact release version, Jira project/connection, and Test Run intent;
 - a Confluence or knowledge-page link;

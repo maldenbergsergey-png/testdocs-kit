@@ -1,5 +1,7 @@
 # Postman collection maintenance
 
+For shared Git-backed maintenance, the configured primary collection repository may be hosted separately from code/contracts, on any reachable Git host. Use the [repository profile](../integrations/profiles/git-repositories.md) for binding discovery, local/cloud separation, read-only sources and publication permissions. Supplied-file maintenance remains valid without a repository integration.
+
 Use these rules when maintaining requests and API autotests, including a task about a changed method with a user-bound collection. Apply [core](core.md) and [project isolation](project-conventions.md). Collection maintenance does not change the TMS case-update restriction in [update rules](update-rules.md); Postman request assets are not TMS cases.
 
 ## Source and revision

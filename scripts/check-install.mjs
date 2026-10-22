@@ -11,6 +11,7 @@ import { spawnSync } from "node:child_process";
 import { getConfigFile, getInstallHome, launcherFile, repoRoot } from "./paths.mjs";
 import { connectionList, hasQaTools, migrateConfig, usesZephyr } from "./config-model.mjs";
 import { validateMaestro } from "./maestro-config.mjs";
+import { normalizeRepositories } from "./repository-config.mjs";
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -21,6 +22,7 @@ function validatePrivateConfig() {
   assert(fs.existsSync(configFile), `Не найден ${configFile}. Выполните npm run setup.`);
   const config = migrateConfig(JSON.parse(fs.readFileSync(configFile, "utf8")));
   validateMaestro(config.maestro);
+  if (config.repositories) normalizeRepositories(config.repositories);
   assert(config.version === 3, "Неподдерживаемая версия файла настроек.");
   if (config.caFile) {
     assert(fs.existsSync(config.caFile), `Не найден дополнительный CA-файл: ${config.caFile}`);
