@@ -229,5 +229,26 @@
     "skill": "generate-test-checklist",
     "artifact": "checklist",
     "collect": false
+  },
+  {
+    "id": "postman_whole_smoke_review",
+    "prompt": "Пересмотри всю Postman-коллекцию для рабочего smoke-прогона: основные методы, русские названия, категории, зависимости и реальные переменные. Исправь и проверь её. Полная коллекция, контракты и данные тестового стенда приложены.",
+    "skill": "update-postman-collection",
+    "artifact": "collection_patch",
+    "collect": false
+  },
+  {
+    "id": "postman_single_method_run",
+    "prompt": "В приложенной коллекции актуализируй GET /api/items/{id} по приложенному контракту. После исправления проверь run этого метода вместе с созданием item, зависимым отчётом и очисткой. Тестовый стенд и приватная авторизация уже заданы.",
+    "skill": "update-postman-collection",
+    "artifact": "collection_patch",
+    "collect": false
+  },
+  {
+    "id": "postman_collection_review_only",
+    "prompt": "Сделай только ревью всей приложенной Postman-коллекции и списка методов контракта: что не хватает, где неверный порядок или названия. Ничего не меняй и не запускай.",
+    "skill": "update-postman-collection",
+    "artifact": "review",
+    "collect": false
   }
 ]
