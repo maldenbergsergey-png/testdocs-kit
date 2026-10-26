@@ -6,6 +6,8 @@ Read [core.md](core.md) once per task. This index is for discovery; follow only 
 
 [Shared quality criteria](core.md#качество-всех-qa-артефактов) apply to every artifact: minimum sufficient detail, reproducibility, confirmed facts and a content check before delivery.
 
+[Writing style](writing-style-rules.md) is part of the common contract for every QA artifact and accompanying text; read it once per task. The [source pattern catalog](../docs/generated-text-patterns.md) is optional reference material.
+
 ## Rule files
 
 - [`test-case-standard.md`](test-case-standard.md) — test-case content and writing standard.
