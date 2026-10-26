@@ -1,11 +1,13 @@
 ---
 name: create-release-test-run
-description: Build a release, smoke, regression, sanity, or hotfix test run from an exact release version and scoped Zephyr folder; find cases linked to release tasks, add evidence-backed semantic matches for tasks without links, assign executions to named testers, and optionally create the test run plus its linked QA work item. Use for test-run or test-cycle preparation and creation, not for designing permanent regression coverage or writing new test cases.
+description: Build a release, smoke, regression, sanity, or hotfix test run from an exact release version and scoped Zephyr folder; find linked cases and evidence-backed folder matches, assign executions to named testers, and optionally create the run plus its linked QA work item. Use for new test-run preparation and creation; use manage-test-run for edits to a saved run.
 ---
 
 # Create release test run
 
 Build the smallest evidence-backed execution set that matches the release risk and the user's requested depth.
+
+For membership, order, header, result or deletion changes to an existing run, use [`manage-test-run`](../manage-test-run/SKILL.md). Do not create a replacement run to apply those changes.
 
 Read [the common contract](../../rules/core.md) once per task. Follow conditional rule links only when their condition applies.
 

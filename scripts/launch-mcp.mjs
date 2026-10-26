@@ -90,7 +90,9 @@ function buildEnvironment(service, connectionId, config) {
         jira.enableChecklistCommentPublication === true ? "1" : "0",
       TESTDOCS_ENABLE_BUG_CREATION: jira.enableBugCreation === true ? "1" : "0",
       TESTDOCS_ENABLE_RELEASE_TEST_RUN_CREATION:
-        jira.enableReleaseTestRunCreation === true ? "1" : "0"
+        jira.enableReleaseTestRunCreation === true || jira.enableTestRunManagement === true ? "1" : "0",
+      TESTDOCS_ENABLE_TEST_RUN_MANAGEMENT:
+        jira.enableTestRunManagement === true ? "1" : "0"
     };
   }
 

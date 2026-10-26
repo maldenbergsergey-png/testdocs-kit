@@ -6,7 +6,7 @@ A Test Run or Test Cycle is an execution plan for a specific release objective. 
 
 ## Required scope
 
-Resolve these values from the user's request, an explicitly anchored project instruction, or live metadata:
+For a new release run, resolve these values from the user's request, an explicitly anchored project instruction, or live metadata. Ordinary changes to a saved run follow [existing-run management](#existing-test-run-management) without rebuilding creation scope:
 
 - exact release version and the issues included in it;
 - launch kind: sanity, release smoke, release regression, full regression, or hotfix/targeted verification;
@@ -142,7 +142,7 @@ For sanity, hotfix, `web_mobile`, or another mode not covered by a project-backe
 
 A proposal request does not authorize external writes. An explicit request to create the Test Run and linked Jira work item authorizes only those named creations after the full payload and targets pass validation.
 
-Treat Test Run creation, case attachment, task linking, execution assignment, Jira issue creation, and Test Run-to-issue linking as distinct results that all require validation, even when one adapter combines the Test Run results in one call. The public Server/DC adapter creates the run with its complete case, task-link, and assignment composition in a single immutable `POST /rest/atm/1.0/testrun` request. Preflight every required value before that mutation. Create the Test Run before the Jira work item so the returned stable run reference can populate test coverage.
+Treat Test Run creation, case attachment, task linking, execution assignment, Jira issue creation, and Test Run-to-issue linking as distinct results that all require validation, even when one adapter combines the Test Run results in one call. The public Server/DC adapter creates the run with its complete case, task-link, and assignment composition in one `POST /rest/atm/1.0/testrun` request. Preflight every required value before that mutation. Create the Test Run before the Jira work item so the returned stable run reference can populate test coverage.
 
 After creation, read the Test Run back and compare every requested `testCaseKey → userKey` assignment with the saved item. A requested or connector-reported count is not proof of assignment. When an item exists but its assignment was ignored, the bundled adapter may make one documented `PUT assignedTo` attempt for that exact Test Run item and then read the run again. Count only verified saved assignments. Do not continue to Jira work-item creation while an item or assignment mismatch remains; preserve the created Test Run key and report the partial result without deleting or recreating it.
 
@@ -155,3 +155,17 @@ If a later operation fails, do not delete or duplicate the created run or issue 
 ## Readiness
 
 A run is ready when its objective, release scope, platform, folder boundary, and applicable coverage depth are explicit; every included case is current and has required attributes; duplicates and irrelevant cases are removed; every case has traceability and one valid assignee; uncovered tasks are visible; and the Test Run plus Jira payloads are complete for either review or creation.
+
+## Existing Test Run management
+
+An existing run remains the target of an update. Keep its key, retained items and execution history. Creating a replacement, deleting the original, changing source test cases or editing its linked Jira QA task is outside an ordinary run-edit request.
+
+Read-only inspection requires only the exact run or a scoped project/folder search. A mutation requires the selected connection, unambiguous run identity, explicit requested operation and supported capability. A request to remove named cases, rename, reassign, reorder or update results authorizes that validated operation in the same turn; a request to review/propose authorizes only reads and a diff. Setup opt-in is capability enablement, not permission for every future mutation.
+
+Read the current complete run/item snapshot before editing. Use stable run item IDs for removal and ordering; execution IDs from public run reads belong to another identity space. Preserve the baseline hash and stop on a stale baseline. Hash checks detect observed concurrent changes but are not a server-side atomic lock; read-back verification is still required. Resolve duplicate case configurations explicitly instead of changing an arbitrary matching execution.
+
+Apply a minimal diff. Add only scoped eligible cases, deduplicate and resolve assignees to Jira user keys. Do not remove previously completed cases merely because their status differs from an eligibility filter used to select additions. Removing an item also removes its execution history in Zephyr: make that consequence visible, and remove only the items the user selected. Whole-run deletion requires explicit intent to delete that exact container and its history; never use deletion as automatic cleanup.
+
+Execution status changes need explicit result-edit intent and observed results. No run setup, membership edit or assignment change implies that a case passed, failed or should have its results reset. A container's aggregate status must not be simulated by overwriting all case results.
+
+Verify saved header values, requested composition/order/assignments and retained execution identities/data separately. Report success only for verified changes. For a multi-step update preserve the accepted phase, exact run reference and remaining work. On an uncertain mutation, incompatible endpoint or unavailable read-back, inspect the same run before any retry; never automatically recreate it or guess alternate mutation endpoints. Transport, opt-in and version-specific limitations belong in the selected integration profile.

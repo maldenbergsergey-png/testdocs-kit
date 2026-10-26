@@ -2,6 +2,7 @@ const express = require("express");
 require("dotenv").config();
 
 const { tools } = require("./jira-client");
+const { managementTools } = require("./test-runs");
 const { createSessionCaseRegistry } = require("./session-case-registry");
 
 const app = express();
@@ -9,7 +10,8 @@ const { PORT = 3333 } = process.env;
 const writesEnabled = process.env.TESTDOCS_ENABLE_WRITES === "1";
 const checklistCommentsEnabled = process.env.TESTDOCS_ENABLE_CHECKLIST_COMMENT_PUBLICATION === "1";
 const bugCreationEnabled = process.env.TESTDOCS_ENABLE_BUG_CREATION === "1";
-const releaseTestRunCreationEnabled = process.env.TESTDOCS_ENABLE_RELEASE_TEST_RUN_CREATION === "1";
+const testRunManagementEnabled = process.env.TESTDOCS_ENABLE_TEST_RUN_MANAGEMENT === "1";
+const releaseTestRunCreationEnabled = process.env.TESTDOCS_ENABLE_RELEASE_TEST_RUN_CREATION === "1" || testRunManagementEnabled;
 const writeTools = new Set(["add_comment", "transition_issue"]);
 const zephyrEnabled = (process.env.TESTDOCS_TMS_PROVIDER || "zephyr_scale") === "zephyr_scale";
 const sessionCases = createSessionCaseRegistry();
@@ -35,6 +37,13 @@ app.post("/mcp", async (req, res) => {
 
     if (tool === "zephyr_update_test_case") {
       return res.status(403).json({ error: "SESSION_ONLY: Existing cases remain proposal-only." });
+    }
+
+    if (tool.startsWith("zephyr_") && !zephyrEnabled) {
+      return res.status(403).json({ error: "Zephyr is not the selected TMS provider." });
+    }
+    if (managementTools.includes(tool) && !testRunManagementEnabled) {
+      return res.status(403).json({ error: "Test Run management is disabled." });
     }
 
     if (writeTools.has(tool) && !writesEnabled) {

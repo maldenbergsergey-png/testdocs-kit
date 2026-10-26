@@ -167,7 +167,7 @@ function install(root, args, env, log) {
 
 function childEnvironment() {
   return { ...process.env, TESTDOCS_AUTO_UPDATE_INTERNAL: "1", TESTDOCS_AUTO_UPDATE: "0",
-    TESTDOCS_ENABLE_JIRA_WRITES: "0", TESTDOCS_ENABLE_RELEASE_TEST_RUN_WRITES: "0",
+    TESTDOCS_ENABLE_JIRA_WRITES: "0", TESTDOCS_ENABLE_RELEASE_TEST_RUN_WRITES: "0", TESTDOCS_ENABLE_TEST_RUN_WRITES: "0",
     GIT_TERMINAL_PROMPT: "0", GCM_INTERACTIVE: "never", npm_config_audit: "false", npm_config_fund: "false" };
 }
 function hash(file) { return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex"); }

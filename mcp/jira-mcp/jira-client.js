@@ -1,5 +1,6 @@
 require("dotenv").config({ quiet: true });
 const crypto = require("node:crypto");
+const { createTestRunTools } = require("./test-runs");
 const { readStepAttachments, addStepImage } = require("./step-images");
 const { fetchWithSpSecret, redactSpSecret, withHttpDiagnostics, redactHttpText } = require("../atlassian-http.cjs");
 const { createConnectionDiagnostics } = require("./connection-diagnostics");
@@ -586,7 +587,7 @@ async function zephyrGetTestRun({ testRunKey }) {
     throw new Error("An exact Test Run key is required.");
   }
   const params = new URLSearchParams({
-    fields: "key,projectKey,name,status,folder,version,issueLinks,items"
+    fields: "key,projectKey,name,status,folder,version,issueLinks,owner,plannedStartDate,plannedEndDate,customFields,items"
   });
   const result = await zephyrRequest(
     `/rest/atm/1.0/testrun/${encodeURIComponent(testRunKey)}?${params.toString()}`
@@ -1186,7 +1187,7 @@ async function zephyrCreateTestRun({
     key,
     _testdocs: {
       created: true,
-      immutableComposition: true,
+      compositionManagement: "zephyr_add_test_run_items / zephyr_remove_test_run_items require separate Test Run management opt-in",
       testRunKey: key,
       webUrl: buildTestRunWebUrl(key),
       itemCount: items.length,
@@ -1291,6 +1292,7 @@ module.exports = {
   jiraRequest,
   zephyrRequest,
   tools: {
+    ...createTestRunTools({ request: zephyrRequest, jiraRequest, getRun: zephyrGetTestRun, webUrl: buildTestRunWebUrl }),
     jira_get_connection_diagnostics: getConnectionDiagnostics,
     get_issue: getIssue,
     jira_get_bug_create_metadata: getBugCreateMetadata,

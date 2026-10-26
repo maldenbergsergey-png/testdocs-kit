@@ -175,6 +175,7 @@ try {
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "prepare-task-testing", "SKILL.md")), "Не установлен task-first skill.");
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "create-bug-report", "SKILL.md")), "Не установлен skill создания баг-репортов.");
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "create-release-test-run", "SKILL.md")), "Не установлен skill формирования Test Run.");
+  assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "manage-test-run", "SKILL.md")), "Не установлен skill управления существующим Test Run.");
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "explain-task-testing", "SKILL.md")), "Не установлен skill объяснения тестирования.");
   assert(fs.existsSync(path.join(testRoot, ".agents", "skills", "execute-task-testing", "SKILL.md")), "Не установлен skill выполнения тестирования.");
   for (const clientDirectory of [".agents", ".claude"]) {
@@ -512,6 +513,7 @@ try {
   const zephyrJira = afterEnableReleaseRun.connections.jira.find((jira) => jira.id === "jira-two");
   assert(firstJira.enableReleaseTestRunCreation === false, "Узкий opt-in включил Test Run для посторонней Jira.");
   assert(zephyrJira.enableReleaseTestRunCreation === true, "Узкий opt-in не включил Test Run для выбранной Zephyr Jira.");
+  assert(zephyrJira.enableTestRunManagement === false, "Старый opt-in создания расширил права управления/удаления.");
   assert(firstJira.enableBugCreation === false && firstJira.enableChecklistCommentPublication === false, "Узкий opt-in включил посторонние Jira writes.");
   assert(enableReleaseRunResult.stdout.includes("Разрешены только Test Run и связанная QA-задача для jira-two"), "Узкий opt-in не сообщил точное подключение.");
 
@@ -537,6 +539,20 @@ try {
     "TESTDOCS_ENABLE_JIRA_WRITES не включил создание Bug, публикацию checklist, Test Run и QA-задачи для всех Jira-подключений."
   );
   assert(afterEnableWrites.enableWrites === false, "TESTDOCS_ENABLE_JIRA_WRITES включил общие небезопасные Jira-записи.");
+  assert(afterEnableWrites.connections.jira.every((jira) => jira.enableTestRunManagement === false), "Общий Jira opt-in включил управление Test Run.");
+
+  const enableManagement = spawnSync(process.execPath, [
+    path.join(scriptsDir, "install.mjs"), "--clients", "codex,generic", "--reuse",
+    "--enable-test-run-writes", "--skip-dependencies", "--no-cli"
+  ], { cwd: repoRoot, env, encoding: "utf8" });
+  assert(enableManagement.status === 0, enableManagement.stdout + enableManagement.stderr);
+  const managed = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
+  assert(managed.connections.jira.find((jira) => jira.id === "jira-two").enableTestRunManagement === true, "Управление Test Run не включилось для Zephyr Jira.");
+  assert(managed.connections.jira.find((jira) => jira.id === "jira-one").enableTestRunManagement === false, "Управление Test Run включилось для другой Jira.");
+  assert(fs.readFileSync(codexConfig, "utf8").includes("zephyr_remove_test_run_items"), "Codex не получил разрешённый management tool.");
+  const managedReuse = spawnSync(process.execPath, [path.join(scriptsDir, "install.mjs"), "--clients", "generic", "--reuse", "--skip-dependencies", "--no-cli"], { cwd: repoRoot, env, encoding: "utf8" });
+  assert(managedReuse.status === 0, managedReuse.stdout + managedReuse.stderr);
+  assert(JSON.parse(fs.readFileSync(privateConfig, "utf8")).connections.jira.find((jira) => jira.id === "jira-two").enableTestRunManagement === true, "Повторная установка потеряла явный management opt-in.");
 
   fs.writeFileSync(answersFile, JSON.stringify({
     version: 3,

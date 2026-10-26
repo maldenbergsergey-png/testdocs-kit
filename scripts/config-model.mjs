@@ -31,7 +31,8 @@ export function migrateConfig(input = {}) {
     };
     for (const eva of config.connections.eva) delete eva.command;
     for (const jira of config.connections.jira) {
-      jira.enableReleaseTestRunCreation = jira.enableReleaseTestRunCreation === true;
+      jira.enableTestRunManagement = jira.enableTestRunManagement === true;
+      jira.enableReleaseTestRunCreation = jira.enableReleaseTestRunCreation === true || jira.enableTestRunManagement;
     }
     config.tms ||= { category: "none", provider: "none" };
     config.version = 3;
@@ -44,7 +45,8 @@ export function migrateConfig(input = {}) {
         id: "jira-main",
         enableBugCreation: input.enableBugCreation === true,
         enableChecklistCommentPublication: input.enableChecklistCommentPublication === true,
-        enableReleaseTestRunCreation: input.enableReleaseTestRunCreation === true
+        enableReleaseTestRunCreation: input.enableReleaseTestRunCreation === true || input.jira.enableTestRunManagement === true,
+        enableTestRunManagement: input.jira.enableTestRunManagement === true
       }]
     : [];
   const confluence = input.confluence?.enabled

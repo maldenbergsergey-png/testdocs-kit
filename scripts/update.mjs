@@ -9,7 +9,7 @@ const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptsDir, "..");
 
 function parseArgs(argv) {
-  const supported = new Set(["--enable-test-case-writes", "--enable-jira-writes", "--enable-release-test-run-writes", "--insecure-atlassian-tls", "--verify-atlassian-tls"]);
+  const supported = new Set(["--enable-test-case-writes", "--enable-jira-writes", "--enable-release-test-run-writes", "--enable-test-run-writes", "--insecure-atlassian-tls", "--verify-atlassian-tls"]);
   const maintenanceArgs = [];
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
@@ -28,6 +28,7 @@ function parseArgs(argv) {
     enableTestCaseWrites: argv.includes("--enable-test-case-writes"),
     enableJiraWrites: argv.includes("--enable-jira-writes"),
     enableReleaseTestRunWrites: argv.includes("--enable-release-test-run-writes"),
+    enableTestRunWrites: argv.includes("--enable-test-run-writes"),
     tlsFlag: argv.find((arg) => ["--insecure-atlassian-tls", "--verify-atlassian-tls"].includes(arg)),
     maintenanceArgs
   };
@@ -48,6 +49,7 @@ try {
   if (args.enableTestCaseWrites) installArgs.push("--enable-test-case-writes");
   if (args.enableJiraWrites) installArgs.push("--enable-jira-writes");
   if (args.enableReleaseTestRunWrites) installArgs.push("--enable-release-test-run-writes");
+  if (args.enableTestRunWrites) installArgs.push("--enable-test-run-writes");
   if (args.tlsFlag) installArgs.push(args.tlsFlag);
   run(process.execPath, installArgs);
   console.log("Обновление завершено. Перезапустите AI-клиент.");

@@ -21,7 +21,7 @@ global.fetch = async (url, options = {}) => {
 };
 `);
 
-  async function start(provider = "zephyr_scale") {
+  async function start(provider = "zephyr_scale", management = false) {
     const probe = net.createServer();
     probe.listen(0, "127.0.0.1");
     await once(probe, "listening");
@@ -34,7 +34,7 @@ global.fetch = async (url, options = {}) => {
         JIRA_URL: "https://jira.example.invalid", JIRA_AUTH_MODE: "basic",
         JIRA_EMAIL: "tester", JIRA_TOKEN: "test-only",
         TESTDOCS_TMS_PROVIDER: provider, TESTDOCS_ENABLE_WRITES: "0",
-        TESTDOCS_ENABLE_TEST_CASE_CREATION: "0"
+        TESTDOCS_ENABLE_TEST_CASE_CREATION: "0", TESTDOCS_ENABLE_TEST_RUN_MANAGEMENT: management ? "1" : "0"
       },
       stdio: ["ignore", "pipe", "pipe"]
     });
@@ -76,9 +76,14 @@ global.fetch = async (url, options = {}) => {
   assert.equal((await call("zephyr_update_session_test_case", { confirmed: true, testCaseKey: "DEMO-T2", name: "Changed" })).status, 200);
   assert.equal((await call("zephyr_update_test_case", { testCaseKey: "DEMO-T1" })).status, 403);
   assert.equal((await call("add_comment", {})).status, 403);
+  assert.equal((await call("zephyr_delete_test_run", { confirmed: true, testRunKey: "DEMO-R1", expectedContentHash: "a".repeat(64) })).status, 403);
+  assert.equal((await call("zephyr_get_test_run_items", { testRunKey: "DEMO-R1" })).status, 403);
+  const manager = await start("zephyr_scale", true);
+  assert.notEqual((await manager("zephyr_remove_test_run_items", { confirmed: false, testRunKey: "DEMO-R1", expectedContentHash: "a".repeat(64), itemIds: [10] })).status, 200);
   const otherProvider = await start("none");
   assert.equal((await otherProvider("zephyr_create_test_case", create)).status, 403);
   assert.equal((await otherProvider("zephyr_add_session_step_image", { confirmed: true, testCaseKey: "DEMO-T2" })).status, 403);
   assert.equal((await otherProvider("zephyr_get_test_case_attachments", { testCaseKey: "DEMO-T2", stepIndex: 0 })).status, 403);
+  assert.equal((await otherProvider("zephyr_delete_test_run", { confirmed: true, testRunKey: "DEMO-R1", expectedContentHash: "a".repeat(64) })).status, 403);
   assert.deepEqual(fs.readFileSync(calls, "utf8").trim().split("\n").map((line) => JSON.parse(line).method), ["POST", "PUT"]);
 });

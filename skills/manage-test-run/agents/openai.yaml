@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manage Test Run"
+  short_description: "Inspect and edit an existing test run in place"
+  default_prompt: "Use $manage-test-run to apply these changes to the existing Test Run, preserving its key and retained results."

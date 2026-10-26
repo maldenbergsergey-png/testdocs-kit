@@ -3,6 +3,7 @@ const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio
 const { z } = require("zod");
 
 const { tools } = require("./jira-client");
+const { registerTestRunTools } = require("./test-run-tools");
 const { qaReportImportChecklist } = require("./qa-report-client");
 const { createSessionCaseRegistry } = require("./session-case-registry");
 
@@ -21,7 +22,8 @@ async function main() {
   const writesEnabled = process.env.TESTDOCS_ENABLE_WRITES === "1";
   const checklistCommentsEnabled = process.env.TESTDOCS_ENABLE_CHECKLIST_COMMENT_PUBLICATION === "1";
   const bugCreationEnabled = process.env.TESTDOCS_ENABLE_BUG_CREATION === "1";
-  const releaseTestRunCreationEnabled = process.env.TESTDOCS_ENABLE_RELEASE_TEST_RUN_CREATION === "1";
+  const testRunManagementEnabled = process.env.TESTDOCS_ENABLE_TEST_RUN_MANAGEMENT === "1";
+  const releaseTestRunCreationEnabled = process.env.TESTDOCS_ENABLE_RELEASE_TEST_RUN_CREATION === "1" || testRunManagementEnabled;
   const qaReportImportEnabled = process.env.TESTDOCS_ENABLE_QA_REPORT_IMPORT === "1";
   const deliveryOnly = process.env.TESTDOCS_DELIVERY_ONLY === "1";
   const zephyrEnabled = (process.env.TESTDOCS_TMS_PROVIDER || "zephyr_scale") === "zephyr_scale";
@@ -231,6 +233,7 @@ async function main() {
   );
 
   if (zephyrEnabled) {
+  registerTestRunTools(server, tools, toTextResult, testRunManagementEnabled);
   // --- Zephyr Scale tools ---
 
   server.registerTool(
@@ -420,7 +423,7 @@ async function main() {
     server.registerTool(
       "zephyr_create_test_run",
       {
-        description: "Create exactly one Zephyr Scale Server/DC Test Run/Test Cycle through the public API, read it back, and verify every saved testCaseKey-to-userKey assignment. If creation ignored an item assignment, the tool makes one documented PUT assignedTo attempt for that exact Test Run item and verifies again. Send the complete deduplicated case list, exact release issue links, and resolved Jira userKey for every item; case composition itself remains immutable. Name must follow the exact project-backed Test Run title convention. The public schema has no Test Run description field; the required organizational description belongs to the linked Jira QA work item. For root creation omit folder completely; never send '/'. For a non-root target, first resolve an exact path with zephyr_list_test_run_folders instead of guessing. Does not delete or recreate a run on failure and never reports unverified assignments as successful.",
+        description: "Create exactly one Zephyr Scale Server/DC Test Run/Test Cycle through the public API, read it back, and verify every saved testCaseKey-to-userKey assignment. If creation ignored an item assignment, the tool makes one documented PUT assignedTo attempt for that exact Test Run item and verifies again. Send the complete deduplicated case list, exact release issue links, and resolved Jira userKey for every item; later composition edits require separately enabled Test Run management tools. Name must follow the exact project-backed Test Run title convention. The public schema has no Test Run description field; the required organizational description belongs to the linked Jira QA work item. For root creation omit folder completely; never send '/'. For a non-root target, first resolve an exact path with zephyr_list_test_run_folders instead of guessing. Does not delete or recreate a run on failure and never reports unverified assignments as successful.",
         inputSchema: z.object({
           confirmed: z.literal(true),
           projectKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/),

@@ -1,0 +1,28 @@
+const { z } = require("zod");
+
+function registerTestRunTools(server, tools, toTextResult, managementEnabled) {
+  const key = z.string().regex(/^[A-Za-z][A-Za-z0-9_]*-[RC]\d+$/);
+  const projectKey = z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/);
+  const paging = { startAt: z.number().int().nonnegative().optional().default(0), maxResults: z.number().int().min(1).max(200).optional().default(100) };
+  function register(name, description, shape, readOnly = false, destructive = false) {
+    server.registerTool(name, {
+      description, inputSchema: z.object(shape).strict(),
+      annotations: { readOnlyHint: readOnly, destructiveHint: destructive, openWorldHint: true }
+    }, async (input) => toTextResult(await tools[name](input)));
+  }
+  register("zephyr_search_test_runs", "Search existing Test Runs in one exact project and optional folder through the public Server/DC API. Page through results and read candidate runs to filter by name/status; TQL supports only projectKey and folder.", { projectKey, folder: z.string().startsWith("/").optional(), ...paging }, true);
+  register("zephyr_get_test_run_results", "Read a page of execution results/history for one Test Run. onlyLastExecutions selects the current execution per item. Older versions fall back to the public flat list only on 404/405 after confirming the run exists.", { testRunKey: key, ...paging, onlyLastExecutions: z.boolean().optional().default(false) }, true);
+  if (!managementEnabled) return;
+  const guard = { confirmed: z.literal(true), testRunKey: key, expectedContentHash: z.string().regex(/^[a-f0-9]{64}$/).describe("Current _testdocs.contentHash from zephyr_get_test_run_items. A conflict requires a refreshed diff, not an automatic retry.") };
+  const ids = z.array(z.number().int().positive()).min(1);
+  const internal = "Uses the version-dependent unofficial Zephyr Server/DC UI API. Preserve the same run key; never recreate it on failure. ";
+  register("zephyr_get_test_run_items", `${internal}Read the complete run with stable run item IDs, current execution data and a contentHash for guarded edits. Public items[].id identifies an execution and MUST NOT be used as a run item ID. Incomplete or inconsistent inventories fail closed.`, { testRunKey: key }, true);
+  register("zephyr_get_test_run_folder_tree", `${internal}Read the exact project's TEST_RUN folder tree, including empty folders and numeric folder IDs. Use before moving a run; test-case/test-plan folder IDs are not accepted.`, { projectKey }, true);
+  register("zephyr_update_test_run", `${internal}Change only supplied run header fields after explicit edit intent. Dates require a timezone. folderId must be in the same project's TEST_RUN tree. Reads before and after; VERIFIED requires saved fields and preserved retained executions.`, { ...guard, name: z.string().min(1).max(255).optional(), folderId: z.number().int().positive().optional(), plannedStartDate: z.string().optional(), plannedEndDate: z.string().optional() });
+  register("zephyr_add_test_run_items", `${internal}Append unique cases with resolved Jira userKey assignees to an existing run. Preflight complete case eligibility through the skill. Existing item identities/results survive. Adding is followed by saved-composition verification and a separate order correction. Report partial outcomes; do not repeat uncertain additions.`, { ...guard, items: z.array(z.object({ testCaseKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*-T\d+$/), userKey: z.string().min(1) }).strict()).min(1) });
+  register("zephyr_remove_test_run_items", `${internal}Remove only the selected stable run item IDs. Their execution history is deleted with them; source test cases are unchanged. Explicit intent must cover removal and this consequence. Read the current item IDs/hash first. Retained results and compacted order are verified.`, { ...guard, itemIds: ids }, false, true);
+  register("zephyr_reorder_test_run_items", `${internal}Set the final order using EVERY current stable run item ID exactly once. Preserves item identities and results; skips an already-correct order.`, { ...guard, itemIds: ids });
+  register("zephyr_update_test_run_result", "Update the latest execution's supplied status, assignment or comment through the public API, with the management snapshot/hash guard. Requires explicit result-edit intent and evidence for a status. Rejects ambiguous duplicate cases/configurations. Does not create another execution or reset unrelated results. Reports read-back verification.", { ...guard, testCaseKey: z.string().regex(/^[A-Za-z][A-Za-z0-9_]*-T\d+$/), status: z.string().min(1).optional(), assignedTo: z.string().min(1).optional(), comment: z.string().optional() });
+  register("zephyr_delete_test_run", "Delete exactly the named Test Run and its execution history through the public API after explicit deletion intent. Requires a current management snapshot/hash and verifies that the same key is absent. Never use as cleanup after an update/create failure. Does not delete source test cases or linked Jira issues.", guard, false, true);
+}
+module.exports = { registerTestRunTools };

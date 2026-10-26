@@ -26,7 +26,7 @@ Read [core.md](core.md) once per task. This index is for discovery; follow only 
 - [`coverage-rules.md`](coverage-rules.md) — permanent coverage decision rules.
 - [`coverage-matrix-rules.md`](coverage-matrix-rules.md) — functionality decomposition and scenario-to-case mapping.
 - [`regression-model-rules.md`](regression-model-rules.md) — construction and maintenance of a traceable regression coverage model.
-- [`test-run-rules.md`](test-run-rules.md) — release Test Run discovery, eligibility, depth, assignment, and creation rules.
+- [`test-run-rules.md`](test-run-rules.md) — release Test Run discovery, eligibility, depth, assignment, creation and existing-run management rules.
 - [`update-rules.md`](update-rules.md) — safe changes to existing cases.
 - [`postman-collection-rules.md`](postman-collection-rules.md) - contract provenance, request/schema deltas, required/types dialect and collection publication.
 - [`postman-workflow-rules.md`](postman-workflow-rules.md) - dependency-aware insertion, variable handoff, acquired/external auth and restricted endpoint inclusion.

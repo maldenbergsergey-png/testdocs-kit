@@ -14,6 +14,8 @@ An Eva form may create a server-side draft when opened. Opening that form is the
 
 For Test Runs, a request to assemble, prepare, compose, show, or propose a run authorizes only reads and a reviewable proposal. An explicit request to create or register the Test Run and linked Jira QA work item authorizes only those named creations after the release, folder, case list, task relations, assignments, live Jira schema, and complete payloads are validated. Test Run creation does not authorize changing source cases or deleting a partially created run.
 
+An explicit request to modify an existing Test Run authorizes the named field, membership, order, assignment or result diff after current-state validation under [existing-run rules](test-run-rules.md#existing-test-run-management). Removing selected run items includes their execution history; it does not delete source cases. Deleting the entire run needs explicit deletion intent. Existing-run management has its own connection opt-in and does not relax the restriction on old source cases.
+
 Treat these as separate write operations. New-case creation requires either an explicit same-request create/publication instruction or a later confirmation of a reviewed draft. Direct API checklist/report delivery follows the initial-request authorization in [delivery rules](checklist-delivery-rules.md#direct-api-delivery). Other operations require a separate explicit request after review:
 
 - create a test case;

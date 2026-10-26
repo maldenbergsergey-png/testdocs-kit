@@ -47,6 +47,7 @@
 | [`build-coverage-matrix`](skills/build-coverage-matrix/SKILL.md) | Построить матрицу тестового покрытия. |
 | [`build-regression-model`](skills/build-regression-model/SKILL.md) | Собрать переиспользуемую регрессионную модель. |
 | [`create-release-test-run`](skills/create-release-test-run/SKILL.md) | Собрать Test Run по версии релиза, найти связанные и смысловые кейсы в заданной папке, распределить их между тестировщиками и по явному запросу создать Test Run со связанной QA-задачей. |
+| [`manage-test-run`](skills/manage-test-run/SKILL.md) | Изучить или изменить существующий Test Run: состав кейсов, порядок, название, даты, папку, назначения и результаты; удалить run по явному запросу. |
 | [`derive-test-case-standard`](skills/derive-test-case-standard/SKILL.md) | Вывести общие правила из тестовой документации и инструкций. |
 
 ## Структура репозитория

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { installSkillSet } from "./install-skills.mjs";
+import { managementTools as testRunManagementTools } from "../mcp/jira-mcp/test-runs.js";
 import { configureAutoUpdate, previousSkillRoot, acquireUpdateLock, recoverInterruptedUpdate } from "./auto-update.mjs";
 import { withChecklistPublicationApproval } from "./opencode-checklist-permissions.mjs";
 
@@ -59,7 +60,8 @@ function parseArgs(argv) {
     maestroCommand: null,
     figmaMode: null,
     enableJiraWrites: process.env.TESTDOCS_ENABLE_JIRA_WRITES === "1",
-    enableReleaseTestRunWrites: process.env.TESTDOCS_ENABLE_RELEASE_TEST_RUN_WRITES === "1"
+    enableReleaseTestRunWrites: process.env.TESTDOCS_ENABLE_RELEASE_TEST_RUN_WRITES === "1",
+    enableTestRunWrites: process.env.TESTDOCS_ENABLE_TEST_RUN_WRITES === "1"
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -94,6 +96,7 @@ function parseArgs(argv) {
     else if (arg === "--enable-test-case-writes") result.enableTestCaseWrites = true;
     else if (arg === "--enable-jira-writes") result.enableJiraWrites = true;
     else if (arg === "--enable-release-test-run-writes") result.enableReleaseTestRunWrites = true;
+    else if (arg === "--enable-test-run-writes") result.enableTestRunWrites = true;
     else if (arg === "--force") result.force = true;
     else if (arg === "--skip-dependencies") result.skipDependencies = true;
     else if (arg === "--no-cli") result.noCli = true;
@@ -136,6 +139,8 @@ function showHelp() {
                                           для сохранённых Jira-подключений
   --enable-release-test-run-writes         Разрешить только Test Run и связанную QA-задачу
                                           для Jira, выбранной текущим Zephyr
+  --enable-test-run-writes                 Создание и управление Test Run в выбранной Zephyr Jira
+                                          (включая внутренний API и удаление)
   --skip-dependencies                     Не выполнять npm ci; Confluence всё равно пересобирается
   --no-cli                                Не вызывать CLI клиентов
   --skip-browser-auth                     Не открывать браузер для session-входа
@@ -758,6 +763,13 @@ async function collectConfig(args, clients, existing = null) {
         `Разрешить создание Test Run и связанной QA-задачи в ${jira.id} по явному запросу`,
         jira.enableReleaseTestRunCreation === true
       );
+      if (usesZephyr(previous, jira.id)) {
+        jira.enableTestRunManagement = await confirm(
+          `Разрешить управление существующими Test Run в ${jira.id}, включая удаление и внутренний API Zephyr`,
+          jira.enableTestRunManagement === true
+        );
+        if (jira.enableTestRunManagement) jira.enableReleaseTestRunCreation = true;
+      }
     }
   }
 
@@ -971,10 +983,11 @@ function configuredServers(config) {
       tools.push(
         "zephyr_get_projects", "zephyr_get_project", "zephyr_search_test_cases",
         "zephyr_get_test_plans", "zephyr_get_test_plan", "zephyr_get_iterations",
-        "zephyr_get_test_case", "zephyr_get_test_case_attachments", "zephyr_get_all_test_cases", "zephyr_get_issue_test_cases", "zephyr_get_test_run", "zephyr_list_test_run_folders"
+        "zephyr_get_test_case", "zephyr_get_test_case_attachments", "zephyr_get_all_test_cases", "zephyr_get_issue_test_cases", "zephyr_get_test_run", "zephyr_list_test_run_folders", "zephyr_search_test_runs", "zephyr_get_test_run_results"
       );
       tools.push("zephyr_create_test_case", "zephyr_update_session_test_case", "zephyr_add_session_step_image");
       if (jira.enableReleaseTestRunCreation === true) tools.push("zephyr_create_test_run", "zephyr_assign_test_run_item");
+      if (jira.enableTestRunManagement === true) tools.push(...testRunManagementTools);
     }
     servers.push({ name: serverName("jira", jira.id, jiraItems.length), service: "jira", id: jira.id, tools });
   }
@@ -1426,7 +1439,7 @@ async function main() {
     console.log("Разрешены защищённые Jira-инструменты создания Bug, публикации checklist, Test Run и связанной QA-задачи по явному запросу.");
   }
   config.tms ||= { category: "none", provider: "none" };
-  if (args.enableReleaseTestRunWrites) {
+  if (args.enableReleaseTestRunWrites || args.enableTestRunWrites) {
     if (config.tms.category !== "zephyr" || !config.tms.jiraConnectionId) {
       throw new Error("Нельзя включить Test Run write-tools: Zephyr не выбран или не привязан к Jira.");
     }
@@ -1435,7 +1448,10 @@ async function main() {
       throw new Error("Нельзя включить Test Run write-tools: выбранное Zephyr Jira-подключение не найдено.");
     }
     jira.enableReleaseTestRunCreation = true;
-    console.log(`Разрешены только Test Run и связанная QA-задача для ${jira.id} по явному запросу.`);
+    if (args.enableTestRunWrites) jira.enableTestRunManagement = true;
+    console.log(args.enableTestRunWrites
+      ? `Разрешены создание и управление Test Run, включая внутренний API и удаление, для ${jira.id} по явному запросу.`
+      : `Разрешены только Test Run и связанная QA-задача для ${jira.id} по явному запросу.`);
   }
   for (const jira of connectionList(config, "jira")) {
     jira.testCaseUrlTemplate ||= `${jira.url}/secure/Tests.jspa#/testCase/{key}`;

@@ -157,6 +157,7 @@ async function main() {
     if (usesZephyr(config, jira.id)) {
       assert(tools.includes("zephyr_get_issue_test_cases"), "Jira MCP не отдал чтение кейсов, связанных с задачей.");
       assert(tools.includes("zephyr_get_test_run"), "Jira MCP не отдал проверочное чтение Test Run и назначений.");
+      assert(tools.includes("zephyr_search_test_runs") && tools.includes("zephyr_get_test_run_results"), "Jira MCP не отдал поиск Test Run и чтение результатов.");
       assert(tools.includes("zephyr_list_test_run_folders"), "Jira MCP не отдал поиск папок Test Run.");
       assert(tools.includes("zephyr_create_test_case"), "Jira MCP не отдал создание новых кейсов Zephyr.");
       assert(tools.includes("zephyr_update_session_test_case"), "Jira MCP не отдал защищённый инструмент исправления кейса текущей сессии.");
@@ -165,6 +166,9 @@ async function main() {
       assert(!tools.includes("zephyr_create_test_case") && !tools.includes("zephyr_update_session_test_case") && !tools.includes("zephyr_add_session_step_image"), "Zephyr write-tools доступны при другом TMS.");
     }
     assert(!tools.includes("zephyr_update_test_case"), "MCP нарушает временный запрет обновления существующих кейсов.");
+    for (const tool of ["zephyr_get_test_run_items", "zephyr_get_test_run_folder_tree", "zephyr_update_test_run", "zephyr_add_test_run_items", "zephyr_remove_test_run_items", "zephyr_reorder_test_run_items", "zephyr_update_test_run_result", "zephyr_delete_test_run"]) {
+      assert(tools.includes(tool) === (jira.enableTestRunManagement === true && usesZephyr(config, jira.id)), `Неверный opt-in управления Test Run: ${tool}`);
+    }
     if (jira.enableReleaseTestRunCreation === true) {
       assert(tools.includes("jira_create_qa_work_item"), "Jira MCP не отдал защищённое создание QA-задачи Test Run.");
       if (usesZephyr(config, jira.id)) {

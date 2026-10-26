@@ -250,5 +250,33 @@
     "skill": "update-postman-collection",
     "artifact": "review",
     "collect": false
+  },
+  {
+    "id": "existing_run_remove",
+    "prompt": "Удали из тестрана DEMO-R7 кейсы DEMO-T2 и DEMO-T3. Сам тестран оставь, результаты остальных кейсов сохрани.",
+    "skill": "manage-test-run",
+    "artifact": "run_update",
+    "collect": true
+  },
+  {
+    "id": "existing_run_review",
+    "prompt": "Посмотри тестран DEMO-R7 и предложи, какие лишние кейсы убрать. Пока ничего не меняй.",
+    "skill": "manage-test-run",
+    "artifact": "run_proposal",
+    "collect": true
+  },
+  {
+    "id": "existing_run_rename",
+    "prompt": "Переименуй существующий Test Cycle DEMO-R7 в Hotfix 2.4, новый не создавай.",
+    "skill": "manage-test-run",
+    "artifact": "run_update",
+    "collect": true
+  },
+  {
+    "id": "existing_run_result",
+    "prompt": "В тестране DEMO-R7 поставь для DEMO-T2 Fail и комментарий: сумма заказа после скидки не пересчиталась; это наблюдалось при проверке.",
+    "skill": "manage-test-run",
+    "artifact": "run_update",
+    "collect": true
   }
 ]
