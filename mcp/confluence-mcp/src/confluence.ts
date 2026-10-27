@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+
 export interface Pagination {
   size: number;
   startIndex: number;
@@ -90,6 +92,19 @@ const { fetchWithSpSecret, redactSpSecret, withHttpDiagnostics, redactHttpText }
 };
 
 export class ConfluenceClient {
+  private readContext = new AsyncLocalStorage<{ transport: "original" | "read_relay" | "original_fallback" }>();
+
+  async withReadRouting<T>(read: () => Promise<T>) {
+    return this.readContext.run({ transport: "original" }, async () => {
+      const value = await read();
+      return { value, transport: this.readContext.getStore()!.transport };
+    });
+  }
+
+  private markTransport(transport: "original" | "read_relay" | "original_fallback") {
+    const current = this.readContext.getStore();
+    if (current) current.transport = transport;
+  }
   private baseUrl: string;
   private authHeader?: string;
   private useSession: boolean;
@@ -102,6 +117,7 @@ export class ConfluenceClient {
     private sessionFile?: string,
     private spSecret = "",
     passwordSession = false,
+    private readRoute?: { url: string; tokenFile: string; knowledgeSearchUrl?: string; fallback?: string },
   ) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
     this.useSession = authMode === "browser_session" || (authMode === "basic" && passwordSession);
@@ -116,6 +132,23 @@ export class ConfluenceClient {
   }
 
   private async request(path: string, params?: Record<string, string>) {
+    this.markTransport("original");
+    let fallback = false;
+    if (this.readRoute) {
+      const { readRelay, canFallback } = require("../../read-relay.cjs") as {
+        readRelay: (config: object, path: string, params?: Record<string, string>) => Promise<Record<string, unknown>>;
+        canFallback: (config: object, error: unknown) => boolean;
+      };
+      try {
+        const data = await readRelay(this.readRoute, `/rest/api${path}`, params);
+        this.markTransport("read_relay");
+        return data;
+      } catch (error) {
+        if (!canFallback(this.readRoute, error)) throw error;
+        fallback = true;
+        this.markTransport("original_fallback");
+      }
+    }
     const url = new URL(`${this.baseUrl}/rest/api${path}`);
     if (params) {
       for (const [k, v] of Object.entries(params)) {
@@ -126,26 +159,28 @@ export class ConfluenceClient {
     let res: Response;
     let body: string;
     try {
-      const options = { headers: { Accept: "application/json" } };
+      const options = { headers: { Accept: "application/json" }, ...(fallback ? { signal: AbortSignal.timeout(15000) } : {}) };
       if (this.useSession) {
         ({ response: res, body } = await fetchWithSession(url.toString(), options, {
           service: "confluence", sessionFile: this.sessionFile, baseUrl: this.baseUrl,
-          spSecret: this.spSecret, bootstrapAuthorization: this.authHeader,
+          spSecret: this.spSecret, bootstrapAuthorization: fallback ? undefined : this.authHeader,
         }));
       } else {
         res = await fetchWithSpSecret(url.toString(), {
-          redirect: "follow", headers: { ...options.headers, Authorization: this.authHeader! },
+          redirect: fallback ? "manual" : "follow", headers: { ...options.headers, Authorization: this.authHeader! },
         }, this.spSecret);
         body = await res.text();
       }
     } catch (error) {
       const cause = (error as { code?: string; cause?: { code?: string; message?: string }; message?: string });
+      if (fallback) throw new Error("READ_FALLBACK_UNAVAILABLE: резервное чтение вики не удалось. Новый вход не запускался.");
       if (cause.code === "AUTH_REQUIRED" || cause.message?.startsWith("SESSION_BUSY:")) throw error;
       const details = cause.cause?.code ?? cause.cause?.message ?? cause.message ?? "unknown network error";
       throw new Error(redactSpSecret(`Confluence network request failed for ${url.origin}${url.pathname}: ${details}`, this.spSecret));
     }
 
     if (!res.ok) {
+      if (fallback) throw new Error(`READ_FALLBACK_UNAVAILABLE: исходная вики вернула HTTP ${res.status}. Новый вход не запускался.`);
       throw withHttpDiagnostics(new Error(redactSpSecret(
         `Confluence API error ${res.status}: ${res.statusText}\n${redactHttpText(res, body)}`, this.spSecret
       )), res, body);
@@ -192,6 +227,15 @@ export class ConfluenceClient {
       totalSize: knownTotal(data),
       ...pagination(data, results.length, start, cursor),
     };
+  }
+
+  async searchKnowledge(question: string, limit = 5): Promise<Record<string, unknown>> {
+    this.markTransport("read_relay");
+    if (!this.readRoute) throw new Error("CAPABILITY_UNAVAILABLE: поиск знаний не настроен.");
+    const { searchKnowledge } = require("../../read-relay.cjs") as {
+      searchKnowledge: (config: object, question: string, topK: number) => Promise<Record<string, unknown>>;
+    };
+    return searchKnowledge(this.readRoute, question, limit);
   }
 
   async getPage(pageId: string, includeVersion?: boolean): Promise<ConfluencePage> {

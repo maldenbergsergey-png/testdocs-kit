@@ -7,6 +7,15 @@ const { createConnectionDiagnostics } = require("./connection-diagnostics");
 const getConnectionDiagnostics = createConnectionDiagnostics(process.env);
 
 const { fetchWithSession } = require("../session-auth.cjs");
+const { readRelay, canFallback } = require("../read-relay.cjs");
+const { issueReference } = require("../issue-routing.cjs");
+const issueRoutes = process.env.JIRA_ISSUE_ROUTING ? JSON.parse(process.env.JIRA_ISSUE_ROUTING) : [];
+const readRoute = process.env.JIRA_READ_RELAY_URL ? {
+  url: process.env.JIRA_READ_RELAY_URL, tokenFile: process.env.JIRA_READ_RELAY_TOKEN_FILE,
+  fallback: process.env.JIRA_READ_RELAY_FALLBACK || "none"
+} : null;
+// Read-back of a just-created issue is part of its original write transaction.
+const createdIssueKeys = new Set();
 
 const {
   JIRA_URL,
@@ -51,13 +60,13 @@ function buildAuthHeaders() {
   return { Authorization: buildAuthHeader() };
 }
 
-async function fetchWithNetworkDetails(url, options, system) {
+async function fetchWithNetworkDetails(url, options, system, existingSessionOnly = false) {
   try {
     if (JIRA_AUTH_MODE === "browser_session" || (JIRA_AUTH_MODE === "basic" && JIRA_PASSWORD_SESSION === "1")) {
       return await fetchWithSession(url, options, {
         service: "jira", sessionFile: JIRA_SESSION_FILE, baseUrl: JIRA_URL,
         spSecret: JIRA_SP_SECRET,
-        bootstrapAuthorization: JIRA_AUTH_MODE === "basic" ? buildAuthHeader() : undefined
+        bootstrapAuthorization: !existingSessionOnly && JIRA_AUTH_MODE === "basic" ? buildAuthHeader() : undefined
       });
     }
     const response = await fetchWithSpSecret(url, options, JIRA_SP_SECRET);
@@ -73,7 +82,7 @@ function transportError(message, response, body) {
   return withHttpDiagnostics(new Error(redactSpSecret(message, JIRA_SP_SECRET)), response, body);
 }
 
-async function jiraRequest(path, method = "GET", body, multipart = false) {
+async function jiraRequest(path, method = "GET", body, multipart = false, existingSessionOnly = false) {
   if (!JIRA_URL) {
     throw new Error("JIRA_URL is required");
   }
@@ -81,14 +90,15 @@ async function jiraRequest(path, method = "GET", body, multipart = false) {
   const url = `${JIRA_URL}${path}`;
   const { response: res, body: rawText } = await fetchWithNetworkDetails(url, {
     method,
-    redirect: JIRA_AUTH_MODE === "browser_session" ? "manual" : "follow",
+    ...(existingSessionOnly ? { signal: AbortSignal.timeout(15000) } : {}),
+    redirect: existingSessionOnly || JIRA_AUTH_MODE === "browser_session" ? "manual" : "follow",
     headers: {
       ...buildAuthHeaders(),
       Accept: "application/json",
       ...(multipart ? { "X-Atlassian-Token": "no-check" } : { "Content-Type": "application/json" })
     },
     body: multipart ? body : body ? JSON.stringify(body) : undefined
-  }, "Jira");
+  }, "Jira", existingSessionOnly);
 
   const contentType = res.headers.get("content-type") || "";
   const safeText = redactSpSecret(redactHttpText(res, rawText), JIRA_SP_SECRET);
@@ -134,8 +144,27 @@ async function jiraRequest(path, method = "GET", body, multipart = false) {
   return data;
 }
 
+async function ordinaryRead(path, params) {
+  try { return await readRelay(readRoute, path, params); }
+  catch (error) {
+    if (!canFallback(readRoute, error)) throw error;
+    try {
+      const query = params ? `?${new URLSearchParams(params)}` : "";
+      const result = await jiraRequest(`${path}${query}`, "GET", undefined, false, true);
+      return { ...result, _testdocs: { ...result._testdocs, readTransport: "original_fallback", primaryFailure: error.status || error.code } };
+    } catch {
+      throw new Error("READ_FALLBACK_UNAVAILABLE: шлюз недоступен, резервное чтение через исходное подключение не удалось. Новый вход не запускался; другие инстансы не проверялись.");
+    }
+  }
+}
+
 async function getIssue({ key }) {
-  return jiraRequest(`/rest/api/${JIRA_API_VERSION}/issue/${key}`);
+  if (createdIssueKeys.has(key)) return jiraRequest(`/rest/api/${JIRA_API_VERSION}/issue/${encodeURIComponent(key)}`);
+  key = issueReference(key, { id: process.env.JIRA_CONNECTION_ID || "current", url: JIRA_URL }, issueRoutes);
+  if (createdIssueKeys.has(key)) return jiraRequest(`/rest/api/${JIRA_API_VERSION}/issue/${encodeURIComponent(key)}`);
+  return readRoute
+    ? ordinaryRead(`/rest/api/${JIRA_API_VERSION}/issue/${encodeURIComponent(key)}`, { expand: "changelog" })
+    : jiraRequest(`/rest/api/${JIRA_API_VERSION}/issue/${key}`);
 }
 
 async function readCreateMetadataPages(basePath, property, pageSize) {
@@ -293,6 +322,7 @@ async function createJiraIssue({
   if (!result?.key) {
     throw new Error("Jira reported success without returning the created issue key.");
   }
+  createdIssueKeys.add(result.key);
   return {
     ...result,
     _testdocs: {
@@ -476,10 +506,14 @@ async function transitionIssue({ key, transitionId }) {
 }
 
 async function getTransitions({ key }) {
-  return jiraRequest(`/rest/api/${JIRA_API_VERSION}/issue/${key}/transitions`);
+  key = issueReference(key, { id: process.env.JIRA_CONNECTION_ID || "current", url: JIRA_URL }, issueRoutes);
+  return readRoute
+    ? ordinaryRead(`/rest/api/${JIRA_API_VERSION}/issue/${encodeURIComponent(key)}/transitions`)
+    : jiraRequest(`/rest/api/${JIRA_API_VERSION}/issue/${key}/transitions`);
 }
 
 async function searchIssues({ jql, maxResults = 10 }) {
+  if (readRoute) return ordinaryRead(`/rest/api/${JIRA_API_VERSION}/search`, { jql, maxResults });
   return jiraRequest(`/rest/api/${JIRA_API_VERSION}/search`, "POST", {
     jql,
     maxResults

@@ -32,7 +32,7 @@ async function main() {
     name: deliveryOnly ? "testdocs-delivery-mcp" : "jira-mcp",
     version: "1.0.0"
   }, {
-    instructions: deliveryOnly ? undefined : "For Jira/Zephyr HTTP failures, use jira_get_connection_diagnostics to inspect this running adapter and its last sanitized HTTP error without making another HTTP request. HTTP 403 alone does not establish missing project permissions. A saved X-Sp-Secret is a connection-specific authentication header used by the standard adapter; do not request its value in chat. Diagnostics do not authorize or retry writes."
+    instructions: deliveryOnly ? undefined : `Connection: ${process.env.JIRA_CONNECTION_ID || "current"}; source: ${process.env.JIRA_URL || "configured Jira"}. Ordinary issue reads use ${process.env.JIRA_READ_RELAY_URL ? `the relay first; configured same-instance fallback policy: ${process.env.JIRA_READ_RELAY_FALLBACK || "none"}. The adapter alone selects any permitted fallback without bootstrap or a new login` : "the original connection"}. Do not add fallback outside this adapter. Create metadata, writes, their verification and Zephyr use the original connection. Do not substitute metadata tools for a failed ordinary read. Resolve the intended instance from the supplied URL or an unambiguous configured project; never probe other instances. For Jira/Zephyr HTTP failures, use jira_get_connection_diagnostics to inspect this running adapter and its last sanitized HTTP error without making another HTTP request. HTTP 403 alone does not establish missing project permissions. A saved X-Sp-Secret is a connection-specific authentication header used by the standard adapter; do not request its value in chat. Diagnostics do not authorize or retry writes.`
   });
 
   if (deliveryOnly) {
@@ -69,9 +69,9 @@ async function main() {
   server.registerTool(
     "get_issue",
     {
-      description: "Get a Jira issue by key.",
+      description: `Read an issue from ${process.env.JIRA_URL || "this Jira connection"}. Accepts its full browse URL or an unambiguously mapped project key; ambiguous references stop before HTTP. The adapter selects the configured read transport.`,
       inputSchema: z.object({
-        key: z.string().min(1)
+        key: z.string().min(1).describe("Issue key or full Jira browse URL; preserve a supplied URL to resolve the instance.")
       })
     },
     async ({ key }) => toTextResult(await tools.get_issue({ key }))

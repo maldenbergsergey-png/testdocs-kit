@@ -21,6 +21,7 @@ test("local connection diagnostics expose loaded code and configuration without 
   assert.equal(result.runtime.httpDiagnosticsVersion, 1);
   assert.deepEqual(result.connection, {
     id: "jira-selected", baseUrl: "https://jira.example.test/jira", authMode: "bearer", sessionReuse: "none",
+    issueReadTransport: "original", issueReadUrl: "https://jira.example.test/jira", writeAndTmsTransport: "original", readFallback: "none",
     gatewayHeader: { name: "X-Sp-Secret", configured: true, valid: true }
   });
   assert.equal(result.lastHttpError, null);

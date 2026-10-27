@@ -2,6 +2,8 @@
 
 Use this profile for any MCP server that exposes Jira issues and optional Confluence or knowledge-base content. Tool names are server-specific.
 
+When a connection reports a configured read relay, load its [transport profile](read-relay.md) for fixed read/write routing, the configured reserve policy and instance resolution. The adapter selects any permitted reserve; do not add another fallback or initiate a new login for it.
+
 ## Minimum useful capabilities
 
 ### Jira bug creation

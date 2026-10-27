@@ -10,6 +10,7 @@ import { maestroLaunch, maestroSpawnCommand } from "./maestro-config.mjs";
 import { requiresShell } from "./command-shell.mjs";
 import { getConfigFile, getSessionFile, getDataDir, serviceEntries, repoRoot } from "./paths.mjs";
 import { connectionList, findConnection, hasQaTools, migrateConfig, sessionKey, usesZephyr } from "./config-model.mjs";
+import { loadReadRelays, boundReadRelay, issueRouting } from "./read-relay-config.mjs";
 
 // Older client registrations keep working after activation. Each server stays on
 // the release it started with; only a subsequent launch selects the new release.
@@ -69,10 +70,16 @@ function buildEnvironment(service, connectionId, config) {
       fail("для Jira не заполнены учётные данные.");
     }
 
+    const relaySettings = loadReadRelays();
+    const relay = boundReadRelay(relaySettings, "jira", jira);
     return {
       ...common,
       JIRA_URL: jira.url,
       JIRA_CONNECTION_ID: jira.id,
+      JIRA_ISSUE_ROUTING: Object.keys(relaySettings.jira).length ? JSON.stringify(issueRouting(config, relaySettings)) : "",
+      JIRA_READ_RELAY_URL: relay?.url || "",
+      JIRA_READ_RELAY_TOKEN_FILE: relay?.tokenFile || "",
+      JIRA_READ_RELAY_FALLBACK: relay?.fallback || "none",
       JIRA_EMAIL: jira.username || "",
       JIRA_TOKEN: jira.secret || "",
       JIRA_SP_SECRET: atlassianHttp.validateSpSecret(jira.spSecret),
@@ -146,9 +153,14 @@ function buildEnvironment(service, connectionId, config) {
     fail("для Confluence не заполнены учётные данные.");
   }
 
+  const relay = boundReadRelay(loadReadRelays(), "confluence", confluence);
   return {
     ...common,
     CONFLUENCE_BASE_URL: confluence.baseUrl,
+    CONFLUENCE_READ_RELAY_URL: relay?.url || "",
+    CONFLUENCE_READ_RELAY_TOKEN_FILE: relay?.tokenFile || "",
+    CONFLUENCE_READ_RELAY_FALLBACK: relay?.fallback || "none",
+    CONFLUENCE_KNOWLEDGE_SEARCH_URL: relay?.knowledgeSearchUrl || "",
     CONFLUENCE_USERNAME: confluence.username || "",
     CONFLUENCE_API_TOKEN: confluence.secret || "",
     CONFLUENCE_SP_SECRET: atlassianHttp.validateSpSecret(confluence.spSecret),

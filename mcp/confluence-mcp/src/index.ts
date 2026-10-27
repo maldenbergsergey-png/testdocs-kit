@@ -11,6 +11,12 @@ const CONFLUENCE_API_TOKEN = process.env.CONFLUENCE_API_TOKEN;
 const CONFLUENCE_AUTH_MODE = (process.env.CONFLUENCE_AUTH_MODE ?? "basic") as AuthMode;
 const CONFLUENCE_SESSION_FILE = process.env.CONFLUENCE_SESSION_FILE;
 const CONFLUENCE_INSECURE_TLS = process.env.CONFLUENCE_INSECURE_TLS === "1";
+const readRoute = process.env.CONFLUENCE_READ_RELAY_URL ? {
+  url: process.env.CONFLUENCE_READ_RELAY_URL,
+  tokenFile: process.env.CONFLUENCE_READ_RELAY_TOKEN_FILE || "",
+  knowledgeSearchUrl: process.env.CONFLUENCE_KNOWLEDGE_SEARCH_URL || undefined,
+  fallback: process.env.CONFLUENCE_READ_RELAY_FALLBACK || "none",
+} : undefined;
 
 if (!CONFLUENCE_BASE_URL || (CONFLUENCE_AUTH_MODE !== "browser_session" && !CONFLUENCE_API_TOKEN)) {
   console.error(
@@ -38,12 +44,18 @@ const client = new ConfluenceClient(
   CONFLUENCE_SESSION_FILE,
   process.env.CONFLUENCE_SP_SECRET ?? "",
   process.env.CONFLUENCE_PASSWORD_SESSION === "1",
+  readRoute,
 );
 
 const server = new McpServer({
   name: "confluence",
   version: "1.0.0",
-});
+}, { instructions: `Source: ${CONFLUENCE_BASE_URL}. Reads use ${readRoute ? `the relay first; configured same-instance fallback policy: ${readRoute.fallback}. The adapter alone selects any allowed fallback, never bootstrap or start a new login for fallback` : "the original connection"}. Do not add fallback outside this adapter. Resolve the intended instance before using numeric page IDs. Knowledge search returns discovery snippets; read the scoped original page before treating it as full requirements.` });
+
+function routingNotes(transport: string) {
+  return transport === "original_fallback" ? [{ type: "text" as const,
+    text: "READ_TRANSPORT: original_fallback. The relay failed; this response came from the configured original wiki connection. No new login was started." }] : [];
+}
 
 const continuationSchema = {
   start: z.number().int().nonnegative().optional().describe("Start offset from nextStart (default: 0); omit when using cursor"),
@@ -56,9 +68,11 @@ server.registerTool(
     title: "Search Confluence",
     description:
       "Search Confluence pages using CQL (Confluence Query Language). " +
+      (readRoute?.knowledgeSearchUrl ? "For semantic knowledge discovery use mode semantic with the natural-language question in query; read original pages afterward. " : "") +
       "Use focused queries for related change pages in a confirmed space. Continue with nextStart/nextCursor while hasMore is true. " +
       'Examples: \'title = "My Page"\', \'space = "DEV"\', \'type = "page" AND title ~ "api"\', \'ancestor = "12345"\'',
     inputSchema: {
+      ...(readRoute?.knowledgeSearchUrl ? { mode: z.enum(["cql", "semantic"]).optional().describe("Default cql; semantic returns knowledge discovery snippets") } : {}),
       query: z
         .string()
         .describe(
@@ -72,15 +86,17 @@ server.registerTool(
       ...continuationSchema,
     },
   },
-  async ({ query, limit, start, cursor }) => {
+  async ({ query, limit, start, cursor, mode }) => {
     if (start !== undefined && cursor !== undefined) throw new Error("Use either start or cursor, not both");
-    const results = await client.search(query, limit, start, cursor);
+    if (mode === "semantic" && (start !== undefined || cursor !== undefined)) throw new Error("Semantic discovery does not accept CQL continuation");
+    const { value: results, transport } = await client.withReadRouting<unknown>(() => mode === "semantic" ? client.searchKnowledge(query, limit) : client.search(query, limit, start, cursor));
     return {
       content: [
         {
           type: "text" as const,
           text: JSON.stringify(results, null, 2),
         },
+        ...routingNotes(transport),
       ],
     };
   }
@@ -101,13 +117,14 @@ server.registerTool(
     },
   },
   async ({ pageId, includeVersion }) => {
-    const page = await client.getPage(pageId, includeVersion);
+    const { value: page, transport } = await client.withReadRouting(() => client.getPage(pageId, includeVersion));
     return {
       content: [
         {
           type: "text" as const,
           text: JSON.stringify(page, null, 2),
         },
+        ...routingNotes(transport),
       ],
     };
   }
@@ -125,13 +142,14 @@ server.registerTool(
     },
   },
   async ({ pageId }) => {
-    const page = await client.getPageAsMarkdown(pageId);
+    const { value: page, transport } = await client.withReadRouting(() => client.getPageAsMarkdown(pageId));
     return {
       content: [
         {
           type: "text" as const,
           text: page,
         },
+        ...routingNotes(transport),
       ],
     };
   }
@@ -156,13 +174,14 @@ server.registerTool(
     },
   },
   async ({ spaceKey, limit, start }) => {
-    const pages = await client.getSpacePages(spaceKey, limit, start);
+    const { value: pages, transport } = await client.withReadRouting(() => client.getSpacePages(spaceKey, limit, start));
     return {
       content: [
         {
           type: "text" as const,
           text: JSON.stringify(pages, null, 2),
         },
+        ...routingNotes(transport),
       ],
     };
   }
@@ -186,13 +205,14 @@ server.registerTool(
   },
   async ({ pageId, limit, start, cursor }) => {
     if (start !== undefined && cursor !== undefined) throw new Error("Use either start or cursor, not both");
-    const children = await client.getPageChildren(pageId, limit, start, cursor);
+    const { value: children, transport } = await client.withReadRouting(() => client.getPageChildren(pageId, limit, start, cursor));
     return {
       content: [
         {
           type: "text" as const,
           text: JSON.stringify(children, null, 2),
         },
+        ...routingNotes(transport),
       ],
     };
   }
