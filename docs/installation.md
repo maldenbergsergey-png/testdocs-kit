@@ -232,6 +232,8 @@ npm run configure:confluence
 npm run configure:eva
 npm run configure:tms
 npm run configure:delivery
+npm run configure:maestro -- --maestro-mode auto
+npm run configure:appium -- --appium-mode auto
 ```
 
 Добавить подключение, не меняя существующие:
@@ -243,6 +245,8 @@ npm run add:eva
 ```
 
 Если подключений одного типа несколько, точечная команда предложит выбрать их по локальному нейтральному ID. Секреты остальных подключений повторно вводить не потребуется.
+
+Maestro и Appium подключаются независимо и могут работать в одной задаче. `auto` находит уже установленный CLI, `on` требует его наличия, `off` сохраняет отключение при обновлении. Установщик не скачивает мобильные SDK, Appium MCP или WDA. После отдельной установки `appium-mcp` повторите `configure:appium` и перезапустите клиент; нестандартный путь задаётся через `--appium-command`. `npm run check:appium` проверяет запуск CLI, а сессия и устройство проверяются в клиенте отдельно. Требования к сборкам, Windows/macOS и WDA - в [памятке мобильного подключения](mobile-testing.md).
 
 ### Перезапустить AI-клиент
 

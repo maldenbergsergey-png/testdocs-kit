@@ -2,10 +2,12 @@
 
 Официальный MCP входит в Maestro CLI и запускается командой `maestro mcp`. Он управляет приложением через интерфейс устройства. QA-правила, выбор устройства, границы действий и доказательства определяет [task-execution-rules.md](../../rules/task-execution-rules.md).
 
+Этот профиль применяется после выбора транспорта по [мобильным правилам](../../rules/execution-native-rules.md). Физический iPhone требует [Appium](appium.md), в том числе на Mac. Минимальный набор сборок и передача приложения описаны в [памятке проекта](../../docs/mobile-testing.md).
+
 ## Подготовка компьютера
 
 - Общая часть: Maestro CLI и Java 17+ с рабочим `JAVA_HOME`. Установка и обновление CLI выполняются отдельно по [официальной инструкции](https://docs.maestro.dev/maestro-cli/how-to-install-maestro-cli). Установщик Testdocs Kit не скачивает SDK или эмуляторы.
-- Android: Android Studio/Android SDK, Platform Tools (`adb`), созданный и запущенный AVD, установленная тестовая APK и её package ID. Перед запуском должны быть известны тестовый backend и подходящая учётная запись. Сам по себе установленный Android Studio не означает наличие устройства и приложения.
+- Android: Android SDK Platform Tools (`adb`), запущенный AVD либо физический телефон с USB debugging и подтверждённым доступом компьютера, установленная тестовая APK и её package ID. Android Studio нужна для подготовки AVD, не для самого подключения телефона. Перед запуском должны быть известны тестовый backend и подходящая учётная запись.
 - iOS на Mac: Xcode, Command Line Tools, runtime iOS Simulator и запущенный симулятор. Нужна сборка `.app` для Simulator и её bundle ID. Обычная IPA для iPhone/App Store не заменяет сборку для симулятора. Доступность физического iPhone не выводить из успешного прогона в Simulator. См. [iOS в Maestro](https://docs.maestro.dev/get-started/supported-platform/ios).
 
 Это подготовка для управления приложением через MCP. Если подходящей среды нет, применяется раздел "Проверка по материалам пользователя" в [правилах выполнения](../../rules/task-execution-rules.md): анализ скринкастов и скриншотов остаётся доступным без установки мобильных инструментов.

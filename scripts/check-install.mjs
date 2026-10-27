@@ -11,6 +11,7 @@ import { spawnSync } from "node:child_process";
 import { getConfigFile, getInstallHome, launcherFile, repoRoot } from "./paths.mjs";
 import { connectionList, hasQaTools, migrateConfig, usesZephyr } from "./config-model.mjs";
 import { validateMaestro } from "./maestro-config.mjs";
+import { validateAppium } from "./appium-config.mjs";
 import { normalizeRepositories } from "./repository-config.mjs";
 
 function assert(condition, message) {
@@ -22,6 +23,7 @@ function validatePrivateConfig() {
   assert(fs.existsSync(configFile), `Не найден ${configFile}. Выполните npm run setup.`);
   const config = migrateConfig(JSON.parse(fs.readFileSync(configFile, "utf8")));
   validateMaestro(config.maestro);
+  validateAppium(config.appium);
   if (config.repositories) normalizeRepositories(config.repositories);
   assert(config.version === 3, "Неподдерживаемая версия файла настроек.");
   if (config.caFile) {
@@ -108,21 +110,22 @@ async function listTools(service, connectionId, Client, StdioClientTransport) {
 async function main() {
   const offlineExternal = process.argv.includes("--offline-external");
   const config = validatePrivateConfig();
-  if (config.maestro?.enabled) {
+  for (const [service, label] of [["maestro", "Maestro"], ["appium", "Appium"]]) {
+    if (!config[service]?.enabled) continue;
     if (offlineExternal) {
-      console.log("Maestro MCP настроен; CLI, MCP-handshake и устройство не проверялись (--offline-external).");
+      console.log(`${label} MCP настроен; CLI, MCP-handshake и устройство не проверялись (--offline-external).`);
     } else {
-      const check = spawnSync(process.execPath, [path.join(repoRoot, "scripts", "check-maestro.mjs")], { stdio: "inherit" });
+      const check = spawnSync(process.execPath, [path.join(repoRoot, "scripts", `check-${service}.mjs`)], { stdio: "inherit" });
       if (check.status !== 0) {
-        assert(config.maestro.mode !== "on", "Проверка Maestro CLI не пройдена.");
-        console.warn("Maestro auto: CLI пока недоступен; проверка остальных подключений продолжается.");
+        assert(config[service].mode !== "on", `Проверка ${label} CLI не пройдена.`);
+        console.warn(`${label} auto: CLI пока недоступен; проверка остальных подключений продолжается.`);
       }
     }
   }
   if (!connectionList(config, "jira").length && !connectionList(config, "confluence").length && !connectionList(config, "eva").length && !(config.qaReport?.enabled && config.enableQaReportImport === true) && !hasQaTools(config) && !config.browser?.enabled) {
     console.log(connectionList(config, "mcp").length
       ? "Удалённые MCP настроены; offline-проверка ограничена их конфигурацией."
-      : config.maestro?.enabled ? "Для Maestro проверьте подключение MCP в AI-клиенте."
+      : config.maestro?.enabled || config.appium?.enabled ? "Для мобильных MCP проверьте подключение и выбранное устройство в AI-клиенте."
         : "MCP-сервисы отключены; проверен только файл настроек.");
     console.log("Проверка установки: OK");
     return;

@@ -37,7 +37,7 @@ Identify integrations by capability rather than product name or MCP tool name:
 
 Do not assume a capability exists because a server is named Jira, Confluence, Zephyr, or TMS. Inspect the tools exposed by the current connection. Preserve separate error states for unavailable capability, permission denied, not found, ambiguous instance, and empty result.
 
-Local mobile execution follows `task-execution-rules.md` and the [Maestro profile](../integrations/profiles/maestro.md). Enabling a device-control connection does not authorize cloud uploads or publication to Jira, TMS or QA Report. Test-app UI/API actions follow [test-environment authorization](execution-access-rules.md#действия-в-тестовой-среде), including consent and submission without a separate request for each action.
+Local mobile execution follows `task-execution-rules.md` and the [native route](execution-native-rules.md), selecting Maestro or Appium per device. Enabling a device-control connection does not authorize cloud uploads or publication to Jira, TMS or QA Report. Test-app UI/API actions follow [test-environment authorization](execution-access-rules.md#действия-в-тестовой-среде), including consent and submission without a separate request for each action.
 
 ## Input modes
 
@@ -63,7 +63,7 @@ An exact release version is a valid scope anchor for a Test Run request. Resolve
 
 ### Live product context
 
-- A user-scoped browser page, native app/screen, or supplied recording/screenshot can inform a matrix, checklist, or test cases without an issue key. Use the relevant surface rules for [web](execution-web-rules.md), [native](execution-native-rules.md), or [supplied media](execution-media-rules.md), loading only the relevant surface; load the [Maestro profile](../integrations/profiles/maestro.md) only for native device control.
+- A user-scoped browser page, native app/screen, or supplied recording/screenshot can inform a matrix, checklist, or test cases without an issue key. Use the relevant surface rules for [web](execution-web-rules.md), [native](execution-native-rules.md), or [supplied media](execution-media-rules.md), loading only the relevant surface and its selected transport profile.
 - For documentation, inspect only the necessary navigation, blocks, controls and states. Return the requested artifact; a separate execution checklist, test run and statuses require testing intent. Ordinary navigation is within the inspection request; data-changing test scenarios are not implicit in a documentation request.
 - Preserve the navigation path, platform/OS, device type, known build/environment, and screenshot or recording timestamp as source provenance. Keep `app` as the native platform tag and record iOS/Android and device distinctions in source notes; observation on one configuration does not establish another.
 - Use observations for actual structure and labels. Approved requirements or confirmed user criteria define expected behavior; current behavior alone proves neither correctness nor permanent TMS coverage. Mark missing behavior and unobserved areas explicitly.

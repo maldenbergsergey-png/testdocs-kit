@@ -1,6 +1,6 @@
 # Task execution
 
-Read [report rules](execution-report-rules.md) for every execution report and [evidence rules](execution-evidence-rules.md) before capturing or reusing evidence. Read only the applicable surface: [web](execution-web-rules.md), [native](execution-native-rules.md), or [supplied media](execution-media-rules.md). Native control also uses the [Maestro profile](../integrations/profiles/maestro.md).
+Read [report rules](execution-report-rules.md) for every execution report and [evidence rules](execution-evidence-rules.md) before capturing or reusing evidence. Read only the applicable surface: [web](execution-web-rules.md), [native](execution-native-rules.md), or [supplied media](execution-media-rules.md). The native route selects the relevant transport profile.
 
 Read [access, test-action authorization and material gaps](execution-access-rules.md) for every run; for OS commands and SSH, read [terminal access](terminal-access-rules.md).
 
@@ -17,8 +17,8 @@ Read [access, test-action authorization and material gaps](execution-access-rule
 | Поверхность | Среда для взаимодействия |
 | --- | --- |
 | Web, включая mobile web | Браузер; согласованные размеры и платформы |
-| Нативное iOS | iOS Simulator на macOS (Xcode) |
-| Нативное Android | Android Emulator/AVD из Android Studio/Android SDK |
+| Нативное iOS | Simulator на macOS; физический iPhone через подготовленный Appium |
+| Нативное Android | Android Emulator/AVD или физическое устройство через ADB |
 
 Таблица задаёт обычный локальный маршрут, а не обязательную матрицу всех платформ. Явно выбранное поддерживаемое устройство или инструмент сохранять; симулятор/эмулятор не обозначать как физическое устройство.
 
@@ -48,5 +48,5 @@ Read [access, test-action authorization and material gaps](execution-access-rule
 - **Интеграция:** установить входное событие, канал доставки, ожидаемое преобразование, результат на стороне получателя, повтор, таймаут и обработку ошибки — только когда эти свойства подтверждены источниками.
 - **Web frontend:** проверять функциональность, состояния, вёрстку и соответствие конкретному Figma-узлу или другому макету. Фиксировать браузер, версию и viewport для визуальных проблем.
 - **Адаптив и браузеры:** использовать матрицу, заданную проектом или пользователем. При отсутствии такой матрицы предложить Chrome, Яндекс Браузер и Safari, а также размеры из макетов и существенные промежуточные размеры; это предложение не становится выполненным покрытием. Firefox и Opera добавлять по запросу или подтверждённому риску.
-- **Mobile:** следовать [мобильному маршруту](execution-native-rules.md) и [профилю Maestro](../integrations/profiles/maestro.md).
+- **Mobile:** следовать [мобильному маршруту](execution-native-rules.md), выбирающему Maestro или Appium для каждого устройства.
 - **Logs/observability:** искать по точному окружению, временному интервалу, service/correlation ID и минимально необходимому набору индексов. Маскировать секреты и персональные данные.

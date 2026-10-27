@@ -7,6 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { maestroLaunch, maestroSpawnCommand } from "./maestro-config.mjs";
+import { appiumLaunch, appiumSpawnCommand } from "./appium-config.mjs";
 import { requiresShell } from "./command-shell.mjs";
 import { getConfigFile, getSessionFile, getDataDir, serviceEntries, repoRoot } from "./paths.mjs";
 import { connectionList, findConnection, hasQaTools, migrateConfig, sessionKey, usesZephyr } from "./config-model.mjs";
@@ -173,17 +174,17 @@ function buildEnvironment(service, connectionId, config) {
 
 const service = process.argv[2];
 const connectionId = process.argv[3];
-if (service !== "maestro" && !Object.hasOwn(serviceEntries, service)) {
-  fail("укажите сервис jira, confluence, eva, qa_tools, browser, maestro или delivery.");
+if (!["maestro", "appium"].includes(service) && !Object.hasOwn(serviceEntries, service)) {
+  fail("укажите сервис jira, confluence, eva, qa_tools, browser, maestro, appium или delivery.");
 }
 
 const config = readConfig();
 startAutoUpdateChecks();
 let launch;
-if (service === "maestro") {
+if (["maestro", "appium"].includes(service)) {
   try {
-    launch = maestroLaunch(config.maestro);
-    launch.spawnCommand = maestroSpawnCommand(launch.command);
+    launch = service === "maestro" ? maestroLaunch(config.maestro) : appiumLaunch(config.appium);
+    launch.spawnCommand = service === "maestro" ? maestroSpawnCommand(launch.command) : appiumSpawnCommand(launch.command);
   }
   catch (error) { fail(error.message); }
   fs.mkdirSync(getDataDir(), { recursive: true, mode: 0o700 });
@@ -204,7 +205,7 @@ if (service === "browser") {
   }
 }
 const child = spawn(launch?.spawnCommand || process.execPath, serviceArgs, {
-  cwd: service === "maestro" ? getDataDir() : service === "browser" ? repoRoot : new URL(`../mcp/${service === "confluence" ? "confluence-mcp" : ["qa_tools", "eva"].includes(service) ? "qa-tools-mcp" : "jira-mcp"}/`, import.meta.url),
+  cwd: launch ? getDataDir() : service === "browser" ? repoRoot : new URL(`../mcp/${service === "confluence" ? "confluence-mcp" : ["qa_tools", "eva"].includes(service) ? "qa-tools-mcp" : "jira-mcp"}/`, import.meta.url),
   env: launch?.env || buildEnvironment(service, connectionId, config),
   shell: launch ? requiresShell(launch.command) : false,
   stdio: "inherit"

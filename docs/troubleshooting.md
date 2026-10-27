@@ -141,6 +141,6 @@ npm run configure:gitlab -- --ca-file "/absolute/path/company-ca-bundle.pem"
 
 ### Codex: unknown variant `writes`
 
-Некоторые версии Codex CLI не понимают `default_tools_approval_mode = "writes"`, даже если этот режим поддерживается установленным приложением. Установщик проверяет поддержку через локальное чтение пробной MCP-настройки. Если CLI не поддерживает режим, недоступен или отключён флагом `--no-cli`, для remote MCP и Maestro используется совместимое значение `prompt`, сохраняющее подтверждение действий.
+Некоторые версии Codex CLI не понимают `default_tools_approval_mode = "writes"`, даже если этот режим поддерживается установленным приложением. Установщик проверяет поддержку через локальное чтение пробной MCP-настройки. Если CLI не поддерживает режим, недоступен или отключён флагом `--no-cli`, для remote MCP, Maestro и Appium используется совместимое значение `prompt`, сохраняющее подтверждение действий.
 
 Обновите пакет через `npm run update`, затем повторите `codex mcp login testdocs_postman`. Для OpenCode вход выполняется независимо: `opencode mcp auth testdocs_postman`. Ошибка конфигурации Codex не означает, что конфигурация или вход OpenCode также сломаны.

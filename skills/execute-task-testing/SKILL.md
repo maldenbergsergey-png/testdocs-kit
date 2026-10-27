@@ -24,7 +24,7 @@ Use [`../collect-test-context/SKILL.md`](../collect-test-context/SKILL.md) for e
 - Figma expected design: [`../../integrations/profiles/figma.md`](../../integrations/profiles/figma.md)
 - Postman API assets: [`../../integrations/profiles/postman.md`](../../integrations/profiles/postman.md)
 - Elastic/Kibana logs: [`../../integrations/profiles/elastic-kibana.md`](../../integrations/profiles/elastic-kibana.md)
-- Native Android/iOS execution: [`../../integrations/profiles/maestro.md`](../../integrations/profiles/maestro.md)
+- Native Android/iOS execution: [`../../rules/execution-native-rules.md`](../../rules/execution-native-rules.md) selects the Maestro or Appium profile per device
 - Requested QA Report delivery, including a supplied temporary API connection: [`../../integrations/profiles/qa-report.md`](../../integrations/profiles/qa-report.md)
 
 Do not load profiles for systems that are not relevant.
@@ -44,7 +44,7 @@ For a later attachment/delivery request, resume from the saved report and eviden
 
 - Prefer a purpose-built connected capability for structured reads such as issues, Figma nodes, API collections and logs.
 - Use browser control for the actual UI when available, including functional and visual checks at supported viewport sizes. Record the browser actually used.
-- For native apps, follow the mobile route and Maestro profile above.
+- For native apps, follow the mobile route above. Reuse prepared apps/sessions and select each device's connected transport independently.
 - Use direct HTTP requests or an API client for backend checks; use [terminal access](../../rules/terminal-access-rules.md) for local commands, SSH and server diagnostics. Sanitize stored requests and responses.
 - For a supplied QA Report temporary connection, follow the profile's HTTP client and credential handling section before deciding that delivery is unavailable. Apply the separate temporary-session permission and receipt rules from [delivery rules](../../rules/checklist-delivery-rules.md).
 - A Postman collection is optional support material, not proof that requests were executed. Creating or updating a collection is an external write and requires explicit user intent.

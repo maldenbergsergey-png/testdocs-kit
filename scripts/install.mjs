@@ -13,6 +13,7 @@ import readline from "node:readline/promises";
 import { spawnSync } from "node:child_process";
 import { requiresShell } from "./command-shell.mjs";
 import { maestroLocalTools, resolveMaestro, validateMaestro } from "./maestro-config.mjs";
+import { appiumLocalTools, resolveAppium, validateAppium } from "./appium-config.mjs";
 import { collectRepositories, normalizeRepositories } from "./repository-config.mjs";
 import { validateRepositoryCa } from "./repository-tls.mjs";
 import { authenticateMcpClients, codexWriteApprovalMode } from "./client-mcp.mjs";
@@ -58,6 +59,8 @@ function parseArgs(argv) {
     browserMode: null,
     maestroMode: null,
     maestroCommand: null,
+    appiumMode: null,
+    appiumCommand: null,
     figmaMode: null,
     enableJiraWrites: process.env.TESTDOCS_ENABLE_JIRA_WRITES === "1",
     enableReleaseTestRunWrites: process.env.TESTDOCS_ENABLE_RELEASE_TEST_RUN_WRITES === "1",
@@ -90,6 +93,8 @@ function parseArgs(argv) {
     else if (arg === "--browser-mode") result.browserMode = argv[++index];
     else if (arg === "--maestro-mode") result.maestroMode = argv[++index];
     else if (arg === "--maestro-command") result.maestroCommand = argv[++index];
+    else if (arg === "--appium-mode") result.appiumMode = argv[++index];
+    else if (arg === "--appium-command") result.appiumCommand = argv[++index];
     else if (arg === "--ca-file") result.caFile = argv[++index];
     else if (arg === "--insecure-atlassian-tls") result.insecureAtlassianTls = true;
     else if (arg === "--verify-atlassian-tls") result.insecureAtlassianTls = false;
@@ -119,7 +124,7 @@ function showHelp() {
   --reuse                                 Применить сохранённые настройки без вопросов
   --auto-update on|off                     Автообновление всего пакета (по умолчанию on)
   --update-interval-hours 4                Проверять обновления раз в заданное число часов
-  --configure jira|confluence|eva|tms|delivery|integrations|repositories|postman-repository|postman|repository-sources|gitlab|figma|browser|maestro|all
+  --configure jira|confluence|eva|tms|delivery|integrations|repositories|postman-repository|postman|repository-sources|gitlab|figma|browser|maestro|appium|all
                                           Перенастроить только выбранную часть
   --advanced-repositories                 Дополнительные настройки источников: Git, ID, файл и ветка
   --advanced-postman                      Дополнительные настройки Postman: регион и инструменты
@@ -130,6 +135,8 @@ function showHelp() {
   --browser-mode persistent|extension|off  Режим локального Playwright MCP
   --maestro-mode auto|on|off               Локальный Maestro MCP (по умолчанию auto)
   --maestro-command /absolute/path/maestro Путь к установленному Maestro CLI
+  --appium-mode auto|on|off                Подключение установленного Appium MCP
+  --appium-command /absolute/path/appium-mcp Путь к CLI appium-mcp
   --ca-file /path/to/ca-bundle.pem         Дополнительные доверенные CA в формате PEM
   --insecure-atlassian-tls                 Временно отключить проверку TLS для Jira/Confluence с Basic/PAT
   --verify-atlassian-tls                   Вернуть проверку TLS для Jira/Confluence с Basic/PAT
@@ -711,7 +718,7 @@ async function collectConfig(args, clients, existing = null) {
   if (args.add && !["jira", "confluence", "eva"].includes(args.add)) {
     throw new Error("--add поддерживает jira, confluence или eva.");
   }
-  if (!["jira", "confluence", "eva", "tms", "delivery", "integrations", "repositories", "postman-repository", "postman", "repository-sources", "gitlab", "figma", "browser", "maestro", "sp-secret", "all"].includes(target)) {
+  if (!["jira", "confluence", "eva", "tms", "delivery", "integrations", "repositories", "postman-repository", "postman", "repository-sources", "gitlab", "figma", "browser", "maestro", "appium", "sp-secret", "all"].includes(target)) {
     throw new Error("Неизвестный раздел настройки.");
   }
   if (target === "sp-secret") {
@@ -820,6 +827,9 @@ async function collectConfig(args, clients, existing = null) {
   }
   if (target === "maestro" && !args.maestroMode) {
     previous.maestro = { ...previous.maestro, mode: await ask("Maestro: auto - подключить установленный CLI, on - требовать CLI, off - отключить", previous.maestro?.mode || "auto") };
+  }
+  if (target === "appium" && !args.appiumMode) {
+    previous.appium = { ...previous.appium, mode: await ask("Appium: auto - подключить установленный MCP, on - требовать MCP, off - отключить", previous.appium?.mode || "auto") };
   }
   if (["all", "browser"].includes(target) && !args.browserMode) {
     const mode = await ask("Браузер: persistent — отдельный Chrome с сохранением входа, extension — текущие вкладки через расширение, off — отключить", previous.browser?.enabled ? previous.browser.mode : "off");
@@ -969,6 +979,7 @@ function tomlString(value) {
 function configuredServers(config) {
   const servers = [];
   if (config.maestro?.enabled) servers.push({ name: "testdocs_maestro", service: "maestro", tools: maestroLocalTools });
+  if (config.appium?.enabled) servers.push({ name: "testdocs_appium", service: "appium", tools: appiumLocalTools });
   if (config.browser?.enabled) servers.push({ name: "testdocs_browser", service: "browser" });
   const jiraItems = connectionList(config, "jira");
   for (const jira of jiraItems) {
@@ -1045,9 +1056,9 @@ default_tools_approval_mode = "${writeApprovalMode}"`);
 command = ${tomlString(process.execPath)}
 args = [${args.map(tomlString).join(", ")}]
 enabled = true
-required = false${server.service === "maestro" ? "\nstartup_timeout_sec = 60\ntool_timeout_sec = 180" : ""}
+required = false${["maestro", "appium"].includes(server.service) ? "\nstartup_timeout_sec = 60\ntool_timeout_sec = 180" : ""}
 ${enabledTools}
-default_tools_approval_mode = "${server.service === "maestro" ? writeApprovalMode : "approve"}"`);
+default_tools_approval_mode = "${["maestro", "appium"].includes(server.service) ? writeApprovalMode : "approve"}"`);
   }
   sections.push(MANAGED_END);
   return `${sections.join("\n")}\n`;
@@ -1157,7 +1168,7 @@ function removeManagedOpenCodePermissions(data) {
 }
 
 function ensureSafeFormatMigration(data, format) {
-  const isManaged = (name) => /^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic|browser|maestro)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name);
+  const isManaged = (name) => /^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic|browser|maestro|appium)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name);
   if (format === "stable" && data.mcp?.servers) {
     const foreignServers = Object.keys(data.mcp.servers).filter((name) => !isManaged(name));
     if (foreignServers.length) {
@@ -1222,7 +1233,7 @@ function mergeOpenCodeConfig(config, args) {
   const removeManaged = (container) => {
     if (!container || typeof container !== "object") return;
     for (const name of Object.keys(container)) {
-      if (/^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic|browser|maestro)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name)) {
+      if (/^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic|browser|maestro|appium)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name)) {
         delete container[name];
       }
     }
@@ -1417,6 +1428,16 @@ async function main() {
     ? "Maestro MCP будет подключён для локальных мобильных проверок. Доступ к устройству проверяется отдельно."
     : config.maestro.mode === "off" ? "Maestro MCP отключён."
       : "Maestro CLI не найден; режим auto сохранён. После установки CLI выполните npm run configure:maestro.");
+  validateAppium(config.appium);
+  config.appium = resolveAppium({
+    ...config.appium,
+    ...(args.appiumMode ? { mode: args.appiumMode } : {}),
+    ...(args.appiumCommand ? { command: args.appiumCommand } : {})
+  });
+  console.log(config.appium.enabled
+    ? "Appium MCP будет подключён. Сессия и устройство проверяются отдельно."
+    : config.appium.mode === "off" ? "Appium MCP отключён."
+      : "Appium MCP не найден; режим auto сохранён. После установки appium-mcp выполните npm run configure:appium.");
   if (args.figmaMode) applyFigmaMode(config, args.figmaMode);
   if (args.browserMode) {
     if (!["persistent", "extension", "off"].includes(args.browserMode)) throw new Error("--browser-mode: используйте persistent, extension или off.");

@@ -19,6 +19,7 @@
 - [Запросы обычным языком и примеры результатов](docs/usage.md)
 - [Решение проблем установки](docs/troubleshooting.md)
 - [Возможности и ограничения MCP](docs/mcp-boundaries.md)
+- [Мобильные сборки, устройства и подключение Maestro/Appium](docs/mobile-testing.md)
 - [Репозиторий Postman-коллекции и чтение кода/контрактов GitLab](integrations/profiles/git-repositories.md)
 - [Переиспользование контекста связанных задач](docs/context-reuse.md) и [модельные роли Codex](integrations/profiles/codex-model-routing.md)
 
