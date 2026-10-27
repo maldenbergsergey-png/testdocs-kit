@@ -7,7 +7,7 @@ function relayUrl(value) {
   let url;
   try { url = new URL(value); } catch { throw new Error("READ_RELAY_CONFIG: нужен полный HTTPS-адрес шлюза."); }
   if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
-    throw new Error("READ_RELAY_CONFIG: нужен HTTPS-адрес без учётных данных, query и fragment.");
+    throw new Error("READ_RELAY_CONFIG: нужна HTTPS-ссылка без логина, пароля и дополнительных параметров.");
   }
   return url.toString().replace(/\/+$/, "");
 }
@@ -24,7 +24,7 @@ function validateRelay(input) {
   if (input.knowledgeSearchUrl) {
     result.knowledgeSearchUrl = relayUrl(input.knowledgeSearchUrl);
     if (new URL(result.knowledgeSearchUrl).origin !== new URL(result.url).origin) {
-      throw new Error("READ_RELAY_CONFIG: поиск знаний должен находиться на том же origin шлюза.");
+      throw new Error("READ_RELAY_CONFIG: поиск документов должен находиться на том же сайте ассистента.");
     }
   }
   return result;

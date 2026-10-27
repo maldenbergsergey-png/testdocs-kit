@@ -50,11 +50,12 @@ const client = new ConfluenceClient(
 const server = new McpServer({
   name: "confluence",
   version: "1.0.0",
-}, { instructions: `Source: ${CONFLUENCE_BASE_URL}. Reads use ${readRoute ? `the relay first; configured same-instance fallback policy: ${readRoute.fallback}. The adapter alone selects any allowed fallback, never bootstrap or start a new login for fallback` : "the original connection"}. Do not add fallback outside this adapter. Resolve the intended instance before using numeric page IDs. Knowledge search returns discovery snippets; read the scoped original page before treating it as full requirements.` });
+}, { instructions: `Source: ${CONFLUENCE_BASE_URL}. Reads use ${readRoute ? `the relay first; configured same-instance fallback policy: ${readRoute.fallback}. The adapter alone selects any allowed fallback, never bootstrap or start a new login for fallback` : "the original connection"}. Do not add another API/connector fallback. If structured reading is unavailable, an already accessible browser session is the last read route without a new login. Label browser reading explicitly; it does not verify the relay. Resolve the intended instance before using numeric page IDs. Knowledge search returns discovery snippets; read the scoped original page before treating it as full requirements.` });
 
 function routingNotes(transport: string) {
   return transport === "original_fallback" ? [{ type: "text" as const,
-    text: "READ_TRANSPORT: original_fallback. The relay failed; this response came from the configured original wiki connection. No new login was started." }] : [];
+    text: "READ_TRANSPORT: original_fallback. The relay failed; this response came from the configured original wiki connection. No new login was started." }]
+    : [{ type: "text" as const, text: `READ_TRANSPORT: ${transport}.` }];
 }
 
 const continuationSchema = {

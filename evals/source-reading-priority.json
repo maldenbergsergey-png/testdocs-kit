@@ -1,0 +1,52 @@
+[
+  {
+    "id": "optional_assistant_absent",
+    "prompt": "Прочитай https://jira.example.test/browse/DEMO-101 и покажи название, статус и содержание. Ничего не меняй.",
+    "context": "Доступен matching Jira MCP get_issue, текущая диагностика указывает issueReadTransport=original. Ассистент для этой Jira не настроен. Уже вошедший пользовательский Chrome тоже доступен. Живых запросов ещё не было."
+  },
+  {
+    "id": "configured_assistant_first",
+    "prompt": "Собери требования задачи https://jira.example.test/browse/DEMO-102.",
+    "context": "Доступен matching Jira MCP get_issue, он загружен с issueReadTransport=read_relay и readFallback=transient. Его один вызов управляет основным и резервным API-чтением. Пользовательский Chrome доступен и уже авторизован. Живых запросов ещё не было."
+  },
+  {
+    "id": "reserve_already_succeeded",
+    "prompt": "Покажи сведения по https://jira.example.test/browse/DEMO-103 и скажи, как они получены.",
+    "context": "Исходный get_issue уже вернул полный текст: название 'Имя профиля', статус 'В работе', описание 'Имя обязательно, максимум 80 символов'. В ответе _testdocs.readTransport=original_fallback, fallbackUsed=true, primaryFailure=503. Chrome подключён. Других сведений для запроса не требуется."
+  },
+  {
+    "id": "structured_read_exhausted",
+    "prompt": "Прочитай https://jira.example.test/browse/DEMO-104. Покажи название и описание, без изменений.",
+    "context": "Matching get_issue уже вернул READ_FALLBACK_UNAVAILABLE. Диагностика показывает настроенный relay, transient reserve, последний read original_fallback/failed. Исходная password-сессия истекла; нового входа не было. В подключённом пользовательском Chrome уже открыта точная задача и доступно её чтение; сам текст ещё не извлекался."
+  },
+  {
+    "id": "mcp_missing_browser_available",
+    "prompt": "Прочитай страницу https://wiki.example.test/pages/105 и кратко объясни требования.",
+    "context": "Для этой компании не настроен ассистент, инструмента Confluence/knowledge MCP нет. Подключён пользовательский Chrome с доступной вкладкой точной страницы. Доступна также команда общей настройки пакета, но пользователь настройку не просил."
+  },
+  {
+    "id": "stale_connector_after_setup",
+    "prompt": "Я подключил ассистента, --check проходит. Прочитай https://jira.example.test/browse/DEMO-106 и проверь, что именно ассистент используется.",
+    "context": "Работающий matching Jira MCP get_issue вернул AUTH_REQUIRED. Его локальная диагностика показывает issueReadTransport=original и старый sourceRoot. Отдельный свежий --check через relay уже вернул успех. Chrome с этой задачей доступен, но ещё не использовался в текущем запросе."
+  },
+  {
+    "id": "explicit_browser_choice",
+    "prompt": "Прочитай https://jira.example.test/browse/DEMO-107 именно в моём Chrome.",
+    "context": "Matching Jira MCP и настроенный ассистент доступны. Подключён пользовательский Chrome с уже доступной вкладкой точной задачи. Содержимое ещё не читалось."
+  },
+  {
+    "id": "permission_denial",
+    "prompt": "Прочитай https://jira.example.test/browse/DEMO-108.",
+    "context": "Matching get_issue вернул подтверждённый PERMISSION_DENIED: текущему пользователю запрещено читать именно эту задачу. Авторизация действительна; это не отсутствие коннектора или сессии. Chrome также подключён, текст задачи не наблюдался."
+  },
+  {
+    "id": "reuse_browser_content",
+    "prompt": "По этой же задаче дай теперь короткий список ограничений поля имени.",
+    "context": "В этом чате предыдущие структурированные чтения уже не удались, после них задача https://jira.example.test/browse/DEMO-109 полностью прочитана в выбранном Chrome: 'Имя обязательно. Не более 80 символов. Начальные и конечные пробелы удаляются'. Текст актуален для этого запроса, пользователь обновление не просил."
+  },
+  {
+    "id": "api_schema_required",
+    "prompt": "Получить живую схему полей типа Bug проекта DEMO через Jira API.",
+    "context": "Jira MCP metadata вернул AUTH_REQUIRED с точной командой восстановления для company-a. Обычная задача открыта в Chrome, но нужной схемы и допустимых значений там нет. Записи и изменение подключения не запрошены."
+  }
+]

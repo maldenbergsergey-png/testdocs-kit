@@ -145,26 +145,39 @@ async function jiraRequest(path, method = "GET", body, multipart = false, existi
 }
 
 async function ordinaryRead(path, params) {
-  try { return await readRelay(readRoute, path, params); }
+  try { return readReceipt(await readRelay(readRoute, path, params), "read_relay"); }
   catch (error) {
+    getConnectionDiagnostics.recordIssueRead("read_relay", "failed");
     if (!canFallback(readRoute, error)) throw error;
     try {
       const query = params ? `?${new URLSearchParams(params)}` : "";
       const result = await jiraRequest(`${path}${query}`, "GET", undefined, false, true);
-      return { ...result, _testdocs: { ...result._testdocs, readTransport: "original_fallback", primaryFailure: error.status || error.code } };
+      return readReceipt({ ...result, _testdocs: { ...result._testdocs, primaryFailure: error.status || error.code } }, "original_fallback");
     } catch {
+      getConnectionDiagnostics.recordIssueRead("original_fallback", "failed");
       throw new Error("READ_FALLBACK_UNAVAILABLE: шлюз недоступен, резервное чтение через исходное подключение не удалось. Новый вход не запускался; другие инстансы не проверялись.");
     }
   }
 }
 
+function readReceipt(result, transport) {
+  getConnectionDiagnostics.recordIssueRead(transport, "success");
+  return { ...result, _testdocs: { ...result._testdocs, readTransport: transport,
+    connectionId: process.env.JIRA_CONNECTION_ID || null, fallbackUsed: transport === "original_fallback" } };
+}
+
+async function originalRead(path, transport = "original", method = "GET", body) {
+  try { return readReceipt(await jiraRequest(path, method, body), transport); }
+  catch (error) { getConnectionDiagnostics.recordIssueRead(transport, "failed"); throw error; }
+}
+
 async function getIssue({ key }) {
-  if (createdIssueKeys.has(key)) return jiraRequest(`/rest/api/${JIRA_API_VERSION}/issue/${encodeURIComponent(key)}`);
+  if (createdIssueKeys.has(key)) return originalRead(`/rest/api/${JIRA_API_VERSION}/issue/${encodeURIComponent(key)}`, "original_write_verification");
   key = issueReference(key, { id: process.env.JIRA_CONNECTION_ID || "current", url: JIRA_URL }, issueRoutes);
-  if (createdIssueKeys.has(key)) return jiraRequest(`/rest/api/${JIRA_API_VERSION}/issue/${encodeURIComponent(key)}`);
+  if (createdIssueKeys.has(key)) return originalRead(`/rest/api/${JIRA_API_VERSION}/issue/${encodeURIComponent(key)}`, "original_write_verification");
   return readRoute
     ? ordinaryRead(`/rest/api/${JIRA_API_VERSION}/issue/${encodeURIComponent(key)}`, { expand: "changelog" })
-    : jiraRequest(`/rest/api/${JIRA_API_VERSION}/issue/${key}`);
+    : originalRead(`/rest/api/${JIRA_API_VERSION}/issue/${key}`);
 }
 
 async function readCreateMetadataPages(basePath, property, pageSize) {
@@ -509,12 +522,12 @@ async function getTransitions({ key }) {
   key = issueReference(key, { id: process.env.JIRA_CONNECTION_ID || "current", url: JIRA_URL }, issueRoutes);
   return readRoute
     ? ordinaryRead(`/rest/api/${JIRA_API_VERSION}/issue/${encodeURIComponent(key)}/transitions`)
-    : jiraRequest(`/rest/api/${JIRA_API_VERSION}/issue/${key}/transitions`);
+    : originalRead(`/rest/api/${JIRA_API_VERSION}/issue/${key}/transitions`);
 }
 
 async function searchIssues({ jql, maxResults = 10 }) {
   if (readRoute) return ordinaryRead(`/rest/api/${JIRA_API_VERSION}/search`, { jql, maxResults });
-  return jiraRequest(`/rest/api/${JIRA_API_VERSION}/search`, "POST", {
+  return originalRead(`/rest/api/${JIRA_API_VERSION}/search`, "original", "POST", {
     jql,
     maxResults
   });

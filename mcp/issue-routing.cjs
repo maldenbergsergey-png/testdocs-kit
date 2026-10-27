@@ -1,5 +1,4 @@
-function issueReference(value, current, connections = []) {
-  const entries = connections.length ? connections : [current];
+function resolveIssueReference(value, entries) {
   let key = String(value || "");
   let candidates;
   if (/^https?:\/\//i.test(key)) {
@@ -20,8 +19,13 @@ function issueReference(value, current, connections = []) {
     if (!candidates.length && entries.length === 1) candidates = entries;
   }
   if (candidates.length !== 1) throw new Error("AMBIGUOUS_INSTANCE: передайте полную ссылку задачи или настройте однозначную привязку ключа проекта. Запросы не выполнялись.");
-  if (candidates[0].id !== current.id) throw new Error("WRONG_CONNECTION: эта задача принадлежит другому Jira-подключению. Запросы не выполнялись.");
-  return key;
+  return { connection: candidates[0], key };
 }
 
-module.exports = { issueReference };
+function issueReference(value, current, connections = []) {
+  const result = resolveIssueReference(value, connections.length ? connections : [current]);
+  if (result.connection.id !== current.id) throw new Error("WRONG_CONNECTION: эта задача принадлежит другому Jira-подключению. Запросы не выполнялись.");
+  return result.key;
+}
+
+module.exports = { issueReference, resolveIssueReference };

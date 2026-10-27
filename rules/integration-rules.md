@@ -124,7 +124,7 @@ Keep raw external values alongside any neutral interpretation. Do not silently t
 
 ## Browser-session authentication
 
-For browser retrieval or an authentication error, follow [browser session reuse](browser-session-rules.md). Readable content in the user's selected browser is sufficient for that read; a separate connector's `AUTH_REQUIRED` does not require another login.
+For source selection and recovery, follow [read priority](source-reading-rules.md), then [session reuse](browser-session-rules.md) for browser reads. An accessible browser source needs no separate MCP login.
 
 When capturing source images, apply [evidence framing and verification](execution-evidence-rules.md#полнота-и-контекст-кадра). Capturing requirements does not start a test run or require an execution report.
 

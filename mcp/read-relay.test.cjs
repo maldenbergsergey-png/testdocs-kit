@@ -76,7 +76,10 @@ test("Jira context and GET search use relay; metadata, creation, read-back and T
     if (String(url).endsWith("/myself")) return response({ name: "tester" });
     return response({ key: options.method === "POST" ? "DEMO-2" : "DEMO-1" });
   });
-  await api.get_issue({ key: "DEMO-1" });
+  const primary = await api.get_issue({ key: "DEMO-1" });
+  assert.equal(primary._testdocs.readTransport, "read_relay");
+  assert.equal(primary._testdocs.fallbackUsed, false);
+  assert.equal(api.jira_get_connection_diagnostics().lastIssueRead.transport, "read_relay");
   await api.search_issues({ jql: "project = DEMO" });
   await api.jira_get_bug_create_metadata({ projectKey: "DEMO" });
   await api.jira_create_bug({ confirmed: true, projectKey: "DEMO", issueTypeId: "1", summary: "FE. Save fails" });
@@ -86,6 +89,15 @@ test("Jira context and GET search use relay; metadata, creation, read-back and T
   assert(calls.slice(2).every((call) => call.url.startsWith("https://jira.example.test/") && call.headers.Authorization.startsWith("Basic ")));
   assert.equal(calls.filter((call) => call.method === "POST").length, 1);
   assert(calls.some((call) => call.url === "https://jira.example.test/rest/api/2/issue/DEMO-2"));
+});
+
+test("an unconfigured assistant is never contacted: ordinary MCP reading stays original", async (t) => {
+  const api = jira({ url: "", tokenFile: "" });
+  const calls = [];
+  t.mock.method(global, "fetch", async (url) => { calls.push(String(url)); return response({ key: "DEMO-1" }); });
+  const result = await api.get_issue({ key: "https://jira.example.test/browse/DEMO-1" });
+  assert.equal(result._testdocs.readTransport, "original");
+  assert.deepEqual(calls, ["https://jira.example.test/rest/api/2/issue/DEMO-1"]);
 });
 
 test("Jira relay failure cannot bootstrap the original password session", async (t) => {
@@ -133,7 +145,7 @@ test("semantic discovery uses only the configured same-origin POST endpoint", as
     return response({ hits: [{ title: "Sign in", text: "Snippet", source_url: "https://wiki.example.test/pages/42" }] });
   });
   assert.equal((await searchKnowledge(config, "How to sign in?")).hits.length, 1);
-  assert.throws(() => validateRelay({ ...config, knowledgeSearchUrl: "https://other.example.test/kb/search" }), /same origin|origin/);
+  assert.throws(() => validateRelay({ ...config, knowledgeSearchUrl: "https://other.example.test/kb/search" }), /том же сайте/);
 });
 
 test("transient fallback reads only the same original Jira and reports its use", async (t) => {

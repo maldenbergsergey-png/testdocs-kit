@@ -37,9 +37,9 @@ For a task/subtask estimate, read the full supplied task, its parent story, the 
 
 Apply context reuse before retrieval. Collect missing/stale material or explicit refreshes; reused page text does not establish complete knowledge discovery.
 
-Before browser retrieval, follow [session reuse](../../rules/browser-session-rules.md) to select the user's browser and read accessible content without initializing another login.
-
 Inspect current host tools for issue/change read, issue relations, knowledge/design/log reads, API workspace and TMS read/write, and [terminal access](../../rules/terminal-access-rules.md). Match documented capabilities and input/output shapes, not tool names.
+
+Apply [read priority](../../rules/source-reading-rules.md) before browser/auth recovery; use [session reuse](../../rules/browser-session-rules.md) for permitted browser reads.
 
 When setup selected QA Tools, use its `testops_find_*`, `testops_get_*`, or `testops_list_*` capabilities for scoped TMS reads. When setup selected Zephyr Scale / Test Management for Jira, use only the Zephyr-compatible capabilities from the Jira connection. Do not search an unselected second TMS.
 
@@ -70,7 +70,7 @@ For continuation, related tasks or substantive reusable context, follow [saved-c
 
 ## Failure and fallback
 
-- `AUTH_REQUIRED`: apply [session reuse](../../rules/browser-session-rules.md) before requesting connector authentication.
+- `AUTH_REQUIRED`: follow [read recovery](../../rules/source-reading-rules.md).
 - `NOT_FOUND`: report the exact reference and instance checked.
 - `PERMISSION_DENIED`: request access to the exact resource or usable manual content; do not claim absence.
 - `CAPABILITY_UNAVAILABLE`: name the missing capability and request manual content or an export.

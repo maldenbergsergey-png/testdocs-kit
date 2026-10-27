@@ -2,6 +2,8 @@
 
 Apply when reading sources through a browser, selecting a browser connection, or handling an authentication error. This includes tasks, requirements, documentation, designs, and the tested web application.
 
+For Jira and knowledge sources, first apply [read priority](source-reading-rules.md): structured reading precedes an existing browser session unless the user explicitly chose the browser. A relay participates only when configured. Describe browser reading accurately rather than claiming an MCP/relay test; it does not replace the write channel.
+
 ## Select and reuse the accessible session
 
 - Honor the user's chosen browser. A request for their Chrome means the connected user Chrome session, not an in-app browser or a new isolated profile. Use an existing matching tab when available; otherwise open the scoped URL in that same connection. Follow the live tool's connection instructions. If it cannot access that Chrome session, report the connection limitation and request only the required tab/extension connection, not another website login. Do not silently substitute a different browser or change client configuration.
