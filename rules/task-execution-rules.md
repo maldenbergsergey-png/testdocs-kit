@@ -4,6 +4,8 @@ Read [report rules](execution-report-rules.md) for every execution report and [e
 
 Read [access, test-action authorization and material gaps](execution-access-rules.md) for every run; for OS commands and SSH, read [terminal access](terminal-access-rules.md).
 
+For UI checks, follow [execution by screen state](execution-state-rules.md) to combine checks and resume design comparison from saved evidence.
+
 ## Выполнение тестирования
 
 ### 1. Подготовка
