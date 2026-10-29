@@ -47,7 +47,7 @@ async function fixture(t, failure, files = [{ filename: "screen.png", mimeType: 
   return { input, calls };
 }
 
-test("bug uploads supplied bytes and inserts verified Wiki thumbnails without moving dedicated fields", async (t) => {
+test("bug uploads supplied bytes and inserts a thumbnail without a duplicate filename caption", async (t) => {
   const { input, calls } = await fixture(t);
   const result = await tools.jira_create_bug(input);
   assert.equal(result._testdocs.previews, "wiki_thumbnails_inserted");
@@ -57,7 +57,7 @@ test("bug uploads supplied bytes and inserts verified Wiki thumbnails without mo
   assert.equal(create.fields.customfield_3, "Visible");
   const update = JSON.parse(calls.find((c) => c.options.method === "PUT").options.body);
   assert.deepEqual(Object.keys(update.fields), ["description"]);
-  assert.match(update.fields.description, /!screen.png\|thumbnail!/);
+  assert.equal(update.fields.description, "Context\n\nМатериалы:\n\n!screen.png|thumbnail!");
   assert(!update.fields.description.includes("/secure/attachment/"));
 });
 
@@ -76,7 +76,7 @@ test("each image uses its uploaded name and each other file a native attachment 
   assert.equal(result._testdocs.attachments.length, files.length);
   assert(result._testdocs.attachments.every((file) => file.status === "uploaded"));
   const update = JSON.parse(calls.find((c) => c.options.method === "PUT").options.body);
-  assert.equal(update.fields.description, "Context\n\nМатериалы:\n\n03-android-listing-not-rendered.png\n!03-android-listing-not-rendered.png|thumbnail!\n\nexpected.jpg\n!expected.jpg|thumbnail!\n\n[^server.log]\n\n[^reproduction.mp4]\n\n[^diagnostics.zip]\n\n[^requirements.pdf]");
+  assert.equal(update.fields.description, "Context\n\nМатериалы:\n\n!03-android-listing-not-rendered.png|thumbnail!\n\n!expected.jpg|thumbnail!\n\n[^server.log]\n\n[^reproduction.mp4]\n\n[^diagnostics.zip]\n\n[^requirements.pdf]");
   assert.equal(calls.filter((c) => c.options.method === "POST" && c.url.endsWith("/issue")).length, 1);
 });
 

@@ -75,7 +75,7 @@ async function finishBugAttachments(input, result, files, request, apiVersion, t
       }
     } else {
       const lines = uploaded.map((file) => file.mimeType.startsWith("image/")
-        ? `${file.filename}\n!${file.filename}|thumbnail!`
+        ? `!${file.filename}|thumbnail!`
         : `[^${file.filename}]`);
       description = [input.description, "Материалы:", ...lines].filter(Boolean).join("\n\n");
     }
