@@ -19,6 +19,7 @@ Read [core.md](core.md) once per task. This index is for discovery; follow only 
 - [`qa-estimation-profile.md`](qa-estimation-profile.md) - published starting process for component checks, documentation, AI validation, environments, and risk analysis.
 - [`qa-estimation-platform-matrix.md`](qa-estimation-platform-matrix.md) - scoped desktop/mobile web, design breakpoints, and native iOS/Android coverage from the supplied matrices.
 - [`task-execution-rules.md`](task-execution-rules.md) — execution workflow with conditional surface, report and evidence contracts.
+- [`execution-scope-rules.md`](execution-scope-rules.md) - change checks, app smoke/regression, supplied runs and exploratory scope without an issue key.
 - [`test-case-type-rules.md`](test-case-type-rules.md) — E2E, overview, block, cross-page, integration, and platform classification.
 - [`test-case-lifecycle-rules.md`](test-case-lifecycle-rules.md) — lifecycle statuses, review readiness, and task linkage.
 - [`reusable-setup-rules.md`](reusable-setup-rules.md) — shared preparation procedures, administration content, dependency outputs, and cleanup.

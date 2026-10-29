@@ -1,11 +1,13 @@
 ---
 name: manage-test-run
-description: Inspect or modify an existing Test Run or Test Cycle, including case membership, order, run fields, execution assignments/results, and explicit run deletion. Keep the same run key and retained execution history. Use for changes to a saved run, not for editing source test cases or preparing a new release run.
+description: Inspect or modify a saved Test Run or Test Cycle, including case membership, order, run fields, execution assignments/results, and explicit run deletion. Keep the same run key and retained execution history. Use for run management, not for executing its checks in an app, editing source test cases or preparing a new release run.
 ---
 
 # Manage test run
 
 Read [the common contract](../../rules/core.md) once per task, then [existing-run rules](../../rules/test-run-rules.md#existing-test-run-management). For Zephyr, read the [capability profile](../../integrations/profiles/zephyr-scale.md#existing-run-management). Read release selection rules in `test-run-rules.md` only when the request changes release coverage or asks to select additional cases.
+
+For requests to execute a run's checks in the app, use [`execute-task-testing`](../execute-task-testing/SKILL.md). If execution and result recording are both requested, execute first, then use this skill for the observed results and exact case/configuration mapping.
 
 Resolve the selected connection, exact run key/URL and requested change. An existing run does not need its release, title convention or linked QA work item rebuilt for an ordinary membership or field edit. When only a project/folder/name is known, use `zephyr_search_test_runs`, paginate and read candidates; resolve an ambiguous target before writing. For an audit, use `zephyr_get_test_run` and `zephyr_get_test_run_results` without mutations.
 

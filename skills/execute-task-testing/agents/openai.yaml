@@ -1,4 +1,4 @@
 interface:
   display_name: "Execute Task Testing"
-  short_description: "Test an implementation and produce a QA report"
-  default_prompt: "Use $execute-task-testing to test the task I provide and return an evidence-backed Jira-ready report."
+  short_description: "Execute app checks, smoke, regression or supplied test steps"
+  default_prompt: "Use $execute-task-testing to execute the app checks, smoke, regression, exploratory scope or Test Run steps I provide and return an evidence-backed report."

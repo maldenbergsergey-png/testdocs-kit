@@ -63,6 +63,69 @@
     "collect": false
   },
   {
+    "id": "app_smoke_without_issue",
+    "prompt": "Сделай быстрый smoke уже открытого Android-приложения на тестовом стенде: главная, каталог, профиль. Проверь открытие разделов, завершение загрузки и возврат назад без падения. Jira-задачи и test run нет.",
+    "skill": "execute-task-testing",
+    "artifact": "execution_report",
+    "collect": false
+  },
+  {
+    "id": "app_exploratory_dictated_scope",
+    "prompt": "Наговорю контекст: на тестовом iPhone открыт каталог. Исследуй его минут пятнадцать, посмотри переходы в карточку товара и назад, поищи проблемы навигации. Заказы не оформляй. Кейсами и задачей это не оформлено.",
+    "skill": "execute-task-testing",
+    "artifact": "execution_report",
+    "collect": false
+  },
+  {
+    "id": "app_regression_supplied_steps",
+    "prompt": "Прорегрессь профиль iOS по приложенным актуальным шагам с условиями и ожиданиями. Сборка и тестовый аккаунт готовы. Нужны фактические результаты в чате; релиза и Jira-задачи нет.",
+    "skill": "execute-task-testing",
+    "artifact": "execution_report",
+    "collect": false
+  },
+  {
+    "id": "app_full_regression_undefined",
+    "prompt": "Выполни полную регрессию Android-приложения. Оно уже открыто, но набор сценариев, функции и границы полной регрессии пока не определены.",
+    "skill": "execute-task-testing",
+    "artifact": "execution_report",
+    "collect": false
+  },
+  {
+    "id": "existing_run_execute",
+    "prompt": "Пройди в Android-приложении кейсы из Test Run DEMO-R7. Получи состав и полные шаги из подключённого Zephyr; результаты верни только в чате. Ничего в тестране не меняй.",
+    "skill": "execute-task-testing",
+    "artifact": "execution_report",
+    "collect": true
+  },
+  {
+    "id": "existing_run_execute_export",
+    "prompt": "Выполни Test Cycle по приложенному полному актуальному экспорту: состав, конфигурации, условия, шаги и ожидания уже в файле. Android и iOS готовы. Нужен отчёт по фактическому выполнению, обращаться в TMS не нужно.",
+    "skill": "execute-task-testing",
+    "artifact": "execution_report",
+    "collect": false
+  },
+  {
+    "id": "existing_run_execute_and_record",
+    "prompt": "Выполни кейсы тестрана DEMO-R7 в тестовом Android-приложении и запиши наблюдённые результаты в этот же run. Состав и шаги нужно получить из Zephyr.",
+    "skill": "execute-task-testing",
+    "artifact": "execution_report",
+    "collect": true
+  },
+  {
+    "id": "app_smoke_checklist_only",
+    "prompt": "Составь только чек-лист smoke Android: открыть главную, каталог и профиль; каждый экран должен загрузиться без падения. Ничего в приложении пока не выполняй.",
+    "skill": "generate-test-checklist",
+    "artifact": "checklist",
+    "collect": false
+  },
+  {
+    "id": "app_smoke_advice_only",
+    "prompt": "Объясни, как провести быстрый smoke iOS-приложения: нужны советы по проверке открытия основных разделов и навигации без падения. Само приложение не проверяй.",
+    "skill": "explain-task-testing",
+    "artifact": "guidance",
+    "collect": false
+  },
+  {
     "id": "live_matrix",
     "prompt": "По открытому Android-приложению собери матрицу покрытия экрана заказов.",
     "skill": "build-coverage-matrix",

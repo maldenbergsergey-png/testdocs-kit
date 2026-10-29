@@ -26,7 +26,7 @@ Accept:
 - a Figma node URL, Postman object URL, or scoped log/server reference;
 - an exact release version, Jira project/connection, and Test Run intent;
 - a Confluence or knowledge-page link;
-- a TMS case key, URL, folder, or explicitly scoped search request;
+- a TMS case, saved Test Run/Test Cycle, folder or explicitly scoped search request;
 - plain chat context or local files when no external reference is supplied.
 
 Preserve the caller's selected intent and requested output. Do not select or load downstream skills during collection. When directly invoked without a clear result intent, return collected context and material gaps.
@@ -61,7 +61,7 @@ For continuation, related tasks or substantive reusable context, follow [saved-c
 6. Inventory URLs in the primary issue and scoped knowledge pages under `integration-rules.md`. Follow materially relevant requirements, designs, API contracts, attachments and decisions; preserve each URL's purpose, source location and retrieval status. Do not crawl unrelated navigation.
 7. For a supplied Figma selection link, preserve the exact file/node identity and retrieve only that node and materially required supported states. For a supplied Postman workspace/collection/request, retrieve only that API scope. For logs, require an environment plus a time or correlation boundary before querying.
 8. Before summarizing, build the complete structured-source inventory required by `integration-rules.md`, preserving exact values and conditions. Mark each item retrieved, ambiguous or unavailable; never collapse unprocessed fields.
-9. When existing coverage matters, use targeted discovery in this order: directly linked cases; cases explicitly named in sources; cases associated with a relevant parent, epic, or affected function when supported; focused search by stable page, function, block, or scenario terms; a confirmed folder or TMS area. Preserve raw product fields and stable identifiers. If a case key is known, read it directly. Do not use project-wide `get all` by default. For a Test Run, the confirmed folder is a hard search boundary, but every case inside it may be inspected when semantic fallback is required.
+9. When existing coverage matters, use targeted discovery in this order: directly linked cases; cases explicitly named in sources; cases associated with a relevant parent, epic, or affected function when supported; focused search by stable page, function, block, or scenario terms; a confirmed folder or TMS area. Preserve raw product fields and stable identifiers. If a case key is known, read it directly. Do not use project-wide `get all` by default. For release Test Run selection, the confirmed folder is a hard search boundary, but every case inside it may be inspected when semantic fallback is required.
 10. If no external URL or key is supplied, use only the supplied chat, files, and explicitly scoped sources. Do not search an arbitrary external project.
 11. Preserve relevant comment evidence with its link or ID, author, date, and evidence type when available. Keep a previous checklist distinct from approved requirements and permanent TMS coverage; preserve its useful scenario text, but do not promote its expected results or execution status to facts without corroboration.
 12. Separate facts, source conflicts, missing permissions, missing capabilities, and missing behavioral information. Use `PARTIAL_CONTEXT` when a page, attachment, table, field list, comment checklist, or relevant linked target was truncated or only partly retrieved.
