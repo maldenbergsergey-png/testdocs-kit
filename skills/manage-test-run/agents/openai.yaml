@@ -1,4 +1,4 @@
 interface:
   display_name: "Manage Test Run"
-  short_description: "Inspect and edit an existing test run in place"
-  default_prompt: "Use $manage-test-run to apply these changes to the existing Test Run, preserving its key and retained results."
+  short_description: "Inspect runs, report tester statistics and edit in place"
+  default_prompt: "Use $manage-test-run to inspect this Test Run, report tester execution statistics or apply the requested changes while preserving its key and retained results."

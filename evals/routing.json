@@ -341,5 +341,26 @@
     "skill": "manage-test-run",
     "artifact": "run_update",
     "collect": true
+  },
+  {
+    "id": "existing_run_today_statistics",
+    "prompt": "Покажи, сколько тест-кейсов каждый тестировщик выполнил сегодня в регрессе DEMO-R101. Мой часовой пояс Europe/Moscow. Ничего в тестране не меняй.",
+    "skill": "manage-test-run",
+    "artifact": "run_statistics",
+    "collect": true
+  },
+  {
+    "id": "existing_run_period_statistics",
+    "prompt": "По приложенному полному экспорту переходов статусов DEMO-R101 с авторами и временем посчитай выполненные кейсы по тестировщикам за 29-30 октября 2026 включительно, Europe/Moscow. Данные уже доступны в файле; нужны только таблица и правило подсчёта повторных выполнений.",
+    "skill": "manage-test-run",
+    "artifact": "run_statistics",
+    "collect": false
+  },
+  {
+    "id": "existing_run_statistics_missing_history",
+    "prompt": "Вот текущее состояние кейсов тестрана DEMO-R101 с assignedTo и статусами, истории и executedBy нет. Скажи точно, сколько кейсов каждый тестировщик выполнил 30 октября. Europe/Moscow. Для точного отчёта получи недостающую историю через подключённую Jira, если она доступна.",
+    "skill": "manage-test-run",
+    "artifact": "run_statistics",
+    "collect": true
   }
 ]

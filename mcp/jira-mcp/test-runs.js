@@ -1,4 +1,5 @@
 const crypto = require("node:crypto");
+const { createStatisticsTool } = require("./test-run-statistics");
 
 const RUN_KEY = /^[A-Za-z][A-Za-z0-9_]*-[RC]\d+$/;
 const CASE_KEY = /^[A-Za-z][A-Za-z0-9_]*-T\d+$/;
@@ -265,6 +266,7 @@ function createTestRunTools({ request, jiraRequest, getRun, webUrl, managementEn
     }
   }
   return {
+    zephyr_get_test_run_statistics: createStatisticsTool({ request, jiraRequest, getRun, webUrl }),
     zephyr_search_test_runs: async ({ projectKey, folder, startAt = 0, maxResults = 100 }) => {
       if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(projectKey || "") || !Number.isInteger(startAt) || startAt < 0 || !Number.isInteger(maxResults) || maxResults < 1 || maxResults > 200) throw new Error("Exact projectKey and valid pagination are required.");
       const escape = (value) => value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');

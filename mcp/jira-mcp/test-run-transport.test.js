@@ -29,6 +29,7 @@ global.fetch = async (url, options={}) => {
     else if(!exists) {status=404;data={error:'not found'};}
     else data={key:'DEMO-R7',projectKey:'DEMO',name:'Release',items:items.map(x=>({...x.$lastTestResult,testCaseKey:x.$lastTestResult.testCase.key}))};
   } else if(u.pathname==='/rest/tests/1.0/testrun/DEMO-R7') data={id:7,projectId:9,key:'DEMO-R7',name:'Release'};
+  else if(u.pathname==='/rest/atm/1.0/testrun/DEMO-R7/testresults/page') data={total:items.length,values:items.map(x=>({...x.$lastTestResult,testCaseKey:x.$lastTestResult.testCase.key}))};
   else if(u.pathname==='/rest/tests/1.0/testrun/7/testrunitems') data={testRunItems:items};
   else if(u.pathname==='/rest/tests/1.0/testrunitem/bulk/save' && method==='PUT') {
     items=items.filter(x=>!body.deletedTestRunItems.some(d=>d.id===x.id));
@@ -50,6 +51,13 @@ global.fetch = async (url, options={}) => {
   const oldNames = (await old.listTools()).tools.map((tool) => tool.name);
   assert(oldNames.includes("zephyr_create_test_run"));
   assert(oldNames.includes("zephyr_search_test_runs") && oldNames.includes("zephyr_get_test_run_results"));
+  assert(oldNames.includes("zephyr_get_test_run_statistics"));
+  assert.equal((await old.listTools()).tools.find((tool) => tool.name === "zephyr_get_test_run_statistics").annotations.readOnlyHint, true);
+  const statistics = await old.callTool({ name: "zephyr_get_test_run_statistics", arguments: { testRunKey: "DEMO-R7", timeZone: "Europe/Moscow", date: "2026-01-01" } });
+  assert(!statistics.isError, JSON.stringify(statistics));
+  assert.equal(JSON.parse(statistics.content[0].text).quality, "HISTORY_UNAVAILABLE");
+  assert.equal(JSON.parse(statistics.content[0].text).totals, null);
+  assert((await old.callTool({ name: "zephyr_get_test_run_statistics", arguments: { testRunKey: "DEMO-R7", timeZone: "Europe/Moscow", assignedTo: "qa" } })).isError, "Statistics must reject unsupported assignment filtering");
   assert(!oldNames.some((name) => managementTools.includes(name)));
   const other = await connect(true, false, "none");
   assert(!(await other.listTools()).tools.some((tool) => tool.name.startsWith("zephyr_")));

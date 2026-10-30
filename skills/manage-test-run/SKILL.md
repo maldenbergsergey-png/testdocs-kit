@@ -1,6 +1,6 @@
 ---
 name: manage-test-run
-description: Inspect or modify a saved Test Run or Test Cycle, including case membership, order, run fields, execution assignments/results, and explicit run deletion. Keep the same run key and retained execution history. Use for run management, not for executing its checks in an app, editing source test cases or preparing a new release run.
+description: Inspect or modify a saved Test Run or Test Cycle; report execution statistics by actual tester for a day or period, including requests such as how many cases each tester executed today in regression. Manage membership, order, fields, assignments/results and explicit run deletion in place. Use for saved-run statistics and management, not for executing checks in an app, editing source cases or preparing a new release run.
 ---
 
 # Manage test run
@@ -10,6 +10,8 @@ Read [the common contract](../../rules/core.md) once per task, then [existing-ru
 For requests to execute a run's checks in the app, use [`execute-task-testing`](../execute-task-testing/SKILL.md). If execution and result recording are both requested, execute first, then use this skill for the observed results and exact case/configuration mapping.
 
 Resolve the selected connection, exact run key/URL and requested change. An existing run does not need its release, title convention or linked QA work item rebuilt for an ordinary membership or field edit. When only a project/folder/name is known, use `zephyr_search_test_runs`, paginate and read candidates; resolve an ambiguous target before writing. For an audit, use `zephyr_get_test_run` and `zephyr_get_test_run_results` without mutations.
+
+For tester statistics ("сколько каждый выполнил сегодня в регрессе"), follow [the statistics procedure](references/execution-statistics.md) and [statistics rules](../../rules/test-run-rules.md#execution-statistics). This is read-only; missing management opt-in does not block it. Resolve the current regression only within known project/release scope; if several runs qualify or only a bare number is known, ask for the full key/link. Use the user's known IANA timezone and today's local date by default, or their inclusive date range. Do not route a statistics request to app execution or run creation.
 
 For an edit, read `zephyr_get_test_run_items`. Its `items[].id` is a stable run item ID; `run.items[].id` from the public API identifies an execution. Use only the former for removals and ordering. Keep the returned content hash and exact before/after diff in current task context. Do not copy results/evidence into a newly created run.
 

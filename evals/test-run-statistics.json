@@ -1,0 +1,32 @@
+[
+  {
+    "id": "today_no_audit",
+    "prompt": "Покажи, сколько каждый тестировщик выполнил сегодня в регрессе DEMO-R101, Europe/Moscow. Ничего не меняй.",
+    "context": "Текущее время 2026-10-30T12:00:00Z. Доступный read-only statistics tool вернул HISTORY_UNAVAILABLE, rows=null, totals=null, executionRecords=1203. Он не имеет доступа к истории переходов. Есть текущие результаты и assignedTo."
+  },
+  {
+    "id": "period_history",
+    "prompt": "Сколько каждый выполнил 29-30 октября 2026 в DEMO-R101, Europe/Moscow? Полная проверенная история уже приложена. Верни таблицу.",
+    "context": "Подтверждён полный аудит всех конфигураций до 2026-10-30T21:00:00Z. DEMO-T1: 29 октября 10:00 +03 Not Executed→Failed, actor=anna; 29 октября 12:00 +03 Failed→Not Executed, actor=resetter; 30 октября 10:00 +03 Not Executed→Failed, actor=anna; 30 октября 11:00 +03 Failed→Passed, actor=boris. DEMO-T2: 30 октября 09:00 +03 Not Executed→Blocked, actor=anna; 30 октября 12:00 +03 в другой конфигурации Not Executed→Passed, actor=carol. DEMO-T3: 28 октября Not Executed→Failed, actor=anna; 30 октября 15:00 +03 Failed→Passed, actor=boris. Имена неизвестны, есть точные ключи."
+  },
+  {
+    "id": "ambiguous_run",
+    "prompt": "За сегодня покажи статистику по каждому в последнем регрессе, номер 101.",
+    "context": "Известен Europe/Moscow. Jira connection одна, проектов шесть. Подтверждённой связи с проектом нет. Полный ключ неизвестен."
+  },
+  {
+    "id": "limited_summary",
+    "prompt": "Истории нет. Покажи именно ограниченную сводку сохранённых выполнений DEMO-R101 за 30 октября 2026, Europe/Moscow; я понимаю, что переходы она не подтверждает.",
+    "context": "Полностью получены все saved results. T1: actualEndDate=2026-10-30T08:00:00Z, executedBy=anna, assignedTo=boris, status=Failed; ещё одна execution T1: actualEndDate=2026-10-30T10:00:00Z, executedBy=carol, assignedTo=boris, status=Passed. T2: actualEndDate=2026-10-30T11:00:00Z, executedBy отсутствует, assignedTo=boris, status=Blocked. T3: actualEndDate=2026-10-30T21:00:00Z, executedBy=boris, status=Passed."
+  },
+  {
+    "id": "partial_history",
+    "prompt": "Покажи таблицу выполнений DEMO-R101 за 30 октября 2026, Europe/Moscow.",
+    "context": "Statistics tool вернул PARTIAL_HISTORY: включён T1, actor=anna, finalStatus=Passed; исключён T2 из-за неизвестного автора последней статусной правки; исключён T3 из-за неоднозначного порядка событий с одинаковым временем. Прочие переходы полны. Период уже завершён."
+  },
+  {
+    "id": "live_audit_available",
+    "prompt": "Покажи, сколько каждый выполнил сегодня в DEMO-R101, Europe/Moscow. Весь нужный контекст уже есть в подключении; разрешены только чтения.",
+    "context": "Доступен zephyr_get_test_run_statistics с historyMode=auto. Write/management opt-in выключен. Полного экспорта нет. После вызова tool подтверждает live UI audit со всеми страницами и creation anchors, HISTORY_BASED, без excluded; cutoff 2026-10-30T13:00:00Z. Строки: actual-audit-author: Passed=2, In Progress=1, total=3. В public records у этих кейсов executedBy=recorded-person, assignedTo=assigned-person. Состав run стабилен, status dictionary подтверждён."
+  }
+]

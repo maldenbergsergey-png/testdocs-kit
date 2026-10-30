@@ -58,6 +58,56 @@ Enable only the selected Zephyr-linked Jira connection with `npm run update -- -
 
 All management mutations require the snapshot hash as `expectedContentHash`. A conflict fails before mutation; the hash is an optimistic check, not a server-side atomic lock. `VERIFIED` requires saved-state comparison, including retained execution identities/data. `FAILED` means the saved diff differs; `UNAVAILABLE` means verification could not finish. Composition edits also report their `phase`; `mutationOutcome: UNKNOWN` requires inspection before any retry. Re-read the snapshot after each change before another mutation. Never repeat an uncertain mutation or recreate/delete the run as recovery.
 
+## Execution statistics
+
+`zephyr_get_test_run_statistics` is read-only and available for the selected Zephyr provider without write/management opt-in. It uses the existing authenticated Jira/Zephyr transport, with no new credentials, service or persistent collector. Inputs are an exact `testRunKey`, required IANA `timeZone`, optional `date` (today by default) or inclusive `startDate` and `endDate`, optional exact `initialStatuses` (default `["Not Executed"]`), `historyPath`, `historyMode` (`auto` by default, or `public_records` to skip internal audit), and `includeRecordedSummary` (default false). See the [statistics rules](../../rules/test-run-rules.md#execution-statistics) and [procedure](../../skills/manage-test-run/references/execution-statistics.md).
+
+The [official Server/DC RAML](https://support.smartbear.com/zephyr-scale-server/api-docs/v1/kanoah/api.raml) and [paginated result example](https://support.smartbear.com/zephyr-scale-server/api-docs/v1/kanoah/testresults_by_testrun_paginated_get.example), checked 2026-10-30, establish:
+
+- `GET /rest/atm/1.0/testrun/{key}/testresults/page?onlyLastExecutions=false` returns all saved execution results, not an immutable status-change log. The adapter follows actual page lengths (including server page caps) to `total`, rejects missing/overlapping execution IDs, stalls, changing totals, mismatched offsets and inconsistent last-page flags. On a first-page 404/405 it reads the legacy flat list once after confirming the run identity. HTTP 400/401/403/5xx and later-page errors do not trigger fallback. Pagination has no atomic server snapshot; it cannot prove there were no concurrent same-count edits.
+- Result fields include `executedBy` (recorded executor), `assignedTo` (assignee), `actualEndDate` and legacy `executionDate`. A record's `executedBy` is not independently verified as the author of each status edit; `actualEndDate` is execution time, not a documented status-change audit timestamp. Never substitute `assignedTo`, ambiguous `userKey` or arbitrary `updatedBy` for a transition actor. Exact user keys can be resolved with existing Jira `GET /rest/api/2/user?key=...`; failed name lookup preserves the key, without substituting an assignable user.
+- Public `PUT /testrun/{key}/testcase/{caseKey}/testresult` updates the last result's defined fields, including status. Reading every execution therefore does not recover every intermediate edit or a reliable historical cutoff status. The published RAML exposes no complete execution status-audit endpoint with old/new status, change timestamp and action author. Do not invent an internal history route or use Jira issue changelog for Zephyr execution objects. Compatibility of a separately observed UI history must be established on that installation.
+
+The default `auto` route additionally uses the internal UI audit, confirmed against the test-player history dialog, loaded endpoint implementation and live JSON on Zephyr **12.12.0-jira11**, 2026-10-30. This version-dependent read mapping is separate from the public RAML:
+
+- Internal `GET /testrun/{key}?fields=id,projectId,key` confirms numeric identity; `GET /project/{projectId}/testresultstatus` returns `name`, `i18nKey`, `id` and `projectId`. Map audit status codes through this dictionary, retaining custom names; an unknown/ambiguous mapping excludes affected cases or stops the report.
+- Internal `GET /testresult/{executionId}/history?startAt=...&maxResults=200` returns `{results,total,startAt,maxResults,last}`. Respect actual returned counts/server caps and reject overlaps, stalls and inconsistent totals/last flags. Each row has stable `id`, `source: TEST_EXECUTION`, matching `sourceId`, `type`, `historyDate`, action author `userKey`, and `changeHistoryItems`. Only an item's exact `fieldName: STATUS` supplies `originalValue`/`newValue`; `TEST_SCRIPT.STEP.STATUS`, `EXECUTED_BY`, dates, assignments and comments are not case-status events. The history row's `userKey` is the action author, unlike the public result's ambiguous/deprecated `userKey`. The UI displays that row as "Изменено кем". Require offset-bearing `historyDate`; use history/change IDs as evidence, never as a guessed chronology for timestamp ties.
+- Internal `GET /testrun/{numericId}/history` currently returns a flat array (a supported paged envelope is also handled). Require a matching source/identity and a `CREATE` anchor. `TEST_CASES` changes with removed original case keys since the report start identify potentially deleted execution histories, including removals after a historical cutoff: exclude those cases and mark the report partial. Removals predating the requested period do not create a gap for it. A missing creation anchor cannot prove complete audit retention.
+- Read every saved execution/configuration's audit, including previous attempts, at most four requests concurrently. Require each creation anchor, continuous known status transitions from the initial baseline, and consistency with the saved status when no post-cutoff change explains a difference. Re-read the run and compare current item/execution identities; concurrent composition changes stop exact totals. This is not an atomic database snapshot. Unsupported shapes/access failures stop the audit route without retries or guessed alternate endpoints; return the sanitized failure with unavailable exact totals. Missing author/order/baseline and deleted-case gaps produce `PARTIAL_HISTORY`, never a complete total.
+
+Without a verified complete audit, the tool returns `HISTORY_UNAVAILABLE`, null exact rows/totals and the inventory size. `includeRecordedSummary: true` adds `LIMITED_EXECUTION_RECORDS` when needed for an explicitly limited summary or statistical alternatives: saved non-initial results dated within the elapsed interval, deduplicated by case/local day with the last recorded time winning across testers/configurations. Its statuses belong to those mutable records, not necessarily the historical cutoff. Missing executor/time/status and conflicting timestamp ties exclude affected cases. It cannot prove initial-state transitions or recover overwritten/deleted data. Do not present it as exact daily work, even when its table looks plausible.
+
+If the live UI audit is unavailable, the alternative for retrospective transition counts is a verified full audit export from this installation (or an existing authorized event archive), normalized outside the repository to this v1 contract:
+
+```json
+{
+  "version": 1,
+  "instance": "https://jira.example.invalid",
+  "testRunKey": "DEMO-R101",
+  "source": "Audit export reference, revision and verified scope",
+  "complete": true,
+  "startInclusive": "2026-10-29T21:00:00Z",
+  "endExclusive": "2026-10-30T21:00:00Z",
+  "events": [
+    {
+      "id": "source-event-id",
+      "executionId": "stable-execution-or-configuration-stream-id",
+      "testCaseKey": "DEMO-T1",
+      "timestamp": "2026-10-30T10:00:00+03:00",
+      "fromStatus": "Not Executed",
+      "toStatus": "Passed",
+      "actor": "actual-action-user-key"
+    }
+  ]
+}
+```
+
+`complete` attests all status events for every run item/configuration, including removals, through the elapsed cutoff; do not set it on a saved-result export. `source` must identify actual evidence. `instance` must match the selected connection's origin and `testRunKey` must match exactly. Timestamps require explicit offsets; the export covers the entire elapsed requested interval. `executionId` groups a continuous status stream. Event IDs deduplicate identical events; conflicting duplicates fail. Optional nonnegative integer `sequence` supplies source-established ordering for equal timestamps across the case; arbitrary ID order is not chronology. `actor: null` preserves unknown authors. Retain earlier baseline events when available; events after cutoff are ignored for counts and statuses.
+
+`historyPath` reads an explicitly supplied absolute regular JSON file (at most 100 MiB); it does not fetch arbitrary URLs. Returns `HISTORY_BASED` or `PARTIAL_HISTORY`, case/day evidence IDs, exclusions, period boundaries, provisional cutoff and source SHA-256. These qualities describe calculation from supplied evidence, not live audit verification. Do not manufacture transitions from adjacent public results or claim that the hash proves completeness. Large exports beyond this limit require a scoped source export; never truncate and mark complete.
+
+For future collection, the official [TestExecutionChangedEvent Java API](https://support.smartbear.com/zephyr-scale-server/javadocs/9.21.1/com/adaptavist/tm4j/api/event/testexecution/TestExecutionChangedEvent.html) exposes `getGeneratedByUser()` and execution identity. It is a possible server-side integration point, not a retrospective REST history or a guarantee that old/new status and event timestamps are archived. A verified UI export, existing audit archive or separately approved server integration can supply missing evidence; installing a collector/database/runtime is outside this pack change.
+
 ## Compatibility
 
 For a `400` or `403`, preserve the exact operation and observed response; `403 Forbidden` alone does not prove missing project or folder permissions. Use the bundled `jira_get_connection_diagnostics` read-only tool to inspect the running adapter's source path, code fingerprint, selected Jira connection, saved gateway-header presence, and last sanitized HTTP error. This tool performs no network request and does not retry creation. A configured corporate `X-Sp-Secret` is part of the connection's normal authentication; keep its value outside chat and use the standard adapter's saved configuration. If the tool is absent or `lastHttpError` is null, report that diagnostic gap rather than inventing header values or a permission diagnosis. Use the observed transaction/request ID for gateway-side verification. Preserve actual client denials and the existing write boundary.
