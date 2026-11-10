@@ -26,8 +26,8 @@ Accept:
 - a Figma node URL, Postman object URL, or scoped log/server reference;
 - an exact release version, Jira project/connection, and Test Run intent;
 - a Confluence or knowledge-page link;
-- a TMS case, saved Test Run/Test Cycle, folder or explicitly scoped search request;
-- plain chat context or local files when no external reference is supplied.
+- a TMS case, run, folder or scoped search;
+- a [QA Report](../../integrations/profiles/qa-report.md) URL or checklist search, chat or files.
 
 Preserve the caller's selected intent and requested output. Do not select or load downstream skills during collection. When directly invoked without a clear result intent, return collected context and material gaps.
 
@@ -37,7 +37,7 @@ For a task/subtask estimate, read the full supplied task, its parent story, the 
 
 Apply context reuse before retrieval. Collect missing/stale material or explicit refreshes; reused page text does not establish complete knowledge discovery.
 
-Inspect current host tools for issue/change read, issue relations, knowledge/design/log reads, API workspace and TMS read/write, and [terminal access](../../rules/terminal-access-rules.md). Match documented capabilities and input/output shapes, not tool names.
+Match live tool schemas to the needed source. When previous checklists matter, search personal QA Report by the scoped key or title. A supplied one-off session selects its report. For shell reads follow [terminal access](../../rules/terminal-access-rules.md).
 
 Apply [read priority](../../rules/source-reading-rules.md) before browser/auth recovery; use [session reuse](../../rules/browser-session-rules.md) for permitted browser reads.
 

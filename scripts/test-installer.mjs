@@ -6,6 +6,8 @@ import os from "node:os";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { personalQaReportLaunch, validatePersonalQaReport } from "./qa-report-config.mjs";
+import { strict as strictAssert } from "node:assert";
 
 const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptsDir, "..");
@@ -370,6 +372,41 @@ try {
     throw new Error("Не установлена независимая QA Report integration.");
   }
   assert(qaOnlyResult.stdout.includes("QA Report: 1 инструмент"), "QA Report MCP не прошёл независимый handshake.");
+
+  // Adding account reads does not widen a legacy import grant. Clients only
+  // register the launcher, including when the official server also allows files.
+  const personalToken = "x".repeat(43);
+  const personal = { enabled: true, baseUrl: "https://reports.example.invalid/api/mcp/personal", personalToken };
+  for (const baseUrl of ["http://reports.example.invalid", "https://name:pass@reports.example.invalid", "https://reports.example.invalid/?key=bad", "https://reports.example.invalid/api/local-import/agent/one"]) {
+    strictAssert.throws(() => validatePersonalQaReport({ ...personal, baseUrl }), /HTTPS/);
+  }
+  if (Number(process.versions.node.split(".")[0]) >= 22) {
+    const personalArgs = [path.join(scriptsDir, "install.mjs"), "--clients", "codex,claude,opencode,generic", "--answers", answersFile, "--opencode-format", "v2", "--skip-dependencies", "--no-cli"];
+    for (const allowPersonalWrites of [false, true]) {
+      const withPersonal = {
+        version: 3, connections: { jira: [], confluence: [], eva: [], mcp: [] }, tms: { category: "none", provider: "none" },
+        enableQaReportImport: !allowPersonalWrites, qaReport: { ...personal, allowPersonalWrites, fileRoot: testRoot }
+      };
+      fs.writeFileSync(answersFile, JSON.stringify(withPersonal));
+      const installed = spawnSync(process.execPath, personalArgs, { cwd: repoRoot, env, encoding: "utf8" });
+      assert(installed.status === 0, `Не установлено личное подключение QA Report: ${installed.stderr}`);
+      assert(!(installed.stdout + installed.stderr).includes(personalToken), "Личный токен попал в вывод установки.");
+      const saved = JSON.parse(fs.readFileSync(privateConfig, "utf8"));
+      const launch = personalQaReportLaunch(saved);
+      const origin = "https://reports.example.invalid";
+      strictAssert.deepEqual(launch.args, ["--yes", "--ignore-scripts", "--package", origin + "/downloads/qa-report-mcp.tgz", "qa-report-mcp"]);
+      assert(saved.qaReport.baseUrl === origin && launch.env.QA_REPORT_PERSONAL_URL === origin + "/api/mcp/personal", "Адрес личного MCP не совпал.");
+      assert(launch.env.QA_REPORT_PERSONAL_TOKEN === personalToken && launch.env.QA_REPORT_MCP_READ_ONLY === (allowPersonalWrites ? "0" : "1"), "Некорректные права/токен личного MCP.");
+      assert(launch.env.QA_REPORT_FILE_ROOT === (allowPersonalWrites ? testRoot : undefined), "Папка вложений не соответствует разрешению.");
+      for (const file of [genericConfig, codexConfig, openCodeConfig, path.join(testRoot, "private-config", "client-snippets", "claude-code.txt")]) {
+        const contents = fs.readFileSync(file, "utf8");
+        assert(contents.includes("testdocs_qa_report") && !contents.includes(personalToken), "Некорректная регистрация личного MCP в клиенте.");
+        assert(contents.includes("testdocs_delivery") === withPersonal.enableQaReportImport, "Импорт зависит от разрешения личного MCP.");
+      }
+    }
+  } else {
+    strictAssert.throws(() => validatePersonalQaReport(personal), /Node.js 22/);
+  }
 
   // QA Tools can be selected independently and keeps login/password out of client configs.
   fs.writeFileSync(answersFile, JSON.stringify({

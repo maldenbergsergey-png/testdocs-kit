@@ -12,7 +12,7 @@ Integrations are context transport, not QA logic. This repository works fully wi
 - [`profiles/qa-tools.md`](profiles/qa-tools.md) — QA Tools / ТестОпс MCP and authentication profile.
 - [`../rules/integration-rules.md`](../rules/integration-rules.md) — neutral context bundle and mandatory read/write boundaries.
 - [`../skills/collect-test-context/SKILL.md`](../skills/collect-test-context/SKILL.md) — read-only collection and routing workflow.
-- [`profiles/qa-report.md`](profiles/qa-report.md) — finalized-checklist import or temporary HTTP delivery of text/files into an open report, including credential handling and saved receipts; a dedicated temporary-API MCP is optional.
+- [QA Report](profiles/qa-report.md) — personal account search, checklist reading and filling, one-off report sessions and new checklist imports.
 - [`profiles/git-repositories.md`](profiles/git-repositories.md) - primary collection repository on any Git host, private bindings, SSH/HTTPS access and independent read-only source repositories.
 - [`profiles/gitlab.md`](profiles/gitlab.md) - general GitLab source context for analysis and bug preparation, personal read-only REST PAT and optional official MCP.
 - [`profiles/figma.md`](profiles/figma.md) — official Figma remote MCP and node-specific design comparison.

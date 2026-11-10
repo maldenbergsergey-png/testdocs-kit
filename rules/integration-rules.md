@@ -26,7 +26,7 @@ Identify integrations by capability rather than product name or MCP tool name:
 | Eva bug creation | Live form and `Ошибка` creation in the tester-selected feature or backlog route | Optional; [Eva profile](../integrations/profiles/eva.md), explicit create intent and target required even to open the form |
 | Jira QA work-item metadata | Read the exact non-defect work-item schema and authenticated user | Only for linked Test Run work-item creation |
 | Jira QA work-item create | Create one validated non-defect QA work item and attach the created Test Run | Optional and approval-gated |
-| QA Report delivery | Import a finalized checklist or fill an open report through its temporary API, including supported metadata and attachments | Optional and approval-gated |
+| QA Report | Search/read scoped checklists with personal MCP. For delivery use the [QA Report profile](../integrations/profiles/qa-report.md) | Optional. Writes require intent and scope |
 | Source/change read | Retrieve an explicitly supplied GitLab issue, MR, commit, diff or pipeline result | Optional |
 | Design read | Retrieve a supplied design/frame, render and supported design metadata | Optional transport; apply [design rules](execution-design-rules.md) |
 | API workspace read | Retrieve a supplied Postman workspace, collection, specification, request or example | Optional |

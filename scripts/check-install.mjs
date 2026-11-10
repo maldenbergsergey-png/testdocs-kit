@@ -12,6 +12,7 @@ import { getConfigFile, getInstallHome, launcherFile, repoRoot } from "./paths.m
 import { connectionList, hasQaTools, migrateConfig, usesZephyr } from "./config-model.mjs";
 import { validateMaestro } from "./maestro-config.mjs";
 import { validateAppium } from "./appium-config.mjs";
+import { hasPersonalQaReport, usesQaReport, validatePersonalQaReport } from "./qa-report-config.mjs";
 import { normalizeRepositories } from "./repository-config.mjs";
 
 function assert(condition, message) {
@@ -58,6 +59,7 @@ function validatePrivateConfig() {
   }
   if (config.qaReport?.enabled) {
     assert(/^https?:\/\//.test(config.qaReport.baseUrl || ""), "Неполные настройки QA Report.");
+    if (hasPersonalQaReport(config)) validatePersonalQaReport(config.qaReport);
   }
   assert(["zephyr", "other", "none"].includes(config.tms?.category), "Неизвестная категория TMS.");
   if (hasQaTools(config)) {
@@ -81,7 +83,7 @@ async function loadMcpClient(config) {
     ? path.join(repoRoot, "mcp", "browser-mcp", "package.json")
     : hasQaTools(config) || connectionList(config, "eva").length
     ? path.join(repoRoot, "mcp", "qa-tools-mcp", "package.json")
-    : connectionList(config, "jira").length || (config.qaReport?.enabled && config.enableQaReportImport === true)
+    : connectionList(config, "jira").length || usesQaReport(config)
     ? path.join(repoRoot, "mcp", "jira-mcp", "package.json")
     : path.join(repoRoot, "mcp", "confluence-mcp", "package.json");
   const requireFromService = createRequire(packageFile);
@@ -94,17 +96,20 @@ async function loadMcpClient(config) {
   return { Client, StdioClientTransport };
 }
 
-async function listTools(service, connectionId, Client, StdioClientTransport) {
+async function listTools(service, connectionId, Client, StdioClientTransport, verify) {
   const transport = new StdioClientTransport({
     command: process.execPath,
     args: [launcherFile, service, ...(connectionId ? [connectionId] : [])],
     env: { ...process.env }
   });
   const client = new Client({ name: "testdocs-kit-check", version: "1.0.0" });
-  await client.connect(transport);
-  const result = await client.listTools();
-  await client.close();
-  return result.tools.map((tool) => tool.name);
+  try {
+    await client.connect(transport, service === "qa_report" ? { timeout: 120_000 } : undefined);
+    const result = await client.listTools();
+    const names = result.tools.map((tool) => tool.name);
+    if (verify) await verify(client, names);
+    return names;
+  } finally { await client.close(); }
 }
 
 async function main() {
@@ -122,7 +127,7 @@ async function main() {
       }
     }
   }
-  if (!connectionList(config, "jira").length && !connectionList(config, "confluence").length && !connectionList(config, "eva").length && !(config.qaReport?.enabled && config.enableQaReportImport === true) && !hasQaTools(config) && !config.browser?.enabled) {
+  if (!connectionList(config, "jira").length && !connectionList(config, "confluence").length && !connectionList(config, "eva").length && !usesQaReport(config) && !hasQaTools(config) && !config.browser?.enabled) {
     console.log(connectionList(config, "mcp").length
       ? "Удалённые MCP настроены; offline-проверка ограничена их конфигурацией."
       : config.maestro?.enabled || config.appium?.enabled ? "Для мобильных MCP проверьте подключение и выбранное устройство в AI-клиенте."
@@ -213,6 +218,26 @@ async function main() {
     const tools = await listTools("delivery", null, Client, StdioClientTransport);
     assert(tools.includes("qa_report_import_checklist"), "Delivery MCP не отдал импорт checklist в QA Report.");
     results.push(`QA Report: ${tools.length} инструмент импорта по явному запросу`);
+  }
+
+  if (hasPersonalQaReport(config)) {
+    if (offlineExternal) {
+      results.push("Личный MCP QA Report настроен. Загрузка пакета и проверка токена пропущены (--offline-external).");
+    } else {
+      await listTools("qa_report", null, Client, StdioClientTransport, async (client, names) => {
+        const { allowPersonalWrites, fileRoot } = config.qaReport;
+        for (const name of ["qa_report_list_reports", "qa_report_get_context", "qa_report_get_operation", "qa_report_capabilities"]) {
+          assert(names.includes(name), `Личный MCP QA Report не предоставил ${name}.`);
+        }
+        for (const name of ["qa_report_update_cells", "qa_report_update_metadata", "qa_report_replace_checklist", "qa_report_upload_attachment"]) {
+          const enabled = allowPersonalWrites === true && (name !== "qa_report_upload_attachment" || Boolean(fileRoot));
+          assert(names.includes(name) === enabled, `Личный MCP QA Report: проверьте настройки доступа к ${name}.`);
+        }
+        const result = await client.callTool({ name: "qa_report_list_reports", arguments: { limit: 1 } });
+        assert(!result.isError && Array.isArray(result.structuredContent?.reports), "QA Report не подтвердил чтение. Проверьте подключение, права и срок личного токена.");
+      });
+      results.push("Личный MCP QA Report: поиск по токену проверен.");
+    }
   }
 
   for (const confluence of connectionList(config, "confluence")) {

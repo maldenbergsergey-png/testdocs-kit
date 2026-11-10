@@ -14,6 +14,7 @@ import { spawnSync } from "node:child_process";
 import { requiresShell } from "./command-shell.mjs";
 import { maestroLocalTools, resolveMaestro, validateMaestro } from "./maestro-config.mjs";
 import { appiumLocalTools, resolveAppium, validateAppium } from "./appium-config.mjs";
+import { hasPersonalQaReport, usesQaReport, validatePersonalQaReport } from "./qa-report-config.mjs";
 import { collectRepositories, normalizeRepositories } from "./repository-config.mjs";
 import { validateRepositoryCa } from "./repository-tls.mjs";
 import { authenticateMcpClients, codexWriteApprovalMode } from "./client-mcp.mjs";
@@ -402,14 +403,25 @@ async function collectEva(previous = {}, id = "eva-main") {
 }
 
 async function collectQaReport(previous = {}) {
-  const enabled = await confirm("Подключить QA Report для открытия чек-листов в редакторе", previous.enabled ?? false);
+  const enabled = await confirm("Подключить QA Report", previous.enabled ?? false);
   if (!enabled) return { ...previous, enabled: false };
   const baseUrl = (await askReusable(
-    "Адрес QA Report без завершающего слеша",
+    "Адрес QA Report",
     previous.baseUrl || "",
     "http://localhost:4173"
   )).replace(/\/+$/, "");
-  return { enabled: true, baseUrl };
+  const settings = { enabled: true, baseUrl };
+  const sameSite = previous.baseUrl === baseUrl;
+  const token = await askSecret("Личный MCP-токен из профиля QA Report (необязательно, '-' — удалить)", sameSite ? previous.personalToken : "");
+  if (!token || token === "-") return settings;
+  settings.personalToken = token.trim();
+  settings.baseUrl = validatePersonalQaReport(settings);
+  settings.allowPersonalWrites = await confirm("Разрешить заполнение выбранных чек-листов личным MCP по запросу", sameSite && previous.allowPersonalWrites === true);
+  if (settings.allowPersonalWrites) {
+    const fileRoot = await askReusable("Абсолютный путь к папке вложений (необязательно, '-' — удалить)", sameSite ? previous.fileRoot : "");
+    if (fileRoot && fileRoot !== "-") settings.fileRoot = fileRoot;
+  }
+  return settings;
 }
 
 function previousMcp(items, provider) {
@@ -640,6 +652,7 @@ function validateAnswers(config) {
   }
   if (config.qaReport?.enabled) {
     validateUrl(config.qaReport.baseUrl, "qaReport.baseUrl");
+    if (hasPersonalQaReport(config)) config.qaReport.baseUrl = validatePersonalQaReport(config.qaReport);
   }
   if (!["zephyr", "other", "none"].includes(config.tms?.category)) {
     throw new Error("Неизвестная категория TMS.");
@@ -791,7 +804,7 @@ async function collectConfig(args, clients, existing = null) {
   if (["all", "delivery"].includes(target)) {
     previous.qaReport = await collectQaReport(previous.qaReport);
     previous.enableQaReportImport = previous.qaReport.enabled
-      ? await confirm("Разрешить отправку checklist в QA Report по явному запросу", previous.enableQaReportImport === true)
+      ? await confirm("Разрешить отдельный импорт нового чек-листа по ссылке в редактор QA Report", previous.enableQaReportImport === true)
       : false;
   }
   if (["all", "integrations"].includes(target)) {
@@ -903,7 +916,7 @@ function installDependencies(skip, config) {
 
   if (skip) {
     console.log("Установка зависимостей пропущена.");
-    if (connectionList(config, "jira").length || (config.qaReport?.enabled && config.enableQaReportImport === true)) {
+    if (connectionList(config, "jira").length || usesQaReport(config)) {
       const jiraSdk = path.join(jiraDir, "node_modules", "@modelcontextprotocol", "sdk", "package.json");
       if (!fs.existsSync(jiraSdk)) {
         throw new Error("Зависимости Jira MCP не установлены. Повторите команду без --skip-dependencies.");
@@ -924,7 +937,7 @@ function installDependencies(skip, config) {
     }
     return;
   }
-  if (connectionList(config, "jira").length || (config.qaReport?.enabled && config.enableQaReportImport === true)) {
+  if (connectionList(config, "jira").length || usesQaReport(config)) {
     console.log("\nУстанавливаю зависимости Jira MCP...");
     run(npm, ["ci"], { cwd: jiraDir });
   }
@@ -1019,6 +1032,7 @@ function configuredServers(config) {
   if (config.qaReport?.enabled && config.enableQaReportImport === true) {
     servers.push({ name: "testdocs_delivery", service: "delivery", tools: ["qa_report_import_checklist"] });
   }
+  if (hasPersonalQaReport(config)) servers.push({ name: "testdocs_qa_report", service: "qa_report" });
   for (const item of connectionList(config, "mcp")) {
     servers.push({
       name: `testdocs_${item.id.replace(/-/g, "_")}`,
@@ -1056,9 +1070,9 @@ default_tools_approval_mode = "${writeApprovalMode}"`);
 command = ${tomlString(process.execPath)}
 args = [${args.map(tomlString).join(", ")}]
 enabled = true
-required = false${["maestro", "appium"].includes(server.service) ? "\nstartup_timeout_sec = 60\ntool_timeout_sec = 180" : ""}
+required = false${server.service === "qa_report" ? "\nstartup_timeout_sec = 120" : ["maestro", "appium"].includes(server.service) ? "\nstartup_timeout_sec = 60\ntool_timeout_sec = 180" : ""}
 ${enabledTools}
-default_tools_approval_mode = "${["maestro", "appium"].includes(server.service) ? writeApprovalMode : "approve"}"`);
+default_tools_approval_mode = "${["maestro", "appium", "qa_report"].includes(server.service) ? writeApprovalMode : "approve"}"`);
   }
   sections.push(MANAGED_END);
   return `${sections.join("\n")}\n`;
@@ -1168,7 +1182,7 @@ function removeManagedOpenCodePermissions(data) {
 }
 
 function ensureSafeFormatMigration(data, format) {
-  const isManaged = (name) => /^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic|browser|maestro|appium)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name);
+  const isManaged = (name) => /^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic|browser|maestro|appium)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools", "testdocs_qa_report"].includes(name);
   if (format === "stable" && data.mcp?.servers) {
     const foreignServers = Object.keys(data.mcp.servers).filter((name) => !isManaged(name));
     if (foreignServers.length) {
@@ -1233,7 +1247,7 @@ function mergeOpenCodeConfig(config, args) {
   const removeManaged = (container) => {
     if (!container || typeof container !== "object") return;
     for (const name of Object.keys(container)) {
-      if (/^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic|browser|maestro|appium)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools"].includes(name)) {
+      if (/^testdocs_(jira|confluence|eva|figma|gitlab|postman|elastic|browser|maestro|appium)(_|$)/.test(name) || ["testdocs_delivery", "testdocs_qa_tools", "testdocs_qa_report"].includes(name)) {
         delete container[name];
       }
     }
@@ -1517,7 +1531,7 @@ async function main() {
 3. Выполните пробный запрос из README.md.
 
 ${tmsSummary}
-Checklist-комментарии Jira и QA Report доступны только если были отдельно разрешены при setup. Автоматическое удаление внешних тест-кейсов отключено.`);
+Публикация checklist-комментариев Jira, импорт в QA Report и заполнение через личный MCP включаются отдельно.`);
 }
 
 let releaseInstallLock;

@@ -8,6 +8,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { maestroLaunch, maestroSpawnCommand } from "./maestro-config.mjs";
 import { appiumLaunch, appiumSpawnCommand } from "./appium-config.mjs";
+import { personalQaReportLaunch } from "./qa-report-config.mjs";
 import { requiresShell } from "./command-shell.mjs";
 import { getConfigFile, getSessionFile, getDataDir, serviceEntries, repoRoot } from "./paths.mjs";
 import { connectionList, findConnection, hasQaTools, migrateConfig, sessionKey, usesZephyr } from "./config-model.mjs";
@@ -174,21 +175,24 @@ function buildEnvironment(service, connectionId, config) {
 
 const service = process.argv[2];
 const connectionId = process.argv[3];
-if (!["maestro", "appium"].includes(service) && !Object.hasOwn(serviceEntries, service)) {
-  fail("укажите сервис jira, confluence, eva, qa_tools, browser, maestro, appium или delivery.");
+if (!["maestro", "appium", "qa_report"].includes(service) && !Object.hasOwn(serviceEntries, service)) {
+  fail("укажите сервис jira, confluence, eva, qa_tools, browser, maestro, appium, qa_report или delivery.");
 }
 
 const config = readConfig();
 startAutoUpdateChecks();
 let launch;
-if (["maestro", "appium"].includes(service)) {
+if (service === "qa_report") {
+  try { launch = personalQaReportLaunch(config); }
+  catch (error) { fail(error.message); }
+} else if (["maestro", "appium"].includes(service)) {
   try {
     launch = service === "maestro" ? maestroLaunch(config.maestro) : appiumLaunch(config.appium);
     launch.spawnCommand = service === "maestro" ? maestroSpawnCommand(launch.command) : appiumSpawnCommand(launch.command);
   }
   catch (error) { fail(error.message); }
-  fs.mkdirSync(getDataDir(), { recursive: true, mode: 0o700 });
 }
+if (launch) fs.mkdirSync(getDataDir(), { recursive: true, mode: 0o700 });
 const serviceArgs = launch ? launch.args : [serviceEntries[service]];
 if (service === "browser") {
   if (!config.browser?.enabled) fail("браузер выключен; выполните npm run configure:browser.");
@@ -204,7 +208,7 @@ if (service === "browser") {
     serviceArgs.push("--browser", "chrome", "--user-data-dir", profileDir);
   }
 }
-const child = spawn(launch?.spawnCommand || process.execPath, serviceArgs, {
+const child = spawn(launch?.spawnCommand || launch?.command || process.execPath, serviceArgs, {
   cwd: launch ? getDataDir() : service === "browser" ? repoRoot : new URL(`../mcp/${service === "confluence" ? "confluence-mcp" : ["qa_tools", "eva"].includes(service) ? "qa-tools-mcp" : "jira-mcp"}/`, import.meta.url),
   env: launch?.env || buildEnvironment(service, connectionId, config),
   shell: launch ? requiresShell(launch.command) : false,
