@@ -20,6 +20,7 @@ Integrations are context transport, not QA logic. This repository works fully wi
 - [`postman-collection-sync.md`](postman-collection-sync.md) - collection maintenance from files, repository refs and task exports; optional connections and host-driven automation.
 - [`profiles/elastic-kibana.md`](profiles/elastic-kibana.md) — version-aware Elastic Agent Builder MCP and scoped log analysis.
 - [`profiles/maestro.md`](profiles/maestro.md) - Android and iOS Simulator control through the official Maestro CLI MCP.
+- [`profiles/mobile-test-runners.md`](profiles/mobile-test-runners.md) - run saved Maestro flows on a selected device locally or in CI and collect JUnit results.
 - [`profiles/appium.md`](profiles/appium.md) - Appium MCP for prepared Android/iOS devices and sessions, including physical iPhones on macOS/Windows.
 - [`../docs/mobile-testing.md`](../docs/mobile-testing.md) - minimal build/WDA handoff from developers and device preparation for testers.
 

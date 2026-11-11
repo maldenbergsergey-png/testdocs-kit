@@ -52,7 +52,7 @@
     "test:checklist": "node scripts/validate-checklist-format.mjs && node --test scripts/validate-checklist-format.test.mjs",
     "test": "npm run test:skills && npm run test:repositories && npm run test:format && npm run test:checklist && npm run test:bootstrap && npm run test:command-shell && npm run test:browser-auth && npm run test:session-auth && npm run test:atlassian-transport && npm run test:workspace && npm run test:mcp && npm run test:qa-tools-mcp && npm run test:installer && npm run test:browser-mcp && npm run test:maestro && npm run test:appium && npm run test:auto-update",
     "test:browser-mcp": "node --test scripts/browser-mcp.test.mjs",
-    "test:maestro": "node --test scripts/maestro-mcp.test.mjs",
+    "test:maestro": "node --test scripts/maestro-mcp.test.mjs scripts/mobile-flow-runner.test.mjs",
     "test:appium": "node --test scripts/appium-mcp.test.mjs",
     "test:repositories": "node --test scripts/repository-config.test.mjs",
     "test:skills": "node --test scripts/skill-pack.test.mjs scripts/install-skills.test.mjs",

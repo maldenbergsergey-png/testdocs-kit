@@ -1,5 +1,40 @@
 [
   {
+    "id": "mobile_checklist_to_flow",
+    "prompt": "На Android подтвердили по чек-листу, что новое имя сохраняется после повторного входа в профиль. Постоянного кейса ещё нет. Добавь в нашу папку .maestro исполняемый тест для регресса и проверь файл на устройстве.",
+    "skill": "automate-mobile-tests",
+    "artifact": "mobile_flow",
+    "collect": false
+  },
+  {
+    "id": "mobile_run_saved",
+    "prompt": "Прогони сохранённую папку .maestro/smoke на Android по USB и на iPhone с TestFlight. Хочу увидеть результат каждого прогона. Файлы тестов не меняй.",
+    "skill": "automate-mobile-tests",
+    "artifact": "execution_report",
+    "collect": false
+  },
+  {
+    "id": "mobile_update_flow_from_case",
+    "prompt": "Прочитай актуальные шаги регрессионного кейса DEMO-T45 из Zephyr и обнови по ним существующий profile.yaml для iOS и Android. Кейс оставь как есть.",
+    "skill": "automate-mobile-tests",
+    "artifact": "mobile_flow",
+    "collect": true
+  },
+  {
+    "id": "mobile_first_pass",
+    "prompt": "APK и TestFlight открыты на двух тестовых устройствах. Сначала покажи чек-лист, затем проверь сохранение даты рождения через Maestro и Appium, запиши проблемы. Это первичная проверка задачи.",
+    "skill": "execute-task-testing",
+    "artifact": "execution_report",
+    "collect": false
+  },
+  {
+    "id": "mobile_permanent_case",
+    "prompt": "После ручной проверки профиля на Android и iOS напиши постоянный тест-кейс для регресса. Требование и факт совпали: имя остаётся сохранённым при повторном открытии. Нужен текст кейса.",
+    "skill": "generate-test-cases",
+    "artifact": "cases",
+    "collect": false
+  },
+  {
     "id": "advice",
     "prompt": "Как протестировать это изменение? На странице профиля поле имени обязательно, максимум 40 символов; при успешном сохранении новое имя видно после перезагрузки.",
     "skill": "explain-task-testing",

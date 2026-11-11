@@ -20,6 +20,7 @@
 - [Решение проблем установки](docs/troubleshooting.md)
 - [Возможности и ограничения MCP](docs/mcp-boundaries.md)
 - [Мобильные сборки, устройства и подключение Maestro/Appium](docs/mobile-testing.md)
+- [От проверки релизной задачи до запуска мобильного автотеста](docs/mobile-testing.md#от-задачи-до-регресса)
 - [Репозиторий Postman-коллекции и чтение кода/контрактов GitLab](integrations/profiles/git-repositories.md)
 - [Переиспользование контекста связанных задач](docs/context-reuse.md) и [модельные роли Codex](integrations/profiles/codex-model-routing.md)
 
@@ -44,6 +45,7 @@
 | [`analyze-test-coverage`](skills/analyze-test-coverage/SKILL.md) | Определить пробелы и необходимость создания или обновления кейсов. |
 | [`update-test-cases`](skills/update-test-cases/SKILL.md) | Предложить актуализацию старых кейсов; по явному запросу применить исправление нового кейса из этого же чата с проверкой реестра MCP. |
 | [`update-postman-collection`](skills/update-postman-collection/SKILL.md) | Обновить запросы и контрактные автотесты по YAML-файлу, ссылке на репозиторий/ветку/MR или выгрузке по задаче; добавить новый метод в подходящий раздел. |
+| [`automate-mobile-tests`](skills/automate-mobile-tests/SKILL.md) | Написать или обновить мобильный UI-автотест по кейсу, пункту чек-листа или требованию. Запустить сохранённый YAML на выбранном устройстве или в CI. |
 | [`review-test-cases`](skills/review-test-cases/SKILL.md) | Проверить качество и сразу показать исправленную proposal-версию при замечаниях. |
 | [`build-coverage-matrix`](skills/build-coverage-matrix/SKILL.md) | Построить матрицу тестового покрытия. |
 | [`build-regression-model`](skills/build-regression-model/SKILL.md) | Собрать переиспользуемую регрессионную модель. |
