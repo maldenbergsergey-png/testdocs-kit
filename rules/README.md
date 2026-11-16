@@ -53,5 +53,5 @@ Read [core.md](core.md) once per task. This index is for discovery; follow only 
 - [execution-design-rules.md](execution-design-rules.md): design sources and basic visual assessment when designs are missing or partial.
 - [execution-mobile-quality-rules.md](execution-mobile-quality-rules.md): mobile coverage by risk and run scope, test techniques, platform conditions and limits of evidence.
 - [execution-state-rules.md](execution-state-rules.md): UI checks in one visit per state, capture before transitions and deferred design comparison without redundant functional runs.
-- [execution-report-rules.md](execution-report-rules.md): statuses and report; [execution-evidence-rules.md](execution-evidence-rules.md): capture, reuse and local history.
+- [execution-report-rules.md](execution-report-rules.md): statuses and report; [execution-evidence-rules.md](execution-evidence-rules.md): capture, readable images/annotations for all QA artifacts, reuse and local history.
 - [tms-integration-rules.md](tms-integration-rules.md): TMS compatibility; [external-write-rules.md](external-write-rules.md): requested writes; [checklist-delivery-rules.md](checklist-delivery-rules.md): requested Jira/QA Report delivery.

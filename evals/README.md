@@ -69,6 +69,8 @@
 
 Для ссылок на пункты требований, снимков конкретного макета и подтверждения скачивания использовать [source-evidence.json](source-evidence.json) по [отдельной процедуре](source-evidence.md).
 
+Для читаемого масштаба, связи элемента с панелью свойств и обычных стрелок/рамок во всех QA-артефактах использовать [image-evidence-quality.json](image-evidence-quality.json) по [процедуре](image-evidence-quality.md).
+
 Для совместного выполнения UI-проверок в одном состоянии и поздней сверки с макетами без повторения функционального прогона использовать [screen-state-execution.json](screen-state-execution.json) по [процедуре](screen-state-execution.md).
 
 Для необязательных скриншотов в шагах кейсов, выбора реализации/макета и актуализации изображений использовать [case-images.json](case-images.json) по [процедуре](case-images.md).
