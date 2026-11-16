@@ -4,7 +4,7 @@ Read [report rules](execution-report-rules.md) for every execution report and [e
 
 Read [access, test-action authorization and material gaps](execution-access-rules.md) for every run; for OS commands and SSH, read [terminal access](terminal-access-rules.md).
 
-Select [scope and mode](execution-scope-rules.md); for UI checks, follow [execution by screen state](execution-state-rules.md).
+Select [scope](execution-scope-rules.md) and [test techniques](execution-test-design-rules.md). For UI, follow [screen states](execution-state-rules.md).
 
 ## Выполнение тестирования
 

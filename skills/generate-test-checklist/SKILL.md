@@ -14,6 +14,7 @@ Read [the common contract](../../rules/core.md) once per task. Follow conditiona
 Before generating, read:
 
 - [`../../rules/test-checklist-standard.md`](../../rules/test-checklist-standard.md)
+- [Focused test design and rule questions](../../rules/execution-test-design-rules.md)
 - [`../../rules/integration-rules.md`](../../rules/integration-rules.md) when external context or delivery is requested
 
 ## Workflow
@@ -21,7 +22,7 @@ Before generating, read:
 1. Accept normalized task or document context from chat, files, or `collect-test-context`. Select the delivery mode before formatting: default chat output or explicitly requested [direct API delivery](../../rules/checklist-delivery-rules.md#direct-api-delivery). For the latter, read the destination contract, preflight the target and initialize task data with `node scripts/task-workspace.mjs init --project <project> --task <task>` from the installed kit before saving the canonical plan/payloads. It does not authorize test execution.
 2. Inventory requirements, criteria, fields, roles, states, errors and supported surfaces within the requested scope before drafting.
 3. Classify relevant comments as decisions, clarifications, unresolved questions, or previous tester checklists/execution evidence. Treat previous checklists as practitioner evidence, validate their scenarios against current requirements, and preserve the comment link or ID plus author/date when available.
-4. Decompose the selected requirements under the standard's source-wording and one-outcome rules; merge duplicate criteria and split independently assessed outcomes.
+4. Select applicable test techniques and sufficient data under the test design rules. Decompose the selected requirements under the standard's source-wording and one-outcome rules; merge duplicate criteria and split independently assessed outcomes.
 5. Group rows by the natural meaning and type of the affected behavior. Choose section names from the actual content; for a small homogeneous checklist use one section. Do not force `Основные проверки` and `Дополнительные проверки`.
 6. Place source references in `Комментарий` under the standard, including the required provenance for a previous Jira-comment checklist. When capturing or reusing a design image for the expected result, first read [design capture rules](../../rules/execution-evidence-rules.md#снимок-конкретного-макета), even without test execution. Leave actual result and status empty.
 7. Add `Требует уточнения` only for genuine conflicts or missing expected behavior. Omit it entirely when the context is sufficient.

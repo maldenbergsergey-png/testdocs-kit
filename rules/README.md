@@ -49,6 +49,7 @@ Read [core.md](core.md) once per task. This index is for discovery; follow only 
 - [knowledge-discovery-rules.md](knowledge-discovery-rules.md): scoped base/change document discovery, applicability and reconciliation before QA documentation.
 - [model-routing-rules.md](model-routing-rules.md): explicitly enabled model roles and bounded delegation.
 - [execution-access-rules.md](execution-access-rules.md): test-environment action authorization, missing access/materials, pending scope and independent checks.
+- [execution-test-design-rules.md](execution-test-design-rules.md): focused test techniques, exact boundaries/precision, decision gaps and timely business-rule questions.
 - [execution-design-rules.md](execution-design-rules.md): design sources and basic visual assessment when designs are missing or partial.
 - [execution-mobile-quality-rules.md](execution-mobile-quality-rules.md): mobile coverage by risk and run scope, test techniques, platform conditions and limits of evidence.
 - [execution-state-rules.md](execution-state-rules.md): UI checks in one visit per state, capture before transitions and deferred design comparison without redundant functional runs.
