@@ -20,6 +20,7 @@ Read [core.md](core.md) once per task. This index is for discovery; follow only 
 - [`qa-estimation-platform-matrix.md`](qa-estimation-platform-matrix.md) - scoped desktop/mobile web, design breakpoints, and native iOS/Android coverage from the supplied matrices.
 - [`task-execution-rules.md`](task-execution-rules.md) — execution workflow with conditional surface, report and evidence contracts.
 - [`execution-scope-rules.md`](execution-scope-rules.md) - change checks, app smoke/regression, supplied runs and exploratory scope without an issue key.
+- [`mobile-automation-rules.md`](mobile-automation-rules.md) - reusable mobile flows, runtime data selection and saved-run evidence.
 - [`test-case-type-rules.md`](test-case-type-rules.md) — E2E, overview, block, cross-page, integration, and platform classification.
 - [`test-case-lifecycle-rules.md`](test-case-lifecycle-rules.md) — lifecycle statuses, review readiness, and task linkage.
 - [`reusable-setup-rules.md`](reusable-setup-rules.md) — shared preparation procedures, administration content, dependency outputs, and cleanup.
@@ -42,6 +43,7 @@ Read [core.md](core.md) once per task. This index is for discovery; follow only 
 - [test-case-format.md](test-case-format.md): rendering complete cases; [test-case-setup-rules.md](test-case-setup-rules.md): administration assertions and property-specific hints.
 - [test-case-image-rules.md](test-case-image-rules.md): optional implementation/design screenshots, source selection, capture and step attachments.
 - [execution-web-rules.md](execution-web-rules.md), [execution-native-rules.md](execution-native-rules.md), [execution-media-rules.md](execution-media-rules.md): selected surface only.
+- [mobile-automation-structure-rules.md](mobile-automation-structure-rules.md): suite layout, shared configuration, selectors and independent test state when creating or reorganizing mobile automation.
 - [terminal-access-rules.md](terminal-access-rules.md): macOS/Windows terminals, SSH test-server diagnostics, command scope and credentials.
 - [source-reading-rules.md](source-reading-rules.md): optional assistant, matching MCP and existing browser priority for source reads.
 - [browser-session-rules.md](browser-session-rules.md): browser selection, reuse of readable sources and necessary authentication recovery.
