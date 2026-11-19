@@ -1,11 +1,17 @@
 ---
 name: automate-mobile-tests
-description: Create, update or run reusable native mobile UI autotests as Maestro YAML flows for Android and iOS, including a saved flow or suite requested locally or in CI. Accept a regression case, tested checklist scenario or clear requirement. Use for executable mobile tests. A one-time app check, a TMS case or advice alone keeps its own workflow.
+description: Set up a tester's Windows or macOS workstation for project mobile autotests, or create, update and run reusable Android/iOS Maestro YAML flows locally or in CI. Accept a regression case, checked checklist item or clear requirement. One-time app checks, TMS cases and advice-only requests keep their own workflows.
 ---
 
 # Automate mobile tests
 
 Read [the common contract](../../rules/core.md) once and apply the [mobile automation rules](../../rules/mobile-automation-rules.md). Use [collect-test-context](../collect-test-context/SKILL.md) when a linked source needs retrieval.
+
+Use the [portable team guide](../../docs/mobile-autotests.md) when documenting authoring, project onboarding or day-to-day commands. Use the target project's published commands and settings where they differ from the examples.
+
+## Set up a tester's workstation
+
+For an explicit request to set up project mobile autotests locally, follow the [workstation procedure](references/workstation-setup.md). Use available local tools to do the authorized work and verify a saved smoke test on the selected targets. A setup request needs the project and device context, without requiring a Jira case.
 
 ## Create or update a test
 

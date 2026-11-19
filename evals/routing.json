@@ -1,5 +1,12 @@
 [
   {
+    "id": "mobile_workstation_setup",
+    "prompt": "На Windows открыт локальный репозиторий мобильных автотестов проекта. Настрой всё на моём компьютере для запуска на Android по USB и прогони один существующий smoke. Я могу подтвердить действие на телефоне.",
+    "skill": "automate-mobile-tests",
+    "artifact": "workstation_setup",
+    "collect": false
+  },
+  {
     "id": "mobile_checklist_to_flow",
     "prompt": "На Android подтвердили по чек-листу, что новое имя сохраняется после повторного входа в профиль. Постоянного кейса ещё нет. Добавь в нашу папку .maestro исполняемый тест для регресса и проверь файл на устройстве.",
     "skill": "automate-mobile-tests",
